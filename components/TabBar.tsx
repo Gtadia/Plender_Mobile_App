@@ -1,5 +1,6 @@
 import { View, TouchableOpacity, StyleSheet } from 'react-native'
 import React from 'react'
+import { Dimensions } from 'react-native';
 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLinkBuilder, useTheme } from '@react-navigation/native';
@@ -7,6 +8,11 @@ import { Text, PlatformPressable } from '@react-navigation/elements';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { colorTheme$ } from '@/utils/stateManager';
 import { AntDesign } from '@expo/vector-icons';
+
+
+const itemPadding = 40; // 20 * 2
+const itemSize = 24; // icon size
+const numItems = 3; // Number of items in the tab bar
 
 const TabBar = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -20,16 +26,23 @@ const TabBar = ({ state, descriptors, navigation }) => {
   const primaryColor = colorTheme$.colors.primary.get();
   const textColor = colorTheme$.nativeTheme.colors.text.get();
 
+  const windowWidth = Dimensions.get('window').width;
+  const tabWidth = (itemPadding + itemSize) * numItems;
+  console.log('Tab width:', tabWidth, 'Window width:', windowWidth, numItems);
+
+
   return (
-    <View style={[styles.tabBar, { bottom: insets.bottom, left: 20, }]}>
+    <View style={[styles.tabBar, { bottom: insets.bottom, left: (windowWidth - tabWidth) / 2 }]}>
       {state.routes.map((route, index) => {
         const { options } = descriptors[route.key];
         const label =
           options.tabBarLabel !== undefined
             ? options.tabBarLabel
-            : options.title !== undefined
+            : (options.title !== undefined
               ? options.title
-              : route.name;
+              : route.name);
+
+        if (['_sitemap', '+not-found'].includes(route.name)) return null;
 
         const isFocused = state.index === index;
 
@@ -54,6 +67,7 @@ const TabBar = ({ state, descriptors, navigation }) => {
 
         return (
           <TouchableOpacity
+            key={route.key}
             accessibilityState={isFocused ? { selected: true } : {}}
             accessibilityLabel={options.tabBarAccessibilityLabel}
             testID={options.tabBarButtonTestID}
@@ -63,17 +77,19 @@ const TabBar = ({ state, descriptors, navigation }) => {
           >
 
             {
-              icons[route.name] ? (
-                icons[route.name]({ color: isFocused ? primaryColor : textColor })
-              ) : (
-                <Text style={{ color: isFocused ? primaryColor : textColor }}>
-                  {label}
-                </Text>
-              )
+              // icons[route.name] ? (
+              //   icons[route.name]({ color: isFocused ? primaryColor : textColor })
+              // ) : (
+              //   <Text style={{ color: isFocused ? primaryColor : textColor }}>
+              //     {label}
+              //   </Text>
+              // )
+
+              icons[route.name]({ color: isFocused ? primaryColor : textColor })
             }
-            <Text style={{ color: isFocused ? primaryColor : textColor }}>
+            {/* <Text style={{ color: isFocused ? primaryColor : textColor }}>
               {label}
-            </Text>
+            </Text> */}
           </TouchableOpacity>
         );
       })}
@@ -85,20 +101,19 @@ const styles = StyleSheet.create({
   tabBar: {
     position: 'absolute',
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: colorTheme$.nativeTheme.colors.card.get(),
-    paddingVertical: 12,
-    width: 300,
-    borderRadius: 25,
-
-    // borderWidth: 1,
-    // borderColor: 'red',
+    justifyContent: 'center',
+    alignSelf: 'center',
     alignItems: 'center',
+    backgroundColor: colorTheme$.nativeTheme.colors.card.get(),
+
+    // paddingVertical: 12,
+    borderRadius: 30,
+    height: 60,
   },
   tabBarItem: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: itemPadding / 2,
   }
 });
 
