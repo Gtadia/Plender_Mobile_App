@@ -1,10 +1,19 @@
 import { StyleSheet } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// TODO — Left and Right padding ==> 20
+const horizontalPadding = 20;
 
 export default function PieChartScreen() {
+  const insets = useSafeAreaInsets();
+
+
   return (
     <ScreenView style={styles.container}>
-      <Text style={styles.title}>Pie Chart</Text>
+      <Text style={[styles.title, { top: insets.top }]}>Pie Chart</Text>
+
+
     </ScreenView>
   );
 }
@@ -16,7 +25,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   title: {
-    fontSize: 20,
+    position: 'absolute',
+    left: horizontalPadding,
+    color: '#000',
+    fontSize: 28,
     fontWeight: 'bold',
   },
   separator: {
