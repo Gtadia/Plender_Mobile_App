@@ -1,7 +1,8 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colorTheme$ } from '@/utils/stateManager';
+import CircularProgress from '@/components/CircularProgress';
 
 // TODO — Left and Right padding ==> 20
 const horizontalPadding = 20;
@@ -12,14 +13,19 @@ export default function PieChartScreen() {
 
   return (
     <ScreenView style={styles.container}>
-      <Text style={[styles.title, { top: insets.top }]}>Pie Chart</Text>
+
+      <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
+        <Text style={[styles.title]}>Pie Chart</Text>
+      </View>
 
       {/* 28 -> font color, 15 -> padding between */}
-      <Text style={[styles.taskTitle, { top: insets.top + 28 + 15, }]}>
+      {/* <Text style={[styles.taskTitle, { top: insets.top + 28 + 15, }]}> */}
+      <Text style={[styles.taskTitle]}>
         CS3511 Algo Homework
       </Text>
 
       {/* Time Progress — As a component*/}
+      <CircularProgress />
 
       {/* Top Task Progress Bars — As a component */}
 
@@ -33,18 +39,24 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     // justifyContent: 'center',
+    justifyContent: 'flex-start',
+  },
+  titleContainer: {
+    width: '100%',
   },
   title: {
-    position: 'absolute',
     left: horizontalPadding,
     color: '#000',
     fontSize: 28,
+    marginLeft: 0,
     fontWeight: 'bold',
   },
   taskTitle: {
+    paddingTop: 15,
     fontSize: 20,
     color: colorTheme$.nativeTheme.colors.text.get(),
-    fontWeight: 500,
+    fontWeight: 700,  // Use 700 for bold
+    alignContent: 'flex-end',
   },
   separator: {
     marginVertical: 30,
