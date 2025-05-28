@@ -4,9 +4,11 @@ import React from 'react'
 const CircularProgress = () => {
   return (
     <View>
-      <Text>CircularProgress</Text>
+
     </View>
   )
 }
 
 export default CircularProgress
+
+

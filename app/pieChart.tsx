@@ -3,7 +3,9 @@ import { Text, ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colorTheme$ } from '@/utils/stateManager';
 import CircularProgress from '@/components/CircularProgress';
+import RadialProgressBar from '@/components/UI/RadialProgressBar';
 
+// TODO — IT'S NOT A PIE CHART, IT'S A CIRCULAR PROGRESS BAR CHANGE IT!!!!!!!
 // TODO — Left and Right padding ==> 20
 const horizontalPadding = 20;
 
@@ -25,7 +27,8 @@ export default function PieChartScreen() {
       </Text>
 
       {/* Time Progress — As a component*/}
-      <CircularProgress />
+      {/* <CircularProgress /> */}
+      <RadialProgressBar />
 
       {/* Top Task Progress Bars — As a component */}
 
