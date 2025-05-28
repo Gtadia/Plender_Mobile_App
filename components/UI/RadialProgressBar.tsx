@@ -11,6 +11,7 @@ import { Dimensions, View, Text } from "react-native";
 const MAX_DIAMETER = 800; // TODO — find if this looks good
 
 const RadialProgressBar = observer(
+  // TODO — Probably don't need any parameters
   ({ time_goal, time_spent, currentHandler, item }: any) => {
     const windowWidth = Dimensions.get('window').width;
 

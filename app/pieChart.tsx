@@ -1,9 +1,10 @@
-import { StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colorTheme$ } from '@/utils/stateManager';
 import CircularProgress from '@/components/CircularProgress';
 import RadialProgressBar from '@/components/UI/RadialProgressBar';
+import HorizontalProgressBar from '@/components/UI/HorizontalProgressBar';
 
 // TODO — IT'S NOT A PIE CHART, IT'S A CIRCULAR PROGRESS BAR CHANGE IT!!!!!!!
 // TODO — Left and Right padding ==> 20
@@ -11,7 +12,6 @@ const horizontalPadding = 20;
 
 export default function PieChartScreen() {
   const insets = useSafeAreaInsets();
-
 
   return (
     <ScreenView style={styles.container}>
@@ -31,10 +31,46 @@ export default function PieChartScreen() {
       <RadialProgressBar />
 
       {/* Top Task Progress Bars — As a component */}
+      <HorizontalProgress />
 
       {/* Task List — As a component */}
     </ScreenView>
   );
+}
+
+function HorizontalProgress() {
+  const windowWidth = Dimensions.get('window').width;
+  const MAX_WIDTH = 500;
+  const padding = 20;
+
+  const progressWidth = (windowWidth - padding * 2) > 800 ? MAX_WIDTH : (windowWidth - padding * 2);
+
+  const ProgressItem = ({task}: any) => {
+
+    return (
+      <View>
+        <Text>
+          {task.title}
+        </Text>
+        <Text>
+          {`${task.percentage * 100}%`}
+        </Text>
+        <View>
+          <HorizontalProgressBar width={(windowWidth - padding * 4) / 3} percentage={task.percentage} color={task.color}/>
+        </View>
+      </View>
+    )
+  }
+
+  return (
+    <View
+      style={{width: progressWidth, flexDirection: 'row', justifyContent: "space-between"}}
+    >
+      <ProgressItem task={{title: "Day Progress", percentage: 0.5, color: colorTheme$.colors.secondary.get()}} />
+      <ProgressItem task={{title: "School", percentage: 0.3, color: colorTheme$.colors.primary.get()}} />
+      <ProgressItem task={{title: "Chores", percentage: 0.1, color: colorTheme$.colorTheme.blue.get()}} />
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
