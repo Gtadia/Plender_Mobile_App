@@ -1,10 +1,10 @@
 import { StyleSheet, View} from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 
-export default function TabTwoScreen() {
+export default function CalendarScreen() {
   return (
     <ScreenView style={styles.container}>
-      <Text style={styles.title}>Tab Two</Text>
+      <Text style={styles.title}>Calendar</Text>
     </ScreenView>
   );
 }

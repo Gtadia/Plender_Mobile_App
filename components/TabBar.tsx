@@ -12,15 +12,17 @@ import { AntDesign } from '@expo/vector-icons';
 
 const itemPadding = 40; // 20 * 2
 const itemSize = 24; // icon size
-const numItems = 3; // Number of items in the tab bar
+const numItems = 5; // Number of items in the tab bar
 
 const TabBar = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
 
   const icons = {
-    index: (props: any) => <AntDesign name="home" size={24} color={textColor} {...props} />,
-    two: (props: any) => <AntDesign name="pluscircleo" size={24} color={textColor} {...props} />,
-    pieChart: (props: any) => <AntDesign name="user" size={24} color={textColor} {...props} />,
+    index: (props: any) => <AntDesign name="home" size={itemSize} color={textColor} {...props} />,
+    calendar: (props: any) => <AntDesign name="calendar" size={itemSize} color={textColor} {...props} />,
+    stats: (props: any) => <AntDesign name="clock" size={itemSize} color={textColor} {...props} />,
+    pieChart: (props: any) => <AntDesign name="user" size={itemSize} color={textColor} {...props} />,
+    settings: (props: any) => <AntDesign name="setting" size={itemSize} color={textColor} {...props} />,
   }
 
   const primaryColor = colorTheme$.colors.primary.get();

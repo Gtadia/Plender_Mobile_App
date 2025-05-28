@@ -44,8 +44,7 @@ const RadialProgressBar = observer(
     outerPath.addCircle(radius2 + outerBuffer2, radius2 + outerBuffer2, innerRadius2)
 
     return (
-      <View style={{justifyContent: "flex-start", alignItems: "center", marginTop: strokeWidth2,             borderWidth: 5,
-            borderColor: 'red', height: outerDiameter2 + strokeWidth2 - 5}}>
+      <View style={{justifyContent: "flex-start", alignItems: "center", marginTop: strokeWidth2, height: outerDiameter2 + strokeWidth2 - 5}}>
               {/* TODO — IDK why I have to subtract by 5... */}
 {/* General Task Progress Radius */}
         <View

@@ -1,21 +1,21 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View} from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { horizontalPadding } from '@/constants/globalThemeVar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import WeeklyStatsView from '@/components/UI/WeeklyStatsView';
 
-
-export default function TabOneScreen() {
+export default function StatsScreen() {
   const insets = useSafeAreaInsets();
 
   return (
     <ScreenView style={styles.container}>
       <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
-        <Text style={[styles.title]}>Home</Text>
+        <Text style={[styles.title]}>Stats</Text>
       </View>
 
-{/* Current Task Progress */}
-
-
+{/* Weekly Stats View */}
+      <WeeklyStatsView />
+      {/* TODO — Requires Swipeable */}
     </ScreenView>
   );
 }

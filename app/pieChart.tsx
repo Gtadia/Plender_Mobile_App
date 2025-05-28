@@ -64,7 +64,7 @@ function HorizontalProgress() {
 
   return (
     <View
-      style={{width: progressWidth, flexDirection: 'row', justifyContent: "space-between"}}
+      style={{width: progressWidth, flexDirection: 'row', justifyContent: "space-between", marginTop: 16}}
     >
       <ProgressItem task={{title: "Day Progress", percentage: 0.5, color: colorTheme$.colors.secondary.get()}} />
       <ProgressItem task={{title: "School", percentage: 0.3, color: colorTheme$.colors.primary.get()}} />
@@ -77,7 +77,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
-    // justifyContent: 'center',
     justifyContent: 'flex-start',
   },
   titleContainer: {
