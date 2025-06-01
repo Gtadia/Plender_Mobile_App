@@ -1,7 +1,9 @@
-import { StyleSheet, View} from 'react-native';
-import { Text, ScreenView } from '@/components/Themed';
+import { StyleSheet, View, Text} from 'react-native';
+import { ScreenView } from '@/components/Themed';
 
 export default function CalendarScreen() {
+  // TODO — This is temporary, remove later
+
   return (
     <ScreenView style={styles.container}>
       <Text style={styles.title}>Calendar</Text>

@@ -5,11 +5,13 @@ import { colorTheme$ } from '@/utils/stateManager';
 import CircularProgress from '@/components/CircularProgress';
 import RadialProgressBar from '@/components/UI/RadialProgressBar';
 import HorizontalProgressBar from '@/components/UI/HorizontalProgressBar';
+import { horizontalPadding } from '@/constants/globalThemeVar';
+import TaskList from '@/components/UI/TaskList';
 
 
 // TODO — IT'S NOT A PIE CHART, IT'S A CIRCULAR PROGRESS BAR CHANGE IT!!!!!!!
-// TODO — Left and Right padding ==> 20
-const horizontalPadding = 20;
+
+
 
 export default function PieChartScreen() {
   const insets = useSafeAreaInsets();
@@ -23,28 +25,23 @@ export default function PieChartScreen() {
       {/* 28 -> font color, 15 -> padding between */}
       {/* <Text style={[styles.taskTitle, { top: insets.top + 28 + 15, }]}> */}
 
-        <Text style={[styles.taskTitle]}>
-          CS3511 Algo Homework
-        </Text>
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, alignItems: 'center' }}
+          >
+            <Text style={[styles.taskTitle]}>
+              CS3511 Algo Homework
+            </Text>
 
-        {/* Time Progress — As a component*/}
-        {/* <CircularProgress /> */}
-        <RadialProgressBar />
+            {/* Time Progress — As a component*/}
+            {/* <CircularProgress /> */}
+            <RadialProgressBar />
 
-        {/* Top Task Progress Bars — As a component */}
-        <HorizontalProgress />
+            {/* Top Task Progress Bars — As a component */}
+            <HorizontalProgress />
 
-        {/* Task List — As a component */}
-        <View
-          style={{
-            height: 800,
-            backgroundColor: 'pink',
-          }}
-        >
-          <Text>
-            Hi
-          </Text>
-        </View>
+            {/* Task List — As a component */}
+            <TaskList />
+          </ScrollView>
     </ScreenView>
   );
 }
