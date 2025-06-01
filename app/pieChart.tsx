@@ -1,10 +1,11 @@
-import { Dimensions, StyleSheet, View } from 'react-native';
+import { Dimensions, StyleSheet, View, ScrollView } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colorTheme$ } from '@/utils/stateManager';
 import CircularProgress from '@/components/CircularProgress';
 import RadialProgressBar from '@/components/UI/RadialProgressBar';
 import HorizontalProgressBar from '@/components/UI/HorizontalProgressBar';
+
 
 // TODO — IT'S NOT A PIE CHART, IT'S A CIRCULAR PROGRESS BAR CHANGE IT!!!!!!!
 // TODO — Left and Right padding ==> 20
@@ -15,25 +16,35 @@ export default function PieChartScreen() {
 
   return (
     <ScreenView style={styles.container}>
-
       <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.title]}>Pie Chart</Text>
       </View>
 
       {/* 28 -> font color, 15 -> padding between */}
       {/* <Text style={[styles.taskTitle, { top: insets.top + 28 + 15, }]}> */}
-      <Text style={[styles.taskTitle]}>
-        CS3511 Algo Homework
-      </Text>
 
-      {/* Time Progress — As a component*/}
-      {/* <CircularProgress /> */}
-      <RadialProgressBar />
+        <Text style={[styles.taskTitle]}>
+          CS3511 Algo Homework
+        </Text>
 
-      {/* Top Task Progress Bars — As a component */}
-      <HorizontalProgress />
+        {/* Time Progress — As a component*/}
+        {/* <CircularProgress /> */}
+        <RadialProgressBar />
 
-      {/* Task List — As a component */}
+        {/* Top Task Progress Bars — As a component */}
+        <HorizontalProgress />
+
+        {/* Task List — As a component */}
+        <View
+          style={{
+            height: 800,
+            backgroundColor: 'pink',
+          }}
+        >
+          <Text>
+            Hi
+          </Text>
+        </View>
     </ScreenView>
   );
 }
@@ -64,7 +75,7 @@ function HorizontalProgress() {
 
   return (
     <View
-      style={{width: progressWidth, flexDirection: 'row', justifyContent: "space-between", marginTop: 16}}
+      style={{width: progressWidth, flexDirection: 'row', justifyContent: "space-between", marginTop: 16, borderWidth: 1, borderColor: colorTheme$.colors.primary.get()}}
     >
       <ProgressItem task={{title: "Day Progress", percentage: 0.5, color: colorTheme$.colors.secondary.get()}} />
       <ProgressItem task={{title: "School", percentage: 0.3, color: colorTheme$.colors.primary.get()}} />

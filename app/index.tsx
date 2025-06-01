@@ -1,4 +1,4 @@
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, ScrollView } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { horizontalPadding } from '@/constants/globalThemeVar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,10 +12,21 @@ export default function TabOneScreen() {
       <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.title]}>Home</Text>
       </View>
+      <ScrollView>
 
-{/* Current Task Progress */}
+  {/* Current Task Progress */}
+  {/* marginTop: 15  */}
+  {/* Padding near bottom so users can scroll past UI components */}
 
+        <View
+          style={{
+            height: 800,
+            backgroundColor: "black",
+          }}
+        >
 
+        </View>
+      </ScrollView>
     </ScreenView>
   );
 }
