@@ -32,8 +32,9 @@ const TaskList = () => {
 
       {/* Task List */}
       {items.map((item) => (
-        <View key={item.id} style={{ padding: 10 }}>
-          <Text style={styles.taskTitle}>{item.title}</Text>
+        <View key={item.id} style={{  }}>
+          <ListItem />
+          {/* <Text style={styles.taskTitle}>{item.title}</Text> */}
         </View>
       ))}
 
@@ -43,8 +44,19 @@ const TaskList = () => {
   )
 }
 
-const listItem = () => {
+const ListItem = () => {
 
+  return (
+    <View style={styles.listItems}>
+      {/* subtitle1 needs to be a view */}
+      <View>
+        
+      </View>
+      <Text style={[styles.itemTitle, styles.subtitle1]}>{"This is a task"}</Text>
+      <Text style={[styles.itemTitle, styles.subtitle2]}>{"4:00:00"}</Text>
+      <Text style={[styles.itemTitle, styles.subtitle3]}>{"95%"}</Text>
+    </View>
+  )
 }
 
 const styles = StyleSheet.create({
@@ -52,27 +64,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: Dimensions.get('window').width - horizontalPadding * 2,
     marginTop: 16,
+    marginBottom: 16,
   },
   listSubtitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    marginBottom: 10,
     color: colorTheme$.colors.subtext0.get(),
   },
   subtitle1: {
     flex: 1,
+    borderWidth: 1,
+    borderColor: 'green',
   },
   subtitle2: {
     width: 100,
     textAlign: 'center',
+    borderWidth: 1,
+    borderColor: 'red',
   },
   subtitle3: {
     textAlign: 'center',
+    minWidth: 80,
+    borderWidth: 1,
+    borderColor: 'blue',
   },
   taskTitle: {
     fontSize: 14,
     color: '#333',
   },
+
+
+  listItems: {
+    flexDirection: 'row',
+    // paddingVertical: 10,
+  },
+  itemTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: colorTheme$.colors.subtext1.get(),
+    marginBottom: 9,
+  }
+
 })
 
 export default TaskList
