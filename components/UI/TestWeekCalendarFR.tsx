@@ -13,6 +13,7 @@ import isoWeek from 'dayjs/plugin/isoWeek';
 dayjs.extend(isoWeek);
 
 const { width } = Dimensions.get('window');
+const { damping } = 8;
 // const width = 150;
 
 const getWeek = (date) => {
@@ -43,13 +44,12 @@ const WeekView = ({ week, activeDate, onDayPress }) => (
 );
 
 export default function SwipeableCalendar() {
-  const baseDateRef = useRef(dayjs());
-  const [activeDate, setActiveDate] = useState(baseDateRef.current);
-  const indexRef = useRef(1); // start on middle view (index = 1)
+  // const baseDateRef = useRef(dayjs());
+  const [activeDate, setActiveDate] = useState(dayjs());
   const weeksRef = useRef([   // TODO — LegendApp
-    getWeek(baseDateRef.current.subtract(1, 'week')),
-    getWeek(baseDateRef.current),
-    getWeek(baseDateRef.current.add(1, 'week')),
+    getWeek(activeDate.subtract(1, 'week')),
+    getWeek(activeDate),
+    getWeek(activeDate.add(1, 'week')),
   ]);
 
   const translateX = useSharedValue(0);
@@ -62,24 +62,30 @@ export default function SwipeableCalendar() {
 
   const updateWeeks = (direction: string) => {
     if (direction === 'left') {
-      baseDateRef.current = baseDateRef.current.add(1, 'week');
-      setActiveDate(baseDateRef.current);
+      setActiveDate(activeDate.add(1, 'week'));
+      // baseDateRef.current = baseDateRef.current.add(1, 'week');
       weeksRef.current = [
-        getWeek(baseDateRef.current.subtract(1, 'week')),
-        getWeek(baseDateRef.current),
-        getWeek(baseDateRef.current.add(1, 'week')),
+        getWeek(activeDate),
+        getWeek(activeDate.add(1, 'week')),
+        getWeek(activeDate.add(2, 'week')),
       ];
       console.log("left");
     } else if (direction === 'right') {
-      baseDateRef.current = baseDateRef.current.subtract(1, 'week');
-      setActiveDate(baseDateRef.current);
+      setActiveDate(activeDate.subtract(1, 'week'));
+      // baseDateRef.current = baseDateRef.current.subtract(1, 'week');
       weeksRef.current = [
-        getWeek(baseDateRef.current.subtract(1, 'week')),
-        getWeek(baseDateRef.current),
-        getWeek(baseDateRef.current.add(1, 'week')),
+        getWeek(activeDate.subtract(2, 'week')),
+        getWeek(activeDate.subtract(1, 'week')),
+        getWeek(activeDate),
       ];
       console.log("right");
     }
+
+    // weeksRef.current = [
+    //   getWeek(activeDate.subtract(1, 'week')),
+    //   getWeek(activeDate),
+    //   getWeek(activeDate.add(1, 'week')),
+    // ];
 
     // weeksRef.current = [
     //   getWeek(baseDateRef.current.subtract(1, 'week')),
@@ -88,7 +94,7 @@ export default function SwipeableCalendar() {
     // ];
 
     // translateX.value = withSpring(-width); // reset center
-    translateX.value = (0);
+    // translateX.value = (0);
   };
 
   const gesture = Gesture.Pan()
@@ -97,13 +103,15 @@ export default function SwipeableCalendar() {
     })
     .onEnd((e) => {
       if (e.translationX < -50) {
-        translateX.value = withSpring(-width, {}, () => {
-          translateX.value = width;
+        translateX.value = withSpring(-width, {damping}, () => {
+          // todo — set withSpring animation to not actually have a spring and just snap.
+          // todo — velocity based spring.
+          translateX.value = 0;
           runOnJS(updateWeeks)('left');
         });
       } else if (e.translationX > 50) {
-        translateX.value = withSpring(0, {}, () => {
-          translateX.value = -width;
+        translateX.value = withSpring(width, {damping}, () => {
+          translateX.value = 0;
           runOnJS(updateWeeks)('right');
           // moveViewComp('right');
         });
