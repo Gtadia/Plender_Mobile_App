@@ -9,6 +9,7 @@ import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { colorTheme$ } from '@/utils/stateManager';
 import TabBar from '@/components/TabBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -24,7 +25,7 @@ export default function TabLayout() {
 
 
   return (
-    <>
+    <GestureHandlerRootView>
       <Tabs
         tabBar={props => <TabBar {...props} />}
         screenOptions={({ route }) => ({
@@ -48,6 +49,6 @@ export default function TabLayout() {
       }}>
         <AntDesign name="plus" size={26} color="white" />
       </View>
-    </>
+    </GestureHandlerRootView>
   );
 }
