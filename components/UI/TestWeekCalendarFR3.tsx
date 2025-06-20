@@ -15,14 +15,13 @@ import { Memo } from '@legendapp/state/react';
 
 dayjs.extend(isoWeek);
 
-const { width } = Dimensions.get('window');
+// const { width } = Dimensions.get('window');
 // const damping = 10;
 const VELOCITY_THRESHOLD = 1000; // px/s, tweak as needed
 const activeDate$ = observable({
   active: dayjs()
 });
-const isAnimating = useSharedValue(false);
-// const width = 150;
+const width = 150;
 
 const getWeek = (date) => {
   const start = dayjs(date).startOf('isoWeek');
@@ -55,6 +54,8 @@ const WeekView = ({ week }) => (
 
 export default function SwipeableCalendar() {
     const translateX = useSharedValue(0);
+    const key = useSharedValue(0);
+    const isAnimating = useSharedValue(false);
 
     const animatedStyle = useAnimatedStyle(() => ({
       flexDirection: 'row',
@@ -77,7 +78,7 @@ export default function SwipeableCalendar() {
   const gesture = Gesture.Pan()
     .enabled(!isAnimating.value)
     .onUpdate((e) => {
-      translateX.value = e.translationX;
+      translateX.value = e.translationX + key.value;
       // todo — prevent swiping while the animation is going on
     })
     .onEnd((e) => {
@@ -86,15 +87,19 @@ export default function SwipeableCalendar() {
       const isFast = Math.abs(velocity) > VELOCITY_THRESHOLD;
 
       const snapLeft = () => {
-        runOnJS(updateWeeks)('left');
-        translateX.value = 0;
+        // runOnJS(updateWeeks)('left');
         isAnimating.value = false;
+        // Updating key
+        // key.current = key.current + 1 % 3;
+        key.value = translateX.value;
       };
 
       const snapRight = () => {
-        runOnJS(updateWeeks)('right');
-        translateX.value = 0;
+        // runOnJS(updateWeeks)('right');
         isAnimating.value = false;
+        // Updating key
+        key.value = translateX.value;
+        // key.current = key.current - 1 % 3 < 0 ? 2 : key.current - 1 % 3;
       };
 
       if (translation < -50) {
@@ -102,27 +107,21 @@ export default function SwipeableCalendar() {
 
         translateX.value = isFast
           ? withSpring(-width, { damping: 100, stiffness: 100, velocity }, snapLeft)
-          : withTiming(-width, { duration: 150 }, () => {
-              runOnJS(updateWeeks)('left');
-              translateX.value = 0;
-              isAnimating.value = false;
-            });
+          : withTiming(-width, { duration: 150 }, snapLeft);
 
       } else if (translation > 50) {
         isAnimating.value = true;
 
         translateX.value = isFast
           ? withSpring(width, { damping: 100, stiffness: 100, velocity }, snapRight)
-          : withTiming(width, { duration: 150 }, () => {
-              runOnJS(updateWeeks)('right');
-              translateX.value = 0;
-              isAnimating.value = false;
-            });
+          : withTiming(width, { duration: 150 }, snapRight);
 
       } else {
         // Not enough swipe distance: return to center
-        translateX.value = withTiming(0, { duration: 150 });
+        // translateX.value = withTiming(0, { duration: 150 });
       }
+
+
     });
   return (
     <GestureDetector gesture={gesture}>
