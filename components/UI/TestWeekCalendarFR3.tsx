@@ -1,32 +1,35 @@
-import React, { useRef, useState } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { observable } from '@legendapp/state';
+import { Memo } from '@legendapp/state/react';
+import dayjs, { Dayjs } from 'dayjs';
+import React, { useState } from 'react';
+import { Dimensions, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
   withTiming,
   runOnJS,
 } from 'react-native-reanimated';
-import dayjs, { Dayjs } from 'dayjs';
-import isoWeek from 'dayjs/plugin/isoWeek';
-import { observable, observe } from '@legendapp/state';
-import { Memo } from '@legendapp/state/react';
 
-dayjs.extend(isoWeek);
-
-// const { width } = Dimensions.get('window');
-// const damping = 10;
-const VELOCITY_THRESHOLD = 1000; // px/s, tweak as needed
+const { width } = Dimensions.get('window');
+const ELEMENT_WIDTH = width;
 const activeDate$ = observable({
   active: dayjs()
 });
-const width = 150;
+
 
 const getWeek = (date) => {
   const start = dayjs(date).startOf('isoWeek');
   return Array.from({ length: 7 }, (_, i) => start.add(i, 'day'));
 };
+
+// const initialItems = ['A', 'B', 'C'];
+const active = activeDate$.active.get();
+const initialItems: any = [
+                            getWeek(active.subtract(1, 'week')),
+                            getWeek(active),
+                            getWeek(active.add(1, 'week')),
+                          ];
 
 const WeekView = ({ week }) => (
   <View style={styles.weekRow}>
@@ -52,80 +55,62 @@ const WeekView = ({ week }) => (
   </View>
 );
 
-export default function SwipeableCalendar() {
-    const translateX = useSharedValue(0);
-    const key = useSharedValue(0);
-    const isAnimating = useSharedValue(false);
+export default function InfiniteCarousel() {
+  const [items, setItems] = useState(initialItems);
+  const translateX = useSharedValue(0);
 
-    const animatedStyle = useAnimatedStyle(() => ({
-      flexDirection: 'row',
-      width: width * 3,
-      transform: [{ translateX: translateX.value }],
-    }));
-
-    const updateWeeks = (direction: string) => {
+  const reorder = (direction: 'left' | 'right') => {
+    setItems((prev) => {
       if (direction === 'left') {
         activeDate$.active.set((curr) => curr.add(1, 'week'));
-        console.log("left");
-        console.log(activeDate$.active.get().format("YYYY-MM-DD"))
-      } else if (direction === 'right') {
+        return [...prev.slice(1), prev[0]]; // B C A
+      } else {
         activeDate$.active.set((curr) => curr.subtract(1, 'week'));
-        console.log("right");
-        console.log(activeDate$.active.get().format("YYYY-MM-DD"))
+        return [prev[prev.length - 1], ...prev.slice(0, prev.length - 1)]; // C A B
       }
+    });
   };
 
   const gesture = Gesture.Pan()
-    .enabled(!isAnimating.value)
     .onUpdate((e) => {
-      translateX.value = e.translationX + key.value;
-      // todo — prevent swiping while the animation is going on
+      translateX.value = e.translationX;
     })
     .onEnd((e) => {
-      const velocity = e.velocityX;
-      const translation = e.translationX;
-      const isFast = Math.abs(velocity) > VELOCITY_THRESHOLD;
-
-      const snapLeft = () => {
-        // runOnJS(updateWeeks)('left');
-        isAnimating.value = false;
-        // Updating key
-        // key.current = key.current + 1 % 3;
-        key.value = translateX.value;
-      };
-
-      const snapRight = () => {
-        // runOnJS(updateWeeks)('right');
-        isAnimating.value = false;
-        // Updating key
-        key.value = translateX.value;
-        // key.current = key.current - 1 % 3 < 0 ? 2 : key.current - 1 % 3;
-      };
-
-      if (translation < -50) {
-        isAnimating.value = true;
-
-        translateX.value = isFast
-          ? withSpring(-width, { damping: 100, stiffness: 100, velocity }, snapLeft)
-          : withTiming(-width, { duration: 150 }, snapLeft);
-
-      } else if (translation > 50) {
-        isAnimating.value = true;
-
-        translateX.value = isFast
-          ? withSpring(width, { damping: 100, stiffness: 100, velocity }, snapRight)
-          : withTiming(width, { duration: 150 }, snapRight);
-
+      if (e.translationX > 50) {
+        // swipe right
+        translateX.value = withTiming(ELEMENT_WIDTH, { duration: 150 }, () => {
+          runOnJS(reorder)('right');
+          translateX.value = 0;
+        });
+      } else if (e.translationX < -50) {
+        // swipe left
+        translateX.value = withTiming(-ELEMENT_WIDTH, { duration: 150 }, () => {
+          runOnJS(reorder)('left');
+          translateX.value = 0;
+        });
       } else {
-        // Not enough swipe distance: return to center
-        // translateX.value = withTiming(0, { duration: 150 });
+        // not enough: snap back
+        translateX.value = withTiming(0, { duration: 150 });
       }
-
-
     });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    flexDirection: 'row',
+    width: ELEMENT_WIDTH * 3,
+    transform: [{ translateX: translateX.value }],
+  }));
+
   return (
     <GestureDetector gesture={gesture}>
-      <Animated.View style={[styles.carouselContainer, animatedStyle]}>
+      <Animated.View style={[styles.container, animatedStyle]}>
+        {/* {items.map((item, i) => (
+          <View
+            key={i}
+            style={[styles.item, { backgroundColor: i % 2 === 0 ? '#ddd' : '#bbb' }]}
+          >
+            <Text style={styles.text}>{item}</Text>
+          </View>
+        ))} */}
         <Memo>
           {() => {
             const active = activeDate$.active.get();
@@ -151,6 +136,24 @@ export default function SwipeableCalendar() {
 }
 
 const styles = StyleSheet.create({
+  container: {
+    width: ELEMENT_WIDTH * 3,
+    height: 200,
+    flexDirection: 'row',
+  },
+  item: {
+    width: ELEMENT_WIDTH,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRightWidth: 1,
+    borderColor: 'black',
+  },
+  text: {
+    fontSize: 40,
+    fontWeight: 'bold',
+  },
+
   carouselContainer: {
     width: width * 3,
     height: 100,
