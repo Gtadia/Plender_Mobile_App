@@ -12,7 +12,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 const { width } = Dimensions.get('window');
-const ELEMENT_WIDTH = width;
+const ELEMENT_WIDTH = 150;
 const activeDate$ = observable({
   active: dayjs()
 });
@@ -23,13 +23,13 @@ const getWeek = (date) => {
   return Array.from({ length: 7 }, (_, i) => start.add(i, 'day'));
 };
 
-// const initialItems = ['A', 'B', 'C'];
+const initialItems = ['A', 'B', 'C'];
 const active = activeDate$.active.get();
-const initialItems: any = [
-                            getWeek(active.subtract(1, 'week')),
-                            getWeek(active),
-                            getWeek(active.add(1, 'week')),
-                          ];
+// const initialItems: any = [
+//                             getWeek(active.subtract(1, 'week')),
+//                             getWeek(active),
+//                             getWeek(active.add(1, 'week')),
+//                           ];
 
 const WeekView = ({ week }) => (
   <View style={styles.weekRow}>
@@ -103,15 +103,15 @@ export default function InfiniteCarousel() {
   return (
     <GestureDetector gesture={gesture}>
       <Animated.View style={[styles.container, animatedStyle]}>
-        {/* {items.map((item, i) => (
+        {items.map((item, i) => (
           <View
             key={i}
             style={[styles.item, { backgroundColor: i % 2 === 0 ? '#ddd' : '#bbb' }]}
           >
             <Text style={styles.text}>{item}</Text>
           </View>
-        ))} */}
-        <Memo>
+        ))}
+        {/* <Memo>
           {() => {
             const active = activeDate$.active.get();
             const weeks = [
@@ -122,14 +122,14 @@ export default function InfiniteCarousel() {
             return (
               <>
                 {weeks.map((week, i) => (
-                  <View key={i} style={{ borderWidth: 1, borderColor: 'red', width, overflow: "hidden" }}>
+                  <View key={i} style={{ borderWidth: 1, borderColor: 'red', width: ELEMENT_WIDTH, overflow: "hidden" }}>
                     <WeekView week={week} />
                   </View>
                 ))}
               </>
             );
           }}
-        </Memo>
+        </Memo> */}
       </Animated.View>
     </GestureDetector>
   );
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   },
 
   carouselContainer: {
-    width: width * 3,
+    width: ELEMENT_WIDTH * 3,
     height: 100,
     flexDirection: 'row',
   },

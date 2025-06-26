@@ -1,6 +1,6 @@
 import { StyleSheet, View, Text} from 'react-native';
 import { ScreenView } from '@/components/Themed';
-import SwipeableCalendar from '@/components/UI/TestWeekCalendarFR3';
+import TestWeekCalendarFR4 from '@/components/UI/TestWeekCalendarFR4';
 
 export default function CalendarScreen() {
   // TODO — This is temporary, remove later
@@ -10,7 +10,7 @@ export default function CalendarScreen() {
       <Text style={styles.title}>Calendar</Text>
 
       {/* TODO — week swipe, something  */}
-      <SwipeableCalendar />
+      <TestWeekCalendarFR4 />
     </ScreenView>
   );
 }
