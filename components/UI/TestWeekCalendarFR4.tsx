@@ -13,19 +13,6 @@ const dates$ = observable(
   Array.from({ length: 5 }, (_, i) => Array.from({ length: 7 }, (_, j) => dayjs().subtract(2 - i, 'week').startOf('isoWeek').add(j, 'day')))
 );
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    width
-
-    // // height: 200,
-    // // width: 200,
-  },
-  row: {
-    flexDirection: 'row',
-  }
-});
-
 const TestWeekCalendarFR4 = () => {
   // return (
   //   <View style={styles.container}>
@@ -42,8 +29,9 @@ const TestWeekCalendarFR4 = () => {
                 <View style={styles.row}>
                   {week.map((day, dayIndex) => {
                     // const date = dayjs(day);
-                    return <View key={dayIndex}>
-                            <Text>{day.format('YYYY-MM-DD')}</Text>
+                    return <View key={dayIndex} style={styles.day}>
+                            <Text>{day.format('dd')[0]}</Text>
+                            <Text>{day.format('D')}</Text>
                           </View>
                   })}
                 </View>
@@ -55,5 +43,23 @@ const TestWeekCalendarFR4 = () => {
     </View>
   )
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    width
+
+    // // height: 200,
+    // // width: 200,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  day: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
+});
 
 export default TestWeekCalendarFR4
