@@ -2,8 +2,8 @@ import { StyleSheet, View} from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { horizontalPadding } from '@/constants/globalThemeVar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import SwipeableCalendar from '@/components/UI/SwipeableCalendar_Infinite3View';
-import WeekCalendar from '@/components/UI/WeekCalendar';
+import SwipeableCalendar from '@/components/custom_ui/SwipeableCalendar_Infinite3View';
+import WeekCalendar from '@/components/custom_ui/WeekCalendar';
 
 export default function StatsScreen() {
   const insets = useSafeAreaInsets();

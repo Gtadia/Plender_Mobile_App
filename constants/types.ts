@@ -1,3 +1,4 @@
+import { Dayjs } from 'dayjs';
 import { Platform } from 'react-native';
 
 type FontStyle = {
@@ -36,6 +37,13 @@ interface CustomTheme {
 
 export type Theme = CustomTheme;
 
+export interface dayData {
+  date: Dayjs;
+  isToday: boolean
+}
+
+export type weekData = dayData[]
+export type calendarData = weekData[]
 
 // Fonts
 const WEB_FONT_STACK =

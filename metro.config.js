@@ -1,3 +1,7 @@
+const {
+  withNativeWind: withNativeWind
+} = require("nativewind/metro");
+
 // metro.config.js
 const {
   wrapWithReanimatedMetroConfig,
@@ -9,6 +13,8 @@ const config = getDefaultConfig(__dirname);
 // Added this line:
 config.resolver.assetExts.push("png");
 
-module.exports = config;
+module.exports = withNativeWind(config, {
+  input: "./global.css"
+});
 
 module.exports = wrapWithReanimatedMetroConfig(config);

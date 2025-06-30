@@ -3,10 +3,10 @@ import { Text, ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colorTheme$ } from '@/utils/stateManager';
 import CircularProgress from '@/components/CircularProgress';
-import RadialProgressBar from '@/components/UI/RadialProgressBar';
-import HorizontalProgressBar from '@/components/UI/HorizontalProgressBar';
+import RadialProgressBar from '@/components/custom_ui/RadialProgressBar';
+import HorizontalProgressBar from '@/components/custom_ui/HorizontalProgressBar';
 import { horizontalPadding } from '@/constants/globalThemeVar';
-import TaskList from '@/components/UI/TaskList';
+import TaskList from '@/components/custom_ui/TaskList';
 
 
 // TODO — IT'S NOT A PIE CHART, IT'S A CIRCULAR PROGRESS BAR CHANGE IT!!!!!!!
