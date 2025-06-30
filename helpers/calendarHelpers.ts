@@ -63,9 +63,10 @@ export class DateServ {
    * @param data
    * @param currentYear 
    * @param currentMonth 
-   * @returns 
+   * @returns
    */
   public prependMissingDay(data: weekData, currentYear: number, currentMonth: number): weekData {
+    if (!data) return data;
     if (data.length === 7) return data;   // if the week is already full, return it
 
     const numberOfMissingDays: number = 7 - data.length;
@@ -91,6 +92,7 @@ export class DateServ {
 
     return data;
   }
+
   /**
    * 
    * @param data
@@ -99,6 +101,7 @@ export class DateServ {
    * @returns 
    */
   public appendMissingDay(data: weekData, currentYear: number, currentMonth: number): weekData {
+    if (!data) return data;
     if (data.length === 7) return data;  // if the week is already full, return it
 
     const numberOfMissingDays: number = 7 - data.length;
