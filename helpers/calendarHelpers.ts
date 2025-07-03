@@ -75,19 +75,33 @@ export class DateServ {
 
     if (currentMonth === 1) {
       // if we are in January, we want to go to December of the previous year
-      m = 12;
+      m = 11;
       y = currentYear - 1;
     }
 
+    console.log("Current Month:", currentMonth, "Year:", currentYear);
+    console.log("Previous Month:", m, "Year:", y);
+
     const numberOfDaysInThePreviousMonth: number = dayjs().year(y).month(m).daysInMonth();
+    console.log("First Previous Month:", dayjs().year(y).month(m).endOf('month').format('YYYY-MM-DD'));
+
+    console.log("Number of days in the previous month:", numberOfDaysInThePreviousMonth);
     // add the missing days from the previous month
     if (numberOfDaysInThePreviousMonth !== undefined) {
+      console.log("1 First Previous Month:", dayjs().year(y).month(m).endOf('month').format('YYYY-MM-DD'));
+      console.log("2 number of missing days:", numberOfMissingDays);
       for (let i: number = 0; i < numberOfMissingDays; i++) {
+        console.log("3 Previous Month:", m);
         data = [{
-          date: dayjs().month(m).year(y).day(numberOfDaysInThePreviousMonth - i),
+          date: dayjs().month(m).year(y).endOf('month').subtract(i, 'day'), // subtracting from the first day of the week
+          // dayjs().month(m).year(y).endOf('month').day(numberOfDaysInThePreviousMonth - i),
           isToday: false
         }, ...data]
       }
+    }
+
+    for (let j: number = 0; j < data.length; j++) {
+      console.log(data[j].date.format('ddd'), data[j].date.format('YYYY-MM-DD'), "Is Today:", data[j].isToday);
     }
 
     return data;
@@ -116,9 +130,15 @@ export class DateServ {
 
     for (let i: number = 0; i < numberOfMissingDays; i++) {
       data.push({
-        date: dayjs().month(m).year(y).day(i + 1),
+        date: dayjs().month(m).year(y).startOf('month').add(i, 'day'),
+        // dayjs().month(m).year(y).day(i + 1),
         isToday: false
       });
+    }
+
+    console.log("appendData")
+    for (let j: number = 0; j < data.length; j++) {
+      console.log(data[j].date.format('ddd'), data[j].date.format('YYYY-MM-DD'), "Is Today:", data[j].isToday);
     }
 
     return data;
