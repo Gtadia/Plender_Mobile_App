@@ -47,6 +47,8 @@ export class DateServ {
       }
     });
 
+    
+
     if (complete) { // if we want to complete the week with the previous and next month days
       // if the first week is less than 7 day, add the previous month days
       result[0] = this.prependMissingDay(result[0], year, month);
@@ -54,7 +56,6 @@ export class DateServ {
       const lastElem = result.length - 1;
       result[lastElem] = this.appendMissingDay(result[lastElem], year, month);
     }
-
     return result;
   }
 
@@ -76,8 +77,10 @@ export class DateServ {
     if (currentMonth === 1) {
       // if we are in January, we want to go to December of the previous year
       m = 11;
-      y = currentYear - 1;
+      y = currentYear + 1;
     }
+
+    console.log("prependMissingDay");
 
     console.log("Current Month:", currentMonth, "Year:", currentYear);
     console.log("Previous Month:", m, "Year:", y);
@@ -121,6 +124,8 @@ export class DateServ {
     const numberOfMissingDays: number = 7 - data.length;
     let m = currentMonth + 1;  // in most cases, we want to next month
     let y = currentYear;  // in most cases, we want the current year
+
+    console.log("appendMissingDay");
 
     if (currentMonth === 12) {
       // if we are in December, we want to go to January of the next year

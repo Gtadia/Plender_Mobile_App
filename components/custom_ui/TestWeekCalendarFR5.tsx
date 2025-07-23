@@ -111,7 +111,7 @@ const RowCalendar = (): ReactElement => {
   function appendData(): void {
     // in this function I assume that the last week is completed (see `getDaysInMonthSplitByWeek` function)
     // get the last date show to the user, the [6] represent sunday
-
+    console.log("AppendData ");
     // TODO — Have a middle date that keeps changing (and when we move onto the next month, it will be the new middle month)
     if (dateData === undefined) return;
     const lastDate: dayData = dateData[dateData?.length - 1][6];
@@ -120,18 +120,26 @@ const RowCalendar = (): ReactElement => {
     // if the last date show to the user is equal to the length of the month we need the next month
     // (that mean the date is the last date of the month) otherwise we need the same month
     let nextDateData;
-    if (lastDateMonthSize === lastDate.date.day()) {
+
+    console.log("Check for Add Month ", lastDate.date.daysInMonth(), lastDate.date.date());
+    if (lastDateMonthSize === lastDate.date.date()) {
       // use a new object for working (luxon date are immutable, so I use a `let` for avoiding working with a lot of unuseful `const`)
-      let d: Dayjs = dayjs().year(lastDate.date.year()).month(lastDate.date.month()).date(lastDate.date.day());
+      let d: Dayjs = dayjs().year(lastDate.date.year()).month(lastDate.date.month()).day(lastDate.date.day());
       d = d.add(1, 'month');
+
+      console.log("AppendData Add Month ", d.month());
+      console.log("AppendData Add Day ", d.day());
+      console.log("AppendData Add Year ", d.year());
       // if the date is also the last of the year we need to add one year
-      if (d.get('month') === 12 && d.get('day') === 31) {
+      if (d.get('month') === 11 && lastDate.date.get('day') === 31 || lastDate.date.month()) {
         // set the date to 1 january d.year+1
+        console.log("AppendData Add Year ", d.year());
         d = d.add(1, 'year');
         d = d.set('month', 1).set('day', 1);
       }
       nextDateData = getAMonth(d);
     } else {
+      console.log("AppendData Shift Stuff");
       nextDateData = getAMonth(lastDate.date);
       // because `getDaysInMonthSplitByWeek` function add days into the first and last week for having a full first and last week (with 7 days)
       // we need to remove the first week of the new data because the data is already present into `dateData`
@@ -156,13 +164,13 @@ const RowCalendar = (): ReactElement => {
     let previousDateData;
     if (firstDate.date.day() === 1) {
       // use a new object for working (luxon date are immutable, so I use a `let` for avoiding working with a lot of unuseful `const`)
-      let d: Dayjs = dayjs().year(firstDate.date.year()).month(firstDate.date.month()).date(firstDate.date.day());
+      let d: Dayjs = dayjs().year(firstDate.date.year()).month(firstDate.date.month()).day(firstDate.date.day());
       d = d.add(-1, 'month');
       // if the date is also the first of the year we need to remove one year
       if (d.month() === 1 && d.day() === 1) {
         // set the date to 1 december d.year-1
         d = d.add(-1, 'year');
-        d = d.set('month', 12).set('day', 1);
+        d = d.set('month', 11).set('day', 11);
       }
       previousDateData = getAMonth(d);
     } else {
@@ -201,6 +209,19 @@ const RowCalendar = (): ReactElement => {
     const distanceFromStart: NativeScrollPoint = event.nativeEvent.contentOffset;
     if (distanceFromStart.x === 0) prependData();
   }
+//   const isFetchingPrev = useRef(false);
+//   const START_THRESHOLD = 20; // Pixels from start
+
+// function handleScroll(event: NativeSyntheticEvent<NativeScrollEvent>): void {
+//   const offsetX = event.nativeEvent.contentOffset.x;
+//   if (offsetX <= START_THRESHOLD && !isFetchingPrev.current) {
+//     isFetchingPrev.current = true;
+//     prependData();
+//     setTimeout(() => {
+//       isFetchingPrev.current = false;
+//     }, 300); // adjust timing as needed
+//   }
+// }
 
   return (
     <Box>
