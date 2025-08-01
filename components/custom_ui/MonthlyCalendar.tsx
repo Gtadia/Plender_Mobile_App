@@ -1,15 +1,22 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native'
 import React, { useState } from 'react'
 import dayjs from 'dayjs'
 import { Calendar, CalendarProps, CalendarTheme, toDateId, useCalendar } from "@marceloterreiro/flash-calendar"
 import Feather from '@expo/vector-icons/Feather';
 import { Canvas, Path, Skia } from '@shopify/react-native-skia';
+import RadialProgressBar from './RadialProgressBar';
+import CircularProgress from '../CircularProgress';
 
 const today = toDateId(new Date());
 
 const WEEK_DAY_HEIGHT = 26;
 const DAY_HEIGHT = 50;
 const DAY_SPACING = 4;
+
+const activeDayColor = 'black';
+const activeDayTextColor = 'white';
+const activeDayCanvasBackColor = 'white';
+const inactiveDayTextcolor = 'black';
 
 interface CalendarWithControlsProps extends CalendarProps {
   onPreviousMonthPress: () => void;
@@ -70,15 +77,16 @@ const MonthlyCalendar = (props: CalendarWithControlsProps) => {
                   onPress={props.onCalendarDayPress}
                   theme={calendarTheme.itemDay}
                 >
+                  <Text style={styles.calendarItemDayText}>{day.displayLabel}</Text>
                   <View style={styles.calendarItemDayView}>
-                    <Text>{day.displayLabel}</Text>
-{/*
-                    <Canvas style={styles.skiaCanvas}>
-                      <Path
-                        path={path}
-                        color="gray"
-                      />
-                    </Canvas> */}
+                    <CircularProgress
+                      percentage={0.7}
+                      styling={{
+                        radius: 8,
+                        strokeWidth: 4,
+                        color: '#e68f40'
+                      }}
+                    />
                   </View>
                 </Calendar.Item.Day>
               </Calendar.Item.Day.Container>
@@ -102,17 +110,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'space-between',
   },
+  skiaCanvasContainer: {
+    width: '100%',
+    height: '100%',
+  },
   skiaCanvas: {
-    height: 8,
-    width: 20,
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   calendarItemDayView: {
     width: '100%',
-    height: '100%',
+    // height: '100%',
+    height: 'auto',
     flexDirection: 'column',
     alignItems: 'center',
     backgroundColor: 'red',
   },
+  calendarItemDayText: {
+    fontSize: 14,
+    fontWeight: 700,
+    // textAlign: 'center',
+    // alignSelf: 'center',
+  }
 })
 
 const calendarTheme: CalendarTheme = {
@@ -123,6 +143,41 @@ const calendarTheme: CalendarTheme = {
     }
   },
   itemDay: {
+    idle: ({ isPressed, isHovered, isWeekend }) => ({
+      container: {
+        // TODO — change this later...
+        backgroundColor: isPressed || isHovered ? 'pink' : "transparent",
+        borderRadius: 4,
+      },
+      content: {
+        // color: isWeekend && !isPressed ? "#ffffff" : "rgba(255, 255, 255, 0.5)",
+        // color: isWeekend && !isPressed ? "rgba(255, 255, 255, 0.5)" : "#fff",
+        color: isPressed || isHovered ? 'gray' : inactiveDayTextcolor ,
+      },
+    }),
+    today: ({ isPressed, isHovered }) => ({
+      container: {
+        backgroundColor: "blue",
+        borderRadius: 16,
 
+        // backgroundColor: isPressed || isHovered ? linearAccent : "transparent",
+      },
+      content: {
+        // color: isPressed || isHovered ? "rgba(255, 255, 255, 0.5)" : '#fff',
+        color: 'pink',
+      },
+    }),
+    active: ({ isEndOfRange, isStartOfRange}) => ({
+      container: {
+        backgroundColor: activeDayColor,
+        borderTopLeftRadius: isStartOfRange ? 16 : 0,
+        borderBottomLeftRadius: isStartOfRange ? 16 : 0,
+        borderTopRightRadius: isEndOfRange ? 16 : 0,
+        borderBottomRightRadius: isEndOfRange ? 16 : 0,
+      },
+      content: {
+        color: "#fff",
+      }
+    })
   }
 }

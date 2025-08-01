@@ -1,8 +1,8 @@
 import { StyleSheet, View, Text} from 'react-native';
 import { ScreenView } from '@/components/Themed';
 import { horizontalPadding } from '@/constants/globalThemeVar';
-// import RowCalendar from '@/components/custom_ui/TestWeekCalendarFR7';
-import MonthlyCalendar from '@/components/custom_ui/MonthlyCalendar';
+import RowCalendar from '@/components/custom_ui/TestWeekCalendarFR7';
+// import MonthlyCalendar from '@/components/custom_ui/MonthlyCalendar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarActiveDateRange, CalendarOnDayPress, fromDateId, toDateId } from '@marceloterreiro/flash-calendar';
 import { useCallback, useMemo, useState } from 'react';
@@ -49,14 +49,15 @@ export default function CalendarScreen() {
             </View>
 
       {/* TODO — week swipe, something  */}
-      <MonthlyCalendar
+      <RowCalendar />
+      {/* <MonthlyCalendar
         calendarActiveDateRanges={calendarActiveDateRanges}
         calendarMonthId={toDateId(currentCalendarMonth)}
         getCalendarWeekDayFormat={format("E")}
         onCalendarDayPress={handleDayPress}
         onNextMonthPress={handleNextMonth}
         onPreviousMonthPress={handlePreviousMonth}
-      />
+      /> */}
     </ScreenView>
   );
 }

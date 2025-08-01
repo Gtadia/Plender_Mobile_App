@@ -80,9 +80,9 @@ export default function FlatListSwiperExample() {
   return (
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <View style={styles.header}>
+        {/* <View style={styles.header}>
           <Text style={styles.title}>Your Schedule</Text>
-        </View>
+        </View> */}
 
         <FlatList
           ref={weekListRef}
