@@ -111,7 +111,6 @@ startDate: '',
 
   // TODO — move database initialization to a more appropriate place
   initializeDB();
-  clearEvents();
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -179,9 +178,20 @@ startDate: '',
 
               <Memo>
                 {() =>
-                  events.data.map((message) => (
-                    <Text>{message.title.get()}</Text>
-                  ))
+                  // events.data.map((message) => (
+                  //   <Text>{message.title.get()}</Text>
+                  // ))
+                  // events.get.map((message) => (
+                  //   <Text>{message.title}</Text>
+                  // ))
+                  {
+                    // console.log(getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)));
+                    getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).then((data) => {
+                      console.log("Events fetched:", data);
+                      // events.data.set(data);
+                      // console.log("Events after fetching: ", data);
+                    })
+                  }
                 }
               </Memo>
                 {
@@ -196,20 +206,27 @@ startDate: '',
 
         <View style={styles.footer}>
           <TouchableOpacity onPress={() => {
-            const title = 'New Event';
+            const title = new Date().toLocaleDateString('en-US', { dateStyle: 'full' });
             const startDate = new Date('2025-08-01T00:00:00').toISOString();
             const rrule = 'FREQ=DAILY;UNTIL=2025-09-01';
             createEvent({ title, startDate, rrule }).then(() => {
-              // console.log("Event Created: ", { title, startDate, rrule });
+              console.log("Event Created: ", { title, startDate, rrule });
             })
 
-            console.log("Event Created?>?>?")
+            // console.log("Event Created?>?>?")
 
-            getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).then((data) => {
-              console.log("Events fetched:");
-              events.data.set(data);
-              console.log("Events after fetching: ", data);
-            })
+            // getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).then((data) => {
+            //   console.log("Events fetched:");
+            //   events.data.set(data);
+            //   console.log("Events after fetching: ", data);
+            // })
+  // clearEvents();
+                    // getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).then((data) => {
+                    getEventOccurrences(new Date(), new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)).then((data) => {
+                      console.log("Events fetched:", data);
+                      // events.data.set(data);
+                      // console.log("Events after fetching: ", data);
+                    })
           }}>
             <View style={styles.btn}>
               <MaterialIcons name="add" size={22} color="#fff" style={{ marginRight: 6 }} />

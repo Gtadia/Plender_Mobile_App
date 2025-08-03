@@ -48,7 +48,6 @@ export async function getEventOccurrences(start: Date, end: Date) {
   for (const row of rows) {
     console.log('occurrence row:', row);
     // TODO — Convert to dayjs, WITH MONTH and DATE ebing 2 digits (ex: 0801 for August 1st)
-    console.log("Date: ", `DTSTART:${dayjs(row.start_date).format('YYYYMMDD')}T000000Z\nRRULE:FREQ=DAILY;UNTIL=20250901T000000Z`)
     const fullRule = `DTSTART:${dayjs(row.start_date).format('YYYYMMDD')}T000000Z\nRRULE:FREQ=DAILY;UNTIL=20250901T000000Z`;
     const rule = RRule.fromString(fullRule);
     console.log('Rule:', rule);
