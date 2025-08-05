@@ -8,14 +8,18 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
+  Button,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import VerticalProgressBar from './VerticalProgressBar';
-import { clearEvents, createEvent, getEventOccurrences, initializeDB } from '@/utils/database';
+import { clearEvents, createEvent, getEventOccurrences, getEventsForDate, initializeDB } from '@/utils/database';
 import { observable } from '@legendapp/state';
-import { Memo } from '@legendapp/state/react';
+import { Memo, useObservable } from '@legendapp/state/react';
+import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
+import DateTimePicker, { DateType, useDefaultStyles } from 'react-native-ui-datepicker';
+import BottomSheet, { openAddMenu$ } from '@/components/BottomSheet';
 
 dayjs.extend(isoWeek);
 
@@ -29,6 +33,8 @@ export default function FlatListSwiperExample() {
   const [weekOffset, setWeekOffset] = useState(0);
   const [prevWeekIndex, setPrevWeekIndex] = useState(1);
   const [prevDayIndex, setPrevDayIndex] = useState(1);
+
+  const [date, setDate] = useState<Dayjs>(dayjs());
 
   const weeks = useMemo(() => {
     // const base = selectedDate.add(weekOffset, 'week').startOf('week');
@@ -86,21 +92,21 @@ export default function FlatListSwiperExample() {
       title: 'This is a test',
       startDate: '',
       rrule: '',
-      create: async (title: string, startDate: string, rrule: string) => {
-        await createEvent({ title, startDate, rrule });
-        events = await getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-        console.log("Created Event: ", { title, startDate, rrule });
-      },
+      // create: async (title: string, startDate: string, rrule: string) => {
+      //   await createEvent({ title, startDate, rrule });
+      //   events = await getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+      //   console.log("Created Event: ", { title, startDate, rrule });
+      // },
     },
       {
         title: 'Another Test',
 startDate: '',
       rrule: '',
-      create: async (title: string, startDate: string, rrule: string) => {
-        await createEvent({ title, startDate, rrule });
-        events = await getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-        console.log("Created Event: ", { title, startDate, rrule });
-      }
+      // create: async (title: string, startDate: string, rrule: string) => {
+      //   await createEvent({ title, startDate, rrule });
+      //   events = await getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
+      //   console.log("Created Event: ", { title, startDate, rrule });
+      // }
     }
     ],
     get: async () => {
@@ -111,6 +117,8 @@ startDate: '',
 
   // TODO — move database initialization to a more appropriate place
   initializeDB();
+
+  const toggle$ = useObservable(false);
 
   return (
     <SafeAreaView style={{ flex: 1 }}>
@@ -154,6 +162,41 @@ startDate: '',
           )}
         />
 
+        <BottomSheet close={toggle$}>
+        {/* <Memo>
+          {() => */}
+          <View style={{ maxWidth: 350, paddingHorizontal: 15, borderWidth: 1, alignSelf: 'center'}}>
+            <DateTimePicker
+              mode="single"
+              // date={date$.get()}
+              // onChange={(event) => {date$.set(event.date)}}
+              date={date}
+              onChange={(event) => {setDate(dayjs(event.date))}}
+              // style={{  }}
+              styles={{
+                ...useDefaultStyles,
+                today: { borderColor: 'black', borderRadius: 1000, borderWidth: 1, backgroundColor: 'transparent'},
+                selected: { backgroundColor: 'black', borderRadius: 1000 },
+                selected_label: { color: 'white' },  // selected date's text color
+                // header: { borderRadius: 1000,  backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'space-evenly', alignItems: 'center', flexDirection: 'row' },
+                month_selector: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
+                year_selector: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
+                button_prev: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
+                button_next: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
+              }}
+            />
+
+            <Button title="Select Date" onPress={() => {
+              // console.log("Selected Date: ", date$.get().toISOString());
+              console.log("Selected Date: ", date?.toLocaleString());
+              toggle$.set((prev) => !prev);
+            }} />
+          </View>
+          {/* }
+        </Memo> */}
+      </BottomSheet>
+
+
         <FlatList
           ref={dayListRef}
           data={days}
@@ -170,10 +213,17 @@ startDate: '',
           keyExtractor={(item, index) => `day-${index}`}
           renderItem={({ item }) => (
             <View style={{ width, paddingHorizontal: 16, paddingVertical: 24 }}>
-              <Text style={styles.subtitle}>
-                {item.toDate().toLocaleDateString('en-US', { dateStyle: 'full' })}
-              </Text>
-              <View style={styles.placeholder}>
+              <TouchableOpacity onPress={() => {
+                openAddMenu$.set((prev) => !prev);
+              }}>
+                <View style={{ flexDirection: 'row', alignContent: 'center',  }}>
+                  <Text style={styles.subtitle}>
+                    {item.toDate().toLocaleDateString('en-US', { dateStyle: 'full' })}
+                  </Text>
+                  <MaterialIcons name="edit" size={20} color="#000" style={{paddingLeft: 5}}/>
+                </View>
+              </TouchableOpacity>
+            <View style={styles.placeholder}>
 
 
               <Memo>
@@ -186,8 +236,14 @@ startDate: '',
                   // ))
                   {
                     // console.log(getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)));
-                    getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).then((data) => {
+                    getEventsForDate(new Date()).then((data) => {
                       console.log("Events fetched:", data);
+
+                      return (
+                          data.map((event, index) => (
+                            <Text key={index}>{event.title} - {dayjs(event.date).format('YYYY-MM-DD')}</Text>
+                          ))
+                      )
                       // events.data.set(data);
                       // console.log("Events after fetching: ", data);
                     })
@@ -222,11 +278,18 @@ startDate: '',
             // })
   // clearEvents();
                     // getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).then((data) => {
-                    getEventOccurrences(new Date(), new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)).then((data) => {
+                    // getEventOccurrences(new Date(), new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)).then((data) => {
+                    // getEventOccurrences(dayjs().startOf('date').toDate(), dayjs().startOf('date').add(1, 'day').subtract(1, 'second').toDate()).then((data) => {
+                    //   console.log("Events fetched:", data);
+                    //   // events.data.set(data);
+                    //   // console.log("Events after fetching: ", data);
+                    // })
+                    getEventsForDate(new Date()).then((data) => {
                       console.log("Events fetched:", data);
                       // events.data.set(data);
                       // console.log("Events after fetching: ", data);
-                    })
+                    }
+                    );
           }}>
             <View style={styles.btn}>
               <MaterialIcons name="add" size={22} color="#fff" style={{ marginRight: 6 }} />
