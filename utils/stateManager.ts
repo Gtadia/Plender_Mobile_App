@@ -2,6 +2,7 @@ import { observable } from "@legendapp/state";
 import { fonts } from '@/constants/types';
 import { colorTheme } from "@/constants/Colors";
 import type { Theme } from '@/node_modules/@react-navigation/native/src/types';
+import dayjs from "dayjs";
 
 export const Tags$ = observable({
   list: { // `value` ==> `id`
@@ -18,6 +19,7 @@ export const Tags$ = observable({
   }
 })
 
+export const selectedDate$ = observable(dayjs());
 
 export const colorTheme$ = observable({
   colorTheme: colorTheme.catppuccin.latte,  // default theme

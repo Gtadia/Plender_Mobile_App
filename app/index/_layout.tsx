@@ -1,10 +1,13 @@
 import React from 'react';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { Stack } from 'expo-router';
-import { View, Text } from 'react-native';
+import { Link, Tabs, useRouter } from 'expo-router';
+import { TouchableOpacity, View, StyleSheet, Keyboard } from 'react-native';
 
 // import { useColorScheme } from '@/components/useColorScheme';
 // import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import { AntDesign, Ionicons } from '@expo/vector-icons';
+import { colorTheme$ } from '@/utils/stateManager';
+import TabBar from '@/components/TabBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -19,30 +22,32 @@ function TabBarIcon(props: {
 export default function TabLayout() {
   // const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
-
+  const router = useRouter();
 
   return (
     <GestureHandlerRootView>
-      <Stack
+      <Tabs
+        tabBar={props => <TabBar {...props} />}
         screenOptions={({ route }) => ({
           headerShown: false,
-        })}
-        initialRouteName='index'
-        >
+        })}>
+      </Tabs>
 
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="create" options={{
-          headerShown: false,
-          presentation: "transparentModal",
-          animation: "fade",
-        }}/>
-      </Stack>
+      <TouchableOpacity
+        style={[styles.touchable, { bottom: insets.bottom + 60 + 5}]}
+        onPress={() => {
+          router.push("/create");
+        }}
+      >
+        <AntDesign name="plus" size={26} color="white" />
+      </TouchableOpacity>
+    </GestureHandlerRootView>
+  );
+}
 
-
-
-      {/* <View style={{
-        position: 'absolute',
-        bottom: insets.bottom + 60 + 5, // 60 is the height of the tab bar, 5 is the margin
+const styles = StyleSheet.create({
+  touchable: {
+    position: 'absolute',
         right: 18,
         alignSelf: 'center',
         zIndex: 2,
@@ -53,9 +58,5 @@ export default function TabLayout() {
         justifyContent: 'center',
         alignItems: 'center',
         elevation: 8,
-      }}>
-        <AntDesign name="plus" size={26} color="white" />
-      </View> */}
-    </GestureHandlerRootView>
-  );
-}
+  }
+})

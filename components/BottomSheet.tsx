@@ -132,7 +132,6 @@ const BottomSheet = ({ close, children }: any) => {
     <Animated.View
       style={[styles.container, rBottomSheetStyle, { overflow: "hidden" }]}
     >
-      <BlurView experimentalBlurMethod="dimezisBlurView" intensity={90} style={{ flex: 1 }} tint="light">
         <GestureDetector gesture={gesture}>
           <View style={[styles.gestureArea]}>
             <View style={styles.line} />

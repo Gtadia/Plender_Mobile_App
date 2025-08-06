@@ -20,7 +20,7 @@ const TabBar = ({ state, descriptors, navigation }) => {
   const icons = {
     index: (props: any) => <AntDesign name="home" size={itemSize} color={textColor} {...props} />,
     calendar: (props: any) => <AntDesign name="calendar" size={itemSize} color={textColor} {...props} />,
-    stats: (props: any) => <AntDesign name="clock" size={itemSize} color={textColor} {...props} />,
+    stats: (props: any) => <AntDesign name="clockcircleo" size={itemSize} color={textColor} {...props} />,
     pieChart: (props: any) => <AntDesign name="user" size={itemSize} color={textColor} {...props} />,
     settings: (props: any) => <AntDesign name="setting" size={itemSize} color={textColor} {...props} />,
   }

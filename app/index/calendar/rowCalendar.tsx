@@ -13,18 +13,24 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import dayjs, { Dayjs } from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
-import VerticalProgressBar from './VerticalProgressBar';
+import VerticalProgressBar from '@/components/custom_ui/VerticalProgressBar';
 import { clearEvents, createEvent, getEventOccurrences, getEventsForDate, initializeDB } from '@/utils/database';
-import { observable } from '@legendapp/state';
-import { Memo, useObservable } from '@legendapp/state/react';
+import { observable, observe } from '@legendapp/state';
+import { Memo, observer, use$, useObservable } from '@legendapp/state/react';
 import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 import DateTimePicker, { DateType, useDefaultStyles } from 'react-native-ui-datepicker';
 import BottomSheet, { openAddMenu$ } from '@/components/BottomSheet';
 import { useNavigation } from '@react-navigation/native';
+import { Stack, useRouter } from 'expo-router';
+import { ScreenView } from '@/components/Themed';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { horizontalPadding } from '@/constants/globalThemeVar';
 
 dayjs.extend(isoWeek);
 
 const { width } = Dimensions.get('window');
+
+export const selectedDate$ = observable(dayjs());
 
 export default function FlatListSwiperExample() {
   const weekListRef = useRef(null);
@@ -35,11 +41,9 @@ export default function FlatListSwiperExample() {
   const [prevWeekIndex, setPrevWeekIndex] = useState(1);
   const [prevDayIndex, setPrevDayIndex] = useState(1);
 
-  const [date, setDate] = useState<Dayjs>(dayjs());
-
   const weeks = useMemo(() => {
-    // const base = selectedDate.add(weekOffset, 'week').startOf('week');
-    const base = dayjs().add(weekOffset, 'week').startOf('week');
+    const base = selectedDate.add(weekOffset, 'week').startOf('week');
+    // const base = dayjs().add(weekOffset, 'week').startOf('week');
     return [-1, 0, 1].map((offset) =>
       Array.from({ length: 7 }).map((_, i) => {
         const date = base.add(offset, 'week').add(i, 'day');
@@ -47,6 +51,30 @@ export default function FlatListSwiperExample() {
       })
     );
   }, [selectedDate, weekOffset]);
+
+  useEffect(() => {
+    // selectedDate$.set(selectedDate)
+    console.log("Date Selected: ", (selectedDate$.get()))
+    setSelectedDate(selectedDate$.get())
+  }, [selectedDate$]);
+
+  selectedDate$.onChange(({ value }) => {
+    setSelectedDate(value)
+    console.log("DATE SELECTED: ", (selectedDate$.get()));
+  })
+
+  const week = observer(() => {
+    setSelectedDate(use$(selectedDate$))
+    console.log("DATE SELECTED: ", (selectedDate$.get()));
+
+    const base = dayjs().add(weekOffset, 'week').startOf('week');
+   return [-1, 0, 1].map((offset) =>
+      Array.from({ length: 7 }).map((_, i) => {
+        const date = base.add(offset, 'week').add(i, 'day');
+        return { weekday: date.format('ddd'), date };
+      })
+    );
+  })
 
   const days = useMemo(() => [
     selectedDate.subtract(1, 'day'),
@@ -88,43 +116,21 @@ export default function FlatListSwiperExample() {
     setPrevDayIndex(1);
   };
 
-  const events = observable({
-    data: [{
-      title: 'This is a test',
-      startDate: '',
-      rrule: '',
-      // create: async (title: string, startDate: string, rrule: string) => {
-      //   await createEvent({ title, startDate, rrule });
-      //   events = await getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-      //   console.log("Created Event: ", { title, startDate, rrule });
-      // },
-    },
-      {
-        title: 'Another Test',
-startDate: '',
-      rrule: '',
-      // create: async (title: string, startDate: string, rrule: string) => {
-      //   await createEvent({ title, startDate, rrule });
-      //   events = await getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-      //   console.log("Created Event: ", { title, startDate, rrule });
-      // }
-    }
-    ],
-    get: async () => {
-      return await getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000));
-    }
-  }
-  );
+  const insets = useSafeAreaInsets();
 
   // TODO — move database initialization to a more appropriate place
   initializeDB();
 
-  const toggle$ = useObservable(false);
-  const navigation = useNavigation();
+  const router = useRouter();
+
 
   return (
+    <ScreenView style={styles.container}>
+      <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
+        <Text style={[styles.title]}>Calendar</Text>
+      </View>
     <SafeAreaView style={{ flex: 1 }}>
-      <View style={styles.container}>
+      <View style={styles.calContainer}>
         <FlatList
           ref={weekListRef}
           data={weeks}
@@ -164,41 +170,6 @@ startDate: '',
           )}
         />
 
-        {/* <BottomSheet close={toggle$}>
-        {/* <Memo>
-          {() => */}
-          {/* <View style={{ maxWidth: 350, paddingHorizontal: 15, borderWidth: 1, alignSelf: 'center'}}>
-            <DateTimePicker
-              mode="single"
-              // date={date$.get()}
-              // onChange={(event) => {date$.set(event.date)}}
-              date={date}
-              onChange={(event) => {setDate(dayjs(event.date))}}
-              // style={{  }}
-              styles={{
-                ...useDefaultStyles,
-                today: { borderColor: 'black', borderRadius: 1000, borderWidth: 1, backgroundColor: 'transparent'},
-                selected: { backgroundColor: 'black', borderRadius: 1000 },
-                selected_label: { color: 'white' },  // selected date's text color
-                // header: { borderRadius: 1000,  backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'space-evenly', alignItems: 'center', flexDirection: 'row' },
-                month_selector: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
-                year_selector: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
-                button_prev: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
-                button_next: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
-              }}
-            />
-
-            <Button title="Select Date" onPress={() => {
-              // console.log("Selected Date: ", date$.get().toISOString());
-              console.log("Selected Date: ", date?.toLocaleString());
-              toggle$.set((prev) => !prev);
-            }} />
-          </View>
-          {/* }
-        </Memo> */}
-      {/* </BottomSheet>  */}
-
-
         <FlatList
           ref={dayListRef}
           data={days}
@@ -216,7 +187,7 @@ startDate: '',
           renderItem={({ item }) => (
             <View style={{ width, paddingHorizontal: 16, paddingVertical: 24 }}>
               <TouchableOpacity onPress={() => {
-                // openAddMenu$.set((prev) => !prev);
+                router.push('/calendar/bottomSheet');
               }}>
                 <View style={{ flexDirection: 'row', alignContent: 'center',  }}>
                   <Text style={styles.subtitle}>
@@ -227,15 +198,8 @@ startDate: '',
               </TouchableOpacity>
             <View style={styles.placeholder}>
 
-
               <Memo>
                 {() =>
-                  // events.data.map((message) => (
-                  //   <Text>{message.title.get()}</Text>
-                  // ))
-                  // events.get.map((message) => (
-                  //   <Text>{message.title}</Text>
-                  // ))
                   {
                     // console.log(getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)));
                     getEventsForDate(new Date()).then((data) => {
@@ -246,15 +210,10 @@ startDate: '',
                             <Text key={index}>{event.title} - {dayjs(event.date).format('YYYY-MM-DD')}</Text>
                           ))
                       )
-                      // events.data.set(data);
-                      // console.log("Events after fetching: ", data);
                     })
                   }
                 }
               </Memo>
-                {
-
-                }
 
                 <View style={styles.placeholderInset} />
               </View>
@@ -301,18 +260,34 @@ startDate: '',
         </View>
       </View>
     </SafeAreaView>
+    </ScreenView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingVertical: 24 },
+  container: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+    },
+    titleContainer: {
+      width: '100%',
+    },
+    title: {
+      left: horizontalPadding,
+      color: '#000',
+      fontSize: 28,
+      marginLeft: 0,
+      fontWeight: 'bold',
+    },
+  calContainer: { flex: 1, paddingVertical: 24 },
   header: { paddingHorizontal: 16 },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1d1d1d',
-    marginBottom: 12,
-  },
+  // title: {
+  //   fontSize: 32,
+  //   fontWeight: '700',
+  //   color: '#1d1d1d',
+  //   marginBottom: 12,
+  // },
   itemRowContainer: {
     width,
     justifyContent: 'center',
