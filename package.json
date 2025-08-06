@@ -50,8 +50,10 @@
     "react-native-svg": "^15.2.0",
     "react-native-swiper-flatlist": "^3.2.5",
     "react-native-ui-datepicker": "^3.1.2",
+    "react-native-wheel-pick": "^1.2.6",
     "rrule": "^2.8.1",
-    "tailwindcss": "^3.4.17"
+    "tailwindcss": "^3.4.17",
+    "@react-native-picker/picker": "2.11.1"
   },
   "devDependencies": {
     "@types/react": "^19.1.5",
