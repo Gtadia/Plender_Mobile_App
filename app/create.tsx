@@ -26,21 +26,29 @@ const create = () => {
   let { height } = Dimensions.get("window");
 
   return (
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)" }}
-      >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false} style={{backgroundColor: 'transparent'}}>
-    <View style={{ flex: 1, bottom: 0, position: 'aboslute', backgroundColor: 'transparent' }}>
-      {/* <ScrollView keyboardShouldPersistTaps="always"> */}
+    <View style={{flex: 1, backgroundColor: "rgba(0, 0, 0, 0.5)"}}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false} style={{backgroundColor: 'transparent', flex:1}}>
       <Pressable onPress={() => navigation.goBack()} style={styles.background} />
-            <View style={{
-              height: 'auto',
-              maxWidth: 500,
-              borderRadius: 0,
-              backgroundColor: 'white',
-              padding: 15,
-            }}>
+        </TouchableWithoutFeedback>
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ bottom: 0, position: 'aboslute', backgroundColor: 'transparent' }}
+        >
+    <ScrollView
+                  keyboardShouldPersistTaps={'always'}
+              scrollEnabled={false}
+    >
+      {/* <ScrollView keyboardShouldPersistTaps="always"> */}
+            <View
+              style={{
+                height: 'auto',
+                maxWidth: 500,
+                borderRadius: 0,
+                backgroundColor: 'white',
+                padding: 15,
+              }}
+            >
               <$TextInput
                 $value={task$.title}
                 style={styles.textInput}
@@ -58,7 +66,8 @@ const create = () => {
                 placeholderTextColor={'rgba(0, 0, 0, 0.4)'}
               />
 
-              <ScrollView horizontal={true} showsHorizontalScrollIndicator={false}>
+              <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps={'always'}
+              scrollEnabled={false}>
                 <View style={styles.actions}>
                   <TouchableOpacity style={styles.actionButton} onPress={() => { router.push("/dateSelectSheet" )}}>
                     <Memo>
@@ -109,11 +118,10 @@ const create = () => {
                 </View>
               </ScrollView>
             </View>
-
-      {/* </ScrollView> */}
-    </View>
-          </TouchableWithoutFeedback>
+    </ScrollView>
       </KeyboardAvoidingView>
+
+    </View>
   )
 }
 
@@ -172,6 +180,6 @@ const styles = StyleSheet.create({
     color: 'rgba(0, 0, 0, 0.75)',
     fontSize: 13,
     fontWeight: 500,
-    paddingLeft: 5,
+    paddingHorizontal: 5,
   }
 })
