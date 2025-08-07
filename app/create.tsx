@@ -8,12 +8,15 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { AntDesign, MaterialIcons } from '@expo/vector-icons';
 import { Memo } from '@legendapp/state/react';
 import dayjs from 'dayjs';
+import { RRule } from 'rrule';
 
+// TODO — remove start_date
 export const task$ = observable({
   title: '',
   description: '',
   start_date: null,
-  rrule: '',
+  rrule: null,
+  isRepeating: false,
   timeGoal: 0,
 });
 
@@ -60,15 +63,20 @@ const create = () => {
                   <TouchableOpacity style={styles.actionButton} onPress={() => { router.push("/dateSelectSheet" )}}>
                     <Memo>
                       {() => {
-                        if (task$.rrule.get() || task$.start_date.get())
+                        if (task$.rrule.get())
                           return (
                             <>
                             {/* Catppuccin Latte Green */}
                               <AntDesign name="calendar" size={15} color="rgb(64, 160, 43)"/>
-                              <Text style={[styles.actionText, { color: "rgb(64, 160, 43)" }]}>{dayjs(task$.start_date.get()).format("MMM D YYYY")}</Text>
+                              <Text style={[styles.actionText, { color: "rgb(64, 160, 43)" }]}>{dayjs(task$.rrule.get().DTSTART).format("MMM D YYYY")}</Text>
                               {
-                                task$.rrule.get() ? <AntDesign name="retweet" size={15} color="rgb(64, 160, 43)"/> : <></>
-                              }
+  (() => {
+
+    return task$.isRepeating.get() ? (
+      <AntDesign name="retweet" size={15} color="rgb(64, 160, 43)"/>
+    ) : null;
+  })()
+}
                             </>
                           )
 

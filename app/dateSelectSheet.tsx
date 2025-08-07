@@ -1,39 +1,101 @@
-import { Button, Dimensions, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Button, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useState } from 'react'
 import { Stack, useNavigation } from 'expo-router'
 import { BlurView } from 'expo-blur';
-import DateTimePicker, { useDefaultStyles } from 'react-native-ui-datepicker';
 import dayjs, { Dayjs } from 'dayjs';
 import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { task$ } from './create'
-import { RRule } from 'rrule';
+import { RRule, RRuleSet } from 'rrule';
 import { Memo, Show } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
 // import Picker from '@/components/TimeCarousel/Picker';
 import { Picker } from 'react-native-wheel-pick';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import RNDateTimePicker from '@react-native-community/datetimepicker';
 
 
 const repeat$ = observable({
-  pressed: false,
-  num: 0,
+  isRepeat: false,
+  num: '',
   type: 'None',  // None, Day, Week, Month, Year
-  weeks: []      // if weeks are active, then ['mon', 'tues', 'wed', ...]
+  weeks: [false, false, false, false, false, false, false],      // if weeks are active, then ['mon', 'tues', 'wed', ...]
+  isWeeks: false,
+  endsOn: dayjs(), //
+  endsOnMode: true,  // false = Never, true = ends
+  startsOn: dayjs(),
 });
 
 // TODO — move this somewhere so that it only renders ONCE!!!
 const values: any[] = []
-values.push(' ');
+values.push('');
 for (let i = 1; i < 999; i++)
-  values.push(i)
+  values.push(`${i}`)
 const types: string[] = ['None', 'Day', 'Week', 'Month', 'Year']
+
+const dayOfWeek = ['S', 'M', 'T', 'W', "T", "F", "S"]
+const dayOfWeekRrule = [RRule.SU, RRule.MO, RRule.TU, RRule.WE, RRule.TH, RRule.FR, RRule.SA]
+
+const AddRrule = () => {
+  let rrule = new RRule({ dtstart: repeat$.startsOn.get().toDate() })
+  if (!repeat$.isRepeat.get()) {
+    task$.isRepeating.set(false);
+    rrule = new RRule({
+      dtstart: repeat$.startsOn.get().toDate(),
+      interval: 1,
+      freq: RRule.DAILY,
+      until: repeat$.startsOn.get().toDate()
+    });
+  } else {
+    task$.isRepeating.set(true);
+    let freq = null
+    switch (repeat$.type.get()) {
+      case 'Day':
+        freq = RRule.DAILY;
+        break;
+      case 'Week':
+        freq = RRule.WEEKLY;
+        rrule = new RRule({
+          ...rrule.options,
+          byweekday: dayOfWeekRrule.filter((_, index) => repeat$.weeks[index].get()),
+        })
+        break;
+      case 'Month':
+        freq = RRule.MONTHLY;
+        break;
+      case 'Year':
+        freq = RRule.YEARLY;
+        break;
+      case 'None':
+        // SHOULDN'T RUN AT ALL
+      default:
+        freq = RRule.DAILY;
+    }
+
+    rrule = new RRule({
+      ...rrule.options,
+      interval: parseInt(repeat$.num.get()),
+      freq: freq,
+    })
+
+    if (repeat$.endsOnMode.get())
+    rrule = new RRule({
+      ...rrule.options,
+      until: repeat$.endsOn.get().toDate()
+    })
+  }
+
+  task$.rrule.set(rrule)
+
+  console.log("The Completed RRule, ", rrule.toText())
+  console.log('isRepeat ', repeat$.isRepeat.get())
+}
 
 const DateSelectSheet = () => {
   const navigation = useNavigation();
-  const [date, setDate] = useState<Dayjs>(task$.start_date.get() !== null ? dayjs(task$.start_date.get()) : dayjs());
-  const [rrule, setRrule] = useState<string>(task$.rrule.get());
   let { width, height } = Dimensions.get("window");
 
-  console.log("Today's Date: ", date);
+  repeat$.weeks[dayjs().day()].set(true)  // repeats on the current day of the week
+
   return (
     <View style={{ flex: 1 }}>
       <Stack.Screen name='dateSelectSheet' options={{
@@ -42,65 +104,49 @@ const DateSelectSheet = () => {
       }}/>
 
       <Pressable onPress={() => {navigation.goBack();}} style={styles.background} />
-        <View style={styles.container}>
+      <View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 } ]}>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width:"100%", marginBottom: 15}}>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
+            <Text>Back</Text>
+          </TouchableOpacity>
           <Text style={styles.title}>Select Date</Text>
-          <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', borderWidth: 1}}>
-            {/* <DateTimePicker
-              mode="single"
-              date={date}
-              onChange={(event) => {setDate(dayjs(event.date))}}
-              // style={{  }}
-              styles={{
-                ...useDefaultStyles,
-                today: { borderColor: 'black', borderRadius: 1000, borderWidth: 1, backgroundColor: 'transparent'},
-                selected: { backgroundColor: 'black', borderRadius: 1000 },
-                selected_label: { color: 'white' },  // selected date's text color
-                // header: { borderRadius: 1000,  backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'space-evenly', alignItems: 'center', flexDirection: 'row' },
-                month_selector: { borderRadius: 1000, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.4)', padding: 10, },
-                year_selector: { borderRadius: 1000, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.4)', padding: 10, },
-                button_prev: { borderRadius: 1000, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.4)', padding: 10, },
-                button_next: { borderRadius: 1000, borderWidth: 1, borderColor: 'rgba(0, 0, 0, 0.4)', padding: 10, },
-              }}
-            /> */}
-
-            <View style={[ styles.subMenuSquare ]}>
-              <View style={[styles.subMenuBar, styles.subMenuSquarePadding]}>
-                <Text style={styles.menuText}>Start Date</Text>
-                <Text style={styles.menuTextEnd}>Something</Text>
+          <TouchableOpacity style={styles.button} onPress={() => {
+            AddRrule()
+            navigation.goBack()
+          }}>
+            <Text>Done</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView>
+          <View style={{alignItems: 'center'}}>
+          <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', }}>
+              <View style={[ styles.subMenuSquare ]}>
+                <View style={[styles.subMenuBar, styles.subMenuSquarePadding, { alignItems: 'center' }]}>
+                  <Text style={styles.menuText}>Start Date</Text>
+                  {/* <Text style={styles.menuTextEnd}>Something</Text> */}
+                  <RNDateTimePicker mode="date" display="compact" design="material" value={repeat$.startsOn.get().toDate()} onChange={(event, selectedDate) => repeat$.startsOn.set(dayjs(selectedDate))}/>
+                </View>
               </View>
-            </View>
-
-
-            <View style={styles.subMenuContainer}>
               <View>
                 {/* TODO — LINE */}
+                {/* TODO — Merge start_date to rrule in DATABASE */}
               </View>
-              <TouchableOpacity style={styles.subMenu} onPress={() => {
-                repeat$.pressed.set((prev) => !prev)
-                console.log("Button being pressd ", repeat$.pressed.get())
-              }}>
+              <View style={[styles.subMenu, {marginTop: 10}]}>
                 <View style={{ flexDirection: 'row'}}>
                   <AntDesign name="retweet" size={20} color={'rgba(0, 0, 0, 0.75)'} />
                   <Text style={[ styles.menuText, styles.subMenuText ]}>Repeat</Text>
                 </View>
 
-                <View style={{ flexDirection: 'row'}}>
-                  {/* TODO — merge start_date into rrule */}
-                  <Text ellipsizeMode="tail" style={[ styles.menuTextEnd, styles.subMenuTextEnd ]}>{RRule.fromString(`DTSTART:${dayjs().format('YYYYMMDD')}T000000Z\nRRULE:FREQ=DAILY;UNTIL=20250901T000000Z`).toText()}</Text>
-                  <Ionicons name="chevron-forward-outline" size={20} color="rgba(0, 0, 0, 0.75)" />
-                </View>
-              </TouchableOpacity>
+                {/* <View style={{ flexDirection: 'row'}}>
+                  <Memo>
+                    {() =>
+                      <Text ellipsizeMode="tail" style={[ styles.menuTextEnd, styles.subMenuTextEnd ]}>{repeat$.rrule.get().toText()}</Text>
+                    }
+                  </Memo>
+                </View> */}
+              </View>
 
-              {
-                // TODO — Detect if repeat button is pressed
-                // TODO — Detect if on "weeks" mode
-              }
-
-              <Show
-                if={repeat$.pressed}
-                else={() => <></>}
-                // wrap={AnimatePresence} TODO — import { AnimatePresence } from "framer-motion";
-              >
+              <Memo>
                 {() => {
                   const repeatValue =
                         repeat$.type.get() === 'None'
@@ -114,86 +160,164 @@ const DateSelectSheet = () => {
                           <Text style={styles.menuText}>Every</Text>
                           <Text style={styles.menuTextEnd}>{repeatValue}</Text>
                         </View>
-                        <Memo>
-                          {() => (
-                              <View style={{ flexDirection: 'row' }}>
-                                <Picker
-                                  style={{ backgroundColor: 'white', width: "50%", height: 215 }}
-                                  itemStyle={{ fontSize: 18 }}
-                                  selectedValue={repeat$.num.get()}
-                                  value={repeat$.num.get()}
-                                  pickerData={values}
-                                  onValueChange={(value: number | string) => {
-                                    if (value === ' ') {
-                                      repeat$.type.set('None');
-                                      repeat$.num.set(0)
-                                    } else if (repeat$.type.get() === 'None') {
-                                      repeat$.type.set('Day')
-                                      repeat$.num.set(value)
-                                    }
-                                    else {
-                                      repeat$.num.set(value)
-                                    }
-                                  }}
-                                />
-                                <Picker
-                                  style={{ backgroundColor: 'white', width: "50%", height: 215 }}
-                                  itemStyle={{ fontSize: 18 }}
-                                  selectedValue={repeat$.type.get()}
-                                  value={repeat$.type.get()}
-                                  pickerData={types}
-                                  onValueChange={(value: string) => {
-                                    repeat$.type.set(value)
-                                    if (value === 'None') {
-                                      repeat$.num.set(0)
-                                    } else if (repeat$.num.get() === 0) (
-                                      repeat$.num.set(1)
-                                    )
-                                  }}
-                                />
-                              </View>
+                          <View style={{ flexDirection: 'row' }}>
+                            <Picker
+                              style={{ backgroundColor: 'white', width: "50%", height: 215 }}
+                              itemStyle={{ fontSize: 18 }}
+                              selectedValue={repeat$.num.get()}
+                              value={repeat$.num.get()}
+                              pickerData={values}
+                              onValueChange={(value: string) => {
+                                repeat$.isRepeat.set(true)
+                                if (value === '') {
+                                  repeat$.isRepeat.set(false)
+                                  console.log("1")
+                                  repeat$.type.set('None');
+                                  repeat$.num.set('')
+                                } else if (repeat$.type.get() === 'None') {
+                                  console.log("2")
+                                  repeat$.type.set('Day')
+                                  repeat$.num.set(value)
+                                }
+                                else {
+                                  console.log("3")
+                                  repeat$.num.set(value)
+                                }
+
+                                console.log("CHANGED: ", value, repeat$.num.get())
+                              }}
+                            />
+                            <Picker
+                              isShowSelectLine={false} // Default is true
+                              selectLineColor='black'
+                              selectLineSize={6} // Default is 4
+                              style={{ backgroundColor: 'white', width: "50%", height: 215 }}
+                              itemStyle={{ fontSize: 18 }}
+                              selectedValue={repeat$.type.get()}
+                              value={repeat$.type.get()}
+                              pickerData={types}
+                              onValueChange={(value: string) => {
+                                repeat$.type.set(value)
+                                repeat$.isRepeat.set(true)
+                                if (value == 'None') {
+                                  console.log('4')
+                                  repeat$.num.set('')
+                                  repeat$.isRepeat.set(false);
+                                } else if (repeat$.num.get() === '') {
+                                  console.log('5')
+                                  repeat$.num.set('1')
+                                }
+
+                                if (value == 'Week') {
+                                  repeat$.isWeeks.set(true)
+                                } else {
+                                  repeat$.isWeeks.set(false)
+                                }
+
+                                console.log("PINGING: ", value, repeat$.num.get())
+                              }}
+                            />
+                          </View>
+                        </View>
+
+                        <Show
+                          if={repeat$.isWeeks}
+                          else={() => <></>}
+                          // wrap={AnimatePresence} TODO — import { AnimatePresence } from "framer-motion";
+                        >
+                          {() => {
+                            return (
+                              <>
+                                <Text>ON</Text>
+                                <View style={[ styles.subMenuSquare, {flexDirection: 'row', overflow: 'hidden'} ]}>
+                                {
+                                  dayOfWeek.map((item, index) => (
+                                    <TouchableOpacity
+                                      key={index}
+                                      style={{
+                                        flex: 1,
+                                        backgroundColor: repeat$.weeks[index].get()
+                                          ? "rgba(200, 0, 0, 0.75)"
+                                          : "transparent",
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        padding: 10,
+                                      }}
+                                      onPress={() => {
+                                        if (repeat$.weeks.get().filter(x => x === true).length > 1 || !repeat$.weeks[index].get())
+                                          repeat$.weeks[index].set(prev => !prev);
+                                      }}
+                                    >
+                                      <Text>{item}</Text>
+                                    </TouchableOpacity>
+                                  ))
+                                }
+                                </View>
+                              </>
                             )
-                          }
-                        </Memo>
-                      </View>
+                          }}
+                        </Show>
 
-                      <Show>
-                        {() => {
+                      <Show
+                        if={repeat$.isRepeat}
+                        else={() => <></>}
+                      >
+                        {() =>
+                          <>
+                            <Text>ENDS</Text>
+                            <View style={[ styles.subMenuSquare ]}>
+                              <TouchableOpacity style={[styles.subMenuBar, styles.subMenuSquarePadding]} onPress={() => {
+                                repeat$.endsOnMode.set(false)
+                              }}>
+                                <Text style={styles.menuText}>Never</Text>
+                                <Memo>
+                                  {() =>
+                                      repeat$.endsOnMode.get() ?
+                                        <></>:
+                                        <AntDesign name="check" size={18} color="rgba(2000, 0, 0, 0.75)" />
+                                  }
+                                </Memo>
+                              </TouchableOpacity>
 
-                        }}
+                              {/* TODO — Line */}
+                              <TouchableOpacity
+                                style={[styles.subMenuBar, styles.subMenuSquarePadding, { alignItems: 'center' }]}
+                                disabled={repeat$.endsOnMode.get()}
+                                onPress={() => {
+                                  repeat$.endsOnMode.set(true)
+                              }}>
+                                <Text style={[styles.menuText]}>On Date</Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                  <View style={{ marginRight: 8 }}>
+                                    <Show
+                                      if={repeat$.endsOnMode}
+                                      else={() => <></>}
+                                    >
+                                      <RNDateTimePicker mode="date" display="compact" design="material" value={repeat$.endsOn.get().toDate()} onChange={(event, selectedDate) => repeat$.endsOn.set(dayjs(selectedDate))}/>
+                                    </Show>
+                                  </View>
+                                  <Memo>
+                                    {() =>
+                                        repeat$.endsOnMode.get() ?
+                                          <AntDesign name="check" size={18} color="rgba(2000, 0, 0, 0.75)" /> :
+                                          <></>
+                                    }
+                                  </Memo>
+                                </View>
+                              </TouchableOpacity>
+
+                            </View>
+                          </>
+                        }
                       </Show>
-
-                      <Text>ENDS</Text>
-                      <View style={[ styles.subMenuSquare ]}>
-                        <View style={[styles.subMenuBar, styles.subMenuSquarePadding]}>
-                          <Text style={styles.menuText}>Never</Text>
-                          <Text style={styles.menuTextEnd}>{repeatValue}</Text>
-                        </View>
-
-                        {/* TODO — Line */}
-                        <View style={[styles.subMenuBar, styles.subMenuSquarePadding]}>
-                          <Text style={styles.menuText}>On Date</Text>
-                          <Text style={styles.menuTextEnd}>{repeatValue}</Text>
-                        </View>
-
-                      </View>
                     </>
                   )
                 }}
-              </Show>
-
-              <TouchableOpacity style={styles.button} onPress={() => {
-                // console.log("Selected Date: ", date$.get().toISOString());
-                console.log("Selected Date: ", date?.toLocaleString());
-                task$.start_date.set(date.toISOString());
-                task$.rrule.set(rrule);
-                navigation.goBack();
-              }}>
-                <Text>Done</Text>
-              </TouchableOpacity>
+              </Memo>
             </View>
-
           </View>
+        </ScrollView>
+
         </View>
     </View>
   )
@@ -209,12 +333,12 @@ const styles = StyleSheet.create({
   title: {
     fontWeight: 500,
     fontSize: 15,
-    marginBottom: 15
   },
   container: {
     backgroundColor: '#F2F2F7',
     padding: 15,
     alignItems: 'center',
+
   },
   subMenuContainer: {
     paddingHorizontal: 18,
@@ -223,14 +347,15 @@ const styles = StyleSheet.create({
   subMenu: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingBottom: 20,
+    paddingBottom: 10,
+    marginTop: 10
   },
   subMenuText: {
     paddingLeft: 10,
   },
   subMenuTextEnd: {
     paddingLeft: 10,
-    paddingRight: 5,
+    paddingRight: 8,
   },
   subMenuSquare: {
     backgroundColor: 'white',
@@ -255,6 +380,5 @@ const styles = StyleSheet.create({
     color: 'rgba(0, 0, 0, 0.75)',
   },
   button: {
-
   }
 })
