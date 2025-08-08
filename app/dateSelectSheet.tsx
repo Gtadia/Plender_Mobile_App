@@ -20,9 +20,12 @@ const repeat$ = observable({
   type: 'None',  // None, Day, Week, Month, Year
   weeks: [false, false, false, false, false, false, false],      // if weeks are active, then ['mon', 'tues', 'wed', ...]
   isWeeks: false,
-  endsOn: dayjs(), //
-  endsOnMode: true,  // false = Never, true = ends
+  endsOn: dayjs().add(1, 'day'), //
+  endsOnMode: false,  // false = Never, true = ends
   startsOn: dayjs(),
+
+  hours: 1,
+  minutes: 0,
 });
 
 // TODO — move this somewhere so that it only renders ONCE!!!

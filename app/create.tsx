@@ -100,7 +100,7 @@ const create = () => {
                     </Memo>
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+                  <TouchableOpacity style={styles.actionButton} onPress={() => { router.push('/timeGoalSelectSheet')}}>
                     <AntDesign name="clockcircleo" size={15} color="rgba(0, 0, 0, 0.75)"/>
                     <Text style={styles.actionText}>Time Goal</Text>
                   </TouchableOpacity>
