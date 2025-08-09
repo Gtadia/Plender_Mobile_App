@@ -1,21 +1,25 @@
-import { Button, Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React, { useState } from 'react'
+import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import React from 'react'
 import { Stack, useNavigation } from 'expo-router'
-import { BlurView } from 'expo-blur';
-import dayjs, { Dayjs } from 'dayjs';
-import { AntDesign, Ionicons } from '@expo/vector-icons';
 import { task$ } from './create'
-import { RRule, RRuleSet } from 'rrule';
-import { Memo, Show } from '@legendapp/state/react';
+import { Memo } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
 // import Picker from '@/components/TimeCarousel/Picker';
-import { Picker } from 'react-native-wheel-pick';
-import RNDateTimePicker from '@react-native-community/datetimepicker';
+// import { Picker } from 'react-native-wheel-pick';
+import Picker from '@/components/TimeCarousel/Picker';
 
 const time$ = observable({
   hours: 1,
   minutes: 0,
 });
+
+const ITEM_HEIGHT = 34;
+const VISIBLE_ITEMS = 5;
+const pillOffsetX = 0;
+const pillOffsetY = 0;
+const pillColor = "rgba(0, 0, 0, 0.22)";
+// const pillBorderColor = "rgba(0, 0, 0, 0.22)";
+const pickerPadding = 80
 
 // TODO — move this somewhere so that it only renders ONCE!!!
 const minutes = new Array(60).fill(0).map((_, index) => (index));
@@ -43,6 +47,7 @@ const TimeGoalSelectSheet
           <Text style={styles.title}>Select Goal</Text>
           <TouchableOpacity style={styles.button} onPress={() => {
             task$.timeGoal.set(time$.hours.get() * 3600 + time$.minutes.get() * 60)
+            console.log("The time has been sent: ", time$.hours.get(), time$.minutes.get(), task$.timeGoal.get())
             navigation.goBack()
           }}>
             <Text>Done</Text>
@@ -65,28 +70,15 @@ const TimeGoalSelectSheet
                           <Text style={styles.menuText}>Time Goal</Text>
                           <Text style={styles.menuTextEnd}>{goalString}</Text>
                         </View>
-                          <View style={{ flexDirection: 'row' }}>
-                            <Picker
-                              style={{ backgroundColor: 'white', width: "50%", height: 215 }}
-                              itemStyle={{ fontSize: 18 }}
-                              selectedValue={time$.hours.get()}
-                              value={time$.hours.get()}
-                              pickerData={hours}
-                              onValueChange={(value: number) => {time$.hours.set(value)}}
-                            />
-                            <Picker
-                              isShowSelectLine={false} // Default is true
-                              selectLineColor='black'
-                              selectLineSize={6} // Default is 4
-                              style={{ backgroundColor: 'white', width: "50%", height: 215 }}
-                              itemStyle={{ fontSize: 18 }}
-                              selectedValue={time$.minutes.get()}
-                              value={time$.minutes.get()}
-                              pickerData={minutes}
-                              onValueChange={(value: number) => {time$.minutes.set(value)}}
-                            />
+
+                        <View style={{ width: 380, backgroundColor: 'transparent'}}>
+                          <View style={{ flexDirection: "row", gap: 12, alignItems: "center", backgroundColor: 'transparent', paddingVertical: 14, paddingHorizontal: pickerPadding }}>
+                            <Picker values={hours} legendState={time$.hours} defaultValue={time$.hours} unit="hours" enableSelectBox={false} ITEM_HEIGHT={34} VISIBLE_ITEMS={5}/>
+                            <Picker values={minutes} legendState={time$.minutes} defaultValue={time$.minutes} unit="min" enableSelectBox={false} ITEM_HEIGHT={34} VISIBLE_ITEMS={5}/>
+                            <View style={styles.pill} />
                           </View>
                         </View>
+                      </View>
                     </>
                   )
                 }}
@@ -158,5 +150,18 @@ const styles = StyleSheet.create({
     color: 'rgba(0, 0, 0, 0.75)',
   },
   button: {
-  }
+  },
+  pill: {
+    position: "absolute",
+    right: pickerPadding, // was missing before
+    // top: (ITEM_HEIGHT * VISIBLE_ITEMS - ITEM_HEIGHT) / 2,
+    height: ITEM_HEIGHT,
+    width: '100%',
+    backgroundColor: pillColor,
+    borderRadius: 12,
+    zIndex: 20,
+    elevation: 20,
+    pointerEvents: "none",
+    // transform: [{ translateX: pillOffsetX }, { translateY: pillOffsetY }],
+  },
 })
