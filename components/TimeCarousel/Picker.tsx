@@ -121,12 +121,12 @@ const Picker = ({
     .onEnd((e) => {
       translateY.value = withDecay(
         {
-          velocity: e.velocityY,
+          velocity: e.velocityY > 2500 ? 2500 : e.velocityY,
           deceleration: 0.995,
           clamp: [bottomMax, topMax],
           velocityFactor: 1,
           rubberBandEffect: true,
-          rubberBandFactor: 0.85,
+          rubberBandFactor: 0.99,
           reduceMotion: ReduceMotion.System,
         },
         () => {
@@ -157,8 +157,8 @@ const Picker = ({
       height: ITEM_HEIGHT,
       width: pillSpan === "full" ? '100%' : numbersWidth,
       backgroundColor: pillColor,
-      borderColor: pillBorderColor,
-      borderWidth: 1,
+      // borderColor: pillBorderColor,
+      // borderWidth: 1,
       borderRadius: 12,
       zIndex: 20,
       elevation: 20,

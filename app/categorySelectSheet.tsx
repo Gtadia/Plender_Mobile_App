@@ -25,7 +25,7 @@ const pickerPadding = 70
 const minutes = new Array(60).fill(0).map((_, index) => (index));
 const hours = new Array(24).fill(0).map((_, index) => (index));
 
-const TimeGoalSelectSheet = () => {
+const CategorySelectSheet = () => {
   const navigation = useNavigation();
   let { width, height } = Dimensions.get("window");
 
@@ -95,7 +95,7 @@ const TimeGoalSelectSheet = () => {
   )
 }
 
-export default TimeGoalSelectSheet
+export default CategorySelectSheet
 
 
 const styles = StyleSheet.create({

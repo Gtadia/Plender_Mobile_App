@@ -66,8 +66,7 @@ const create = () => {
                 placeholderTextColor={'rgba(0, 0, 0, 0.4)'}
               />
 
-              <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps={'always'}
-              scrollEnabled={false}>
+              <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps={'always'}>
                 <View style={styles.actions}>
                   <TouchableOpacity style={styles.actionButton} onPress={() => { router.push("/dateSelectSheet" )}}>
                     <Memo>

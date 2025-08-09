@@ -120,7 +120,7 @@ const DateSelectSheet = () => {
             <Text>Done</Text>
           </TouchableOpacity>
         </View>
-        <ScrollView>
+        <ScrollView horizontal={false}>
           <View style={{alignItems: 'center'}}>
           <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', }}>
               <View style={[ styles.subMenuSquare ]}>
