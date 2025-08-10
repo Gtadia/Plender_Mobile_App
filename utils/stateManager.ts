@@ -4,6 +4,25 @@ import { colorTheme } from "@/constants/Colors";
 import type { Theme } from '@/node_modules/@react-navigation/native/src/types';
 import dayjs from "dayjs";
 
+interface categoryItem {
+  label: string,
+  color: string,
+  id: number
+}
+export const Category$ = observable<categoryItem[]>([
+  {label: 'test', color: 'red', id: 0},
+  {label: 'test test, 1 2 3 1 2 3 test', color: 'green', id: 1},
+])
+
+
+
+
+
+
+
+
+
+
 export const Tags$ = observable({
   list: { // `value` ==> `id`
     // WARNING: id == 0 DOES NOT WORK with home.tsx's TagsView
