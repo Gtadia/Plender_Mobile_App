@@ -37,17 +37,7 @@ const CategoryPopup = ({
     width?: number,
     position?: { bottom?: number; left?: number; right?: number; top?: number }
   }) => {
-  const popupStyle = {
-  subMenuSquare: {
-    backgroundColor: 'white',
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  subMenuSquarePadding: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  }
+  const router = useRouter();
 
   const categoryStyles = StyleSheet.create({
   card: {
@@ -96,7 +86,7 @@ const style = useAnimatedStyle(() => {
             keyboardShouldPersistTaps={'always'}
           >
             {Category$.get().map((item, index) => (
-              <Pressable
+              <TouchableOpacity
                 key={item.id}
                 style={categoryStyles.row}
                 onPress={() => {
@@ -107,8 +97,21 @@ const style = useAnimatedStyle(() => {
                 <Text style={[categoryStyles.label, item.color ? { color: item.color } : null]}>
                   {item.label}
                 </Text>
-              </Pressable>
+              </TouchableOpacity>
             ))}
+            <TouchableOpacity
+              key={-1}
+              style={categoryStyles.row}
+              onPress={() => {
+                console.log("Creating a new Cateogry")
+                router.push("/categoryCreateSheet")
+              }}
+            >
+              <View>
+                <AntDesign name="addfile" size={20} color={"rgba(0, 0, 0, 0.3)"} />
+                <Text>Add Category</Text>
+              </View>
+            </TouchableOpacity>
           </ScrollView>
         </View>
   }</Show>
