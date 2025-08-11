@@ -5,13 +5,14 @@ import { BlurView } from 'expo-blur';
 import { $TextInput } from "@legendapp/state/react-native";
 import { observable } from '@legendapp/state';
 import { ScrollView } from 'react-native-gesture-handler';
-import { AntDesign, MaterialIcons } from '@expo/vector-icons';
+import { AntDesign, Entypo, FontAwesome6, MaterialIcons } from '@expo/vector-icons';
 import { Memo, Show } from '@legendapp/state/react';
 import dayjs from 'dayjs';
 import { RRule } from 'rrule';
 import { Category$ } from '@/utils/stateManager';
 import Animated, { useAnimatedKeyboard, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { time$ } from './timeGoalSelectSheet';
 
 // TODO — remove start_date
 interface categoryItem {
@@ -165,6 +166,10 @@ const create = () => {
                 placeholderTextColor={'rgba(0, 0, 0, 0.4)'}
               />
 
+              <View style={{
+                flexDirection: 'row',
+                justifyContent: 'space-between'
+              }}>
               <ScrollView horizontal={true} showsHorizontalScrollIndicator={false} keyboardShouldPersistTaps={'always'}>
                 <View style={styles.actions}>
                   <TouchableOpacity style={styles.actionButton} onPress={() => { router.push("/dateSelectSheet" )}}>
@@ -199,8 +204,19 @@ const create = () => {
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.actionButton} onPress={() => { router.push('/timeGoalSelectSheet')}}>
-                    <AntDesign name="clockcircleo" size={15} color="rgba(0, 0, 0, 0.75)"/>
-                    <Text style={styles.actionText}>Time Goal</Text>
+                    <Memo>
+                      {() => {
+                        if (task$.timeGoal.get())
+                          return <>
+                            <AntDesign name="clockcircleo" size={15} color="rgba(200, 0, 0, 0.75)"/>
+                            <Text style={[styles.actionText, {color: "rgba(200, 0, 0, 0.75)"}]}>{`${time$.hours.get()}:${time$.minutes.get() < 10 ? '0' : ''}${time$.minutes.get()}`}</Text>
+                          </>
+                        return <>
+                          <AntDesign name="clockcircleo" size={15} color="rgba(0, 0, 0, 0.75)"/>
+                          <Text style={styles.actionText}>Time Goal</Text>
+                        </>
+                      }}
+                    </Memo>
                   </TouchableOpacity>
 
                   <TouchableOpacity style={styles.actionButton} onPress={() => {
@@ -233,6 +249,24 @@ const create = () => {
 
                 </View>
               </ScrollView>
+
+                <TouchableOpacity
+                  style={{
+                    borderRadius: 100,
+                    backgroundColor: 'rgba(200, 0, 0, 0.75)',
+                    aspectRatio: 1,
+                    width: 40,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                  }}
+                  onPress={() => {
+                    // TODO — Add functionality for this later
+                    console.log("THIS WILL ADD ITEM TO DATABASE!!!!")
+                  }}
+                >
+                  <Entypo name="arrow-up" size={20} color="white" />
+                </TouchableOpacity>
+              </View>
             </View>
     </ScrollView>
 <CategoryPopup />

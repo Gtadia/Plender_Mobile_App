@@ -8,7 +8,7 @@ import { observable } from '@legendapp/state';
 // import { Picker } from 'react-native-wheel-pick';
 import Picker from '@/components/TimeCarousel/Picker';
 
-const time$ = observable({
+export const time$ = observable({
   hours: 1,
   minutes: 0,
 });
