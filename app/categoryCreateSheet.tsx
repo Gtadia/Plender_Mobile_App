@@ -1,38 +1,27 @@
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React from 'react'
-import { Stack, useNavigation } from 'expo-router'
-import { task$ } from './create'
-import { Memo } from '@legendapp/state/react';
-import { observable } from '@legendapp/state';
-// import Picker from '@/components/TimeCarousel/Picker';
-// import { Picker } from 'react-native-wheel-pick';
-import Picker from '@/components/TimeCarousel/Picker';
+import React, { useRef } from 'react';
+import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import ColorPicker, { Panel3, Preview } from 'reanimated-color-picker';
+import { task$ } from './create';
+import { Stack, useNavigation } from 'expo-router';
+import { Memo, useObservable } from '@legendapp/state/react';
+import { $TextInput } from '@legendapp/state/react-native';
+import { Category$, CategoryIDCount$ } from '@/utils/stateManager';
 
-const time$ = observable({
-  hours: 1,
-  minutes: 0,
-});
-
-const ITEM_HEIGHT = 34;
-const VISIBLE_ITEMS = 5;
-const pillOffsetX = 0;
-const pillOffsetY = 0;
-const pillColor = "rgba(0, 0, 0, 0.22)";
-// const pillBorderColor = "rgba(0, 0, 0, 0.22)";
-const pickerPadding = 70
-
-// TODO — move this somewhere so that it only renders ONCE!!!
-const minutes = new Array(60).fill(0).map((_, index) => (index));
-const hours = new Array(24).fill(0).map((_, index) => (index));
-
-const CategoryCreateSheet = () => {
+export default function CategoryCreateSheet() {
   const navigation = useNavigation();
   let { width, height } = Dimensions.get("window");
+  const newCategory$ = useObservable({
+    label: '',
+    color: '#FF0000',
+    id: Number(CategoryIDCount$.get())
+  })
+  // read once for initial color (don’t subscribe the picker)
+  const initialHex = useRef(newCategory$.color.get()).current;
+  // local live preview while dragging (no global re-render storm)
 
   return (
     <View style={{ flex: 1 }}>
-      <Stack.Screen name='TimeGoalSelectSheet
-      ' options={{
+      <Stack.Screen name='dateSelectSheet' options={{
           headerShown: false,
           presentation: "transparentModal",
       }}/>
@@ -43,60 +32,70 @@ const CategoryCreateSheet = () => {
           <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
             <Text>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Select Goal</Text>
+          <Text style={styles.title}>Select Date</Text>
           <TouchableOpacity style={styles.button} onPress={() => {
-            task$.timeGoal.set(time$.hours.get() * 3600 + time$.minutes.get() * 60)
-            console.log("The time has been sent: ", time$.hours.get(), time$.minutes.get(), task$.timeGoal.get())
+            console.log("New Category ", newCategory$.label.get(), newCategory$.color.get(), newCategory$.id.get())
+            console.log("Task ", task$.category.label.get(), task$.category.color.get(), task$.category.id.get())
+            console.log("ID Count ", CategoryIDCount$.get())
+
+            Category$.push(newCategory$.get());
+            task$.category.set(newCategory$.get())
+            CategoryIDCount$.set((prev) => prev + 1)
+
+            console.log("New Category ", newCategory$.label.get(), newCategory$.color.get(), newCategory$.id.get())
+            console.log("Task ", task$.category.label.get(), task$.category.color.get(), task$.category.id.get())
+            console.log("ID Count ", CategoryIDCount$.get())
             navigation.goBack()
           }}>
             <Text>Done</Text>
           </TouchableOpacity>
         </View>
 
-        <View>
-          <View style={{alignItems: 'center'}}>
-          <View style={{ maxWidth: 400 | width, paddingHorizontal: 0, alignSelf: 'center', }}>
-              <Memo>
-                {() => {
-                  // TODO — Gray out DONE button if time is set to 0!!!!
-                  const hourString = time$.hours.get() > 1 ? "hours" : "hour"
-                  const minuteString = time$.minutes.get() > 1 ? "minutes" : "minute"
 
-                  const goalString = `${time$.hours.get() < 1 ? '' : `${time$.hours.get()} ${hourString}`} ${time$.minutes.get() < 1 ? '' : `${time$.minutes.get()} ${minuteString}`}`
-                  return (
-                    <>
-                      <View style={ [styles.subMenuSquare, styles.subMenuSquarePadding] }>
-                        <View style={[ ]}>
-
-                        </View>
-                        <View style={styles.subMenuBar}>
-                          <Text style={styles.menuText}>Time Goal</Text>
-                          <Text style={styles.menuTextEnd}>{goalString}</Text>
-                        </View>
-
-                        <View style={{ maxWidth: 380 }}>
-                          <View style={{ flexDirection: "row", gap: 12, alignItems: "center", justifyContent: 'center', backgroundColor: 'transparent', paddingVertical: 14, paddingHorizontal: pickerPadding }}>
-                            <Picker values={hours} legendState={time$.hours} defaultValue={time$.hours} unit="hours" enableSelectBox={true} ITEM_HEIGHT={34} VISIBLE_ITEMS={5}/>
-                            <Picker values={minutes} legendState={time$.minutes} defaultValue={time$.minutes} unit="min" enableSelectBox={true} ITEM_HEIGHT={34} VISIBLE_ITEMS={5}/>
-                            {/* <View style={styles.pill} /> */}
-                          </View>
-                        </View>
-                      </View>
-                    </>
-                  )
-                }}
-              </Memo>
+        <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', }}>
+          {/* TEXT */}
+          <View style={[ styles.subMenuSquare, styles.subMenuSquarePadding ]}>
+            <View style={[styles.subMenuBar, { alignItems: 'center' }]}>
+              <Text style={styles.menuText}>Name</Text>
+            </View>
+            <View style={{ paddingVertical: 15}}>
+               <$TextInput
+                $value={newCategory$.label}
+                style={styles.textInput}
+                autoFocus={true}
+                multiline
+                placeholder={"Category Name"}
+                placeholderTextColor={'rgba(0, 0, 0, 0.5)'}
+              />
             </View>
           </View>
-        </View>
+          {/* TEXT */}
 
+          {/* COLOR */}
+          <View style={[ styles.subMenuSquare ]}>
+            <View style={[styles.subMenuBar, styles.subMenuSquarePadding, { alignItems: 'center' }]}>
+              <Text style={styles.menuText}>Color</Text>
+              {/* <Text style={styles.menuTextEnd}>Something</Text> */}
+              <Memo>
+                {() => (<View style={{ height: 20, aspectRatio: 1, borderRadius: 100, backgroundColor: newCategory$.color.get() }} />)}
+              </Memo>
+            </View>
+            <View style={{ paddingVertical: 15}}>
+              <ColorPicker
+                value={initialHex}                       // initial-only; do not control per-frame
+                style={{ width: '70%', aspectRatio: 1, alignSelf: 'center' }}
+                onCompleteJS={(c) => newCategory$.color.set(c.hex)} // commit after gesture ends
+              >
+                <Panel3 centerChannel="saturation" />
+              </ColorPicker>
+            </View>
+          </View>
+          {/* COLOR */}
         </View>
+      </View>
     </View>
-  )
+  );
 }
-
-export default CategoryCreateSheet
-
 
 const styles = StyleSheet.create({
   background: {
@@ -155,17 +154,9 @@ const styles = StyleSheet.create({
   },
   button: {
   },
-  pill: {
-    position: "absolute",
-    right: pickerPadding, // was missing before
-    // top: (ITEM_HEIGHT * VISIBLE_ITEMS - ITEM_HEIGHT) / 2,
-    height: ITEM_HEIGHT,
-    width: '100%',
-    backgroundColor: pillColor,
-    borderRadius: 12,
-    zIndex: 20,
-    elevation: 20,
-    pointerEvents: "none",
-    // transform: [{ translateX: pillOffsetX }, { translateY: pillOffsetY }],
+  textInput: {
+    color: 'rgba(0, 0, 0)',
+    fontSize: 18,
+    fontWeight: 500,
   },
 })

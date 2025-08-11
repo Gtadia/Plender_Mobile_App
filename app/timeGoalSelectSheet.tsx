@@ -66,9 +66,6 @@ const TimeGoalSelectSheet = () => {
                   return (
                     <>
                       <View style={ [styles.subMenuSquare, styles.subMenuSquarePadding] }>
-                        <View style={[ ]}>
-
-                        </View>
                         <View style={styles.subMenuBar}>
                           <Text style={styles.menuText}>Time Goal</Text>
                           <Text style={styles.menuTextEnd}>{goalString}</Text>

@@ -51,6 +51,7 @@
     "react-native-swiper-flatlist": "^3.2.5",
     "react-native-ui-datepicker": "^3.1.2",
     "react-native-wheel-pick": "^1.2.6",
+    "reanimated-color-picker": "^4.1.0",
     "rrule": "^2.8.1",
     "tailwindcss": "^3.4.17"
   },

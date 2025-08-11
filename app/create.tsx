@@ -22,7 +22,7 @@ interface categoryItem {
 export const task$ = observable({
   title: '',
   description: '',
-  category: {label: '', color: '', id: 0},
+  category: {label: '', color: 'rgba(255, 0, 0, 1)', id: 0},
   start_date: null,
   rrule: null,
   isRepeating: false,
@@ -226,9 +226,10 @@ const create = () => {
                     </Memo>
                   </TouchableOpacity>
 
-                  <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
+                  {/* Later for more options!!!  */}
+                  {/* <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
                     <MaterialIcons name="more-horiz" size={15} color="rgba(0, 0, 0, 0.75)"/>
-                  </TouchableOpacity>
+                  </TouchableOpacity> */}
 
                 </View>
               </ScrollView>
