@@ -1,10 +1,13 @@
 import { StyleSheet, View} from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
+import React from 'react';
+import AnimationToast from '@/components/animation-toast/animation-toast';
 
 export default function SettingsScreen() {
   return (
     <ScreenView style={styles.container}>
       <Text style={styles.title}>Settings</Text>
+      <AnimationToast />
     </ScreenView>
   );
 }

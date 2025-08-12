@@ -11,7 +11,6 @@ export async function initializeDB() {
     CREATE TABLE IF NOT EXISTS event (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
-      start_date TEXT NOT NULL,   -- ISO string
       rrule TEXT NOT NULL,         -- e.g., FREQ=WEEKLY;BYDAY=MO,WE
       -- Extra Fields
       category INTEGER NOT NULL DEFAULT 0, -- 0: no category
@@ -26,28 +25,26 @@ export async function initializeDB() {
 
 export async function createEvent({
   title,
-  startDate,
-  rrule = '',
-  category = 0,
-  timeGoal = 3600, // 1 hour in seconds
+  rrule,
+  timeGoal, // 1 hour in seconds
   timeSpent = 0,
+  category = 0,
   percentComplete = 0,
   description = '',
 
 }: {
   title: string;
-  startDate: string; // 'YYYY-MM-DDTHH:mm:ss'
-  rrule?: string;     // e.g., 'FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=2025-12-31'
-  category?: number;
-  timeGoal?: number;
+  rrule: string;     // e.g., 'FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=2025-12-31'
+  timeGoal: number;
   timeSpent?: number;
+  category?: number;
   percentComplete?: number;
   description?: string;
 }) {
-  console.log("TEST: ", { title, startDate, rrule, category, timeGoal, timeSpent, percentComplete, description });
+  console.log("TEST: ", { title, rrule, category, timeGoal, timeSpent, percentComplete, description });
   await db.runAsync(
-    `INSERT INTO event (title, start_date, rrule, category, timeGoal, timeSpent, percentComplete, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [title, startDate, rrule, category, timeGoal, timeSpent, percentComplete, description]
+    `INSERT INTO event (title, rrule, category, timeGoal, timeSpent, percentComplete, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [title, rrule, category, timeGoal, timeSpent, percentComplete, description]
   );
   console.log("TEST COMPLETED");
 }
@@ -62,8 +59,7 @@ export async function createEvent({
 
 //   for (const row of rows) {
 //     // console.log('occurrence row:', row);
-//     const fullRule = `DTSTART:${dayjs(row.start_date).format('YYYYMMDD')}T000000Z\nRRULE:FREQ=DAILY;UNTIL=20250901T000000Z`;
-//     const rule = RRule.fromString(fullRule);
+
 //     // console.log('Rule:', rule);
 
 //     const occurrences = rule.between(start, end);
@@ -76,6 +72,7 @@ export async function createEvent({
 
 //   return allOccurrences.sort((a, b) => a.date.getTime() - b.date.getTime());
 // }
+
 
 // 🟡 targetDate should be a Date object representing the specific day
 export async function getEventsForDate(targetDate: Date) {
@@ -92,7 +89,6 @@ export async function getEventsForDate(targetDate: Date) {
   for (const row of rows) {
     try {
       const rruleOptions = RRule.parseString(row.rrule);
-      rruleOptions.dtstart = new Date(row.start_date);
 
       const rule = new RRule(rruleOptions);
 
@@ -140,10 +136,6 @@ const fields: string[] = [];
   if (title !== undefined) {
     fields.push('title = ?');
     values.push(title);
-  }
-  if (startDate !== undefined) {
-    fields.push('start_date = ?');
-    values.push(startDate);
   }
   if (rrule !== undefined) {
     fields.push('rrule = ?');
@@ -204,7 +196,6 @@ export async function clearEvents() {
     CREATE TABLE event (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
-      start_date TEXT NOT NULL,       -- ISO string
       rrule TEXT NOT NULL,            -- e.g., FREQ=WEEKLY;BYDAY=MO,WE
       category INTEGER NOT NULL DEFAULT 0,   -- 0: no category
       timeGoal INTEGER NOT NULL,      -- in seconds

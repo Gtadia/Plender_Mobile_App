@@ -1,6 +1,29 @@
+// -------------------------------------------------------------
+// CategoryCreateSheet
+// -------------------------------------------------------------
+// Purpose:
+//   Modal sheet for creating a new category type and assigning it
+//   immediately to the current task.
+//
+// Key points:
+//   - Uses a local observable `newCategory$` for name, color, and ID
+//   - Color is selected using `reanimated-color-picker` (Panel3)
+//   - Name is entered via `$TextInput` (Legend state binding)
+//   - On "Done":
+//       • Adds new category to global `Category$`
+//       • Sets task$.category to the new category
+//       • Increments global `CategoryIDCount$`
+//   - Modal is presented as a transparent overlay via Expo Router
+//
+// Notes:
+//   - Color picker uses initialHex ref to avoid frame-by-frame re-renders
+//   - Category ID is generated from `CategoryIDCount$`
+//   - Minimum height for container is 500px, max height ~6/8 screen
+// -------------------------------------------------------------
+
 import React, { useRef } from 'react';
 import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import ColorPicker, { Panel3, Preview } from 'reanimated-color-picker';
+import ColorPicker, { Panel3 } from 'reanimated-color-picker';
 import { task$ } from './create';
 import { Stack, useNavigation } from 'expo-router';
 import { Memo, useObservable } from '@legendapp/state/react';

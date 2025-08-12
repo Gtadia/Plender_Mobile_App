@@ -12,8 +12,12 @@ interface categoryItem {
 export const Category$ = observable<categoryItem[]>([
   {label: 'test', color: '#FF0000', id: 0},
   {label: 'test test, 1 2 3 1 2 3 test', color: '#00FF00', id: 1},
+  {label: 'pop', color: '#0000FF', id: 2},
+  {label: 'deo', color: '#FF00FF', id: 3},
+  {label: 'deo', color: '#FF00FF', id: 4},
+  {label: 'deo', color: '#FF00FF', id: 5},
 ])
-export const CategoryIDCount$ = observable<number>(2) // TODO — Figure out what I want to do with ID and how I'm going to handle them...
+export const CategoryIDCount$ = observable<number>(Category$.get().length) // TODO — Figure out what I want to do with ID and how I'm going to handle them...
 
 
 

@@ -1,25 +1,13 @@
 import React from 'react';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Stack } from 'expo-router';
-import { View, Text } from 'react-native';
-
-// import { useColorScheme } from '@/components/useColorScheme';
-// import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
-// You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
-function TabBarIcon(props: {
-  name: React.ComponentProps<typeof FontAwesome>['name'];
-  color: string;
-}) {
-  return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
-}
+import { initializeDB } from '@/utils/database';
+import { useBackNavOverride } from '@/utils/useBackNavOverride';
 
 export default function TabLayout() {
-  // const colorScheme = useColorScheme();
-  const insets = useSafeAreaInsets();
-
+  // intialize sqlite database
+  initializeDB();
+  useBackNavOverride();   // Overrides default back behavior of Android
 
   return (
     <GestureHandlerRootView>
@@ -37,25 +25,6 @@ export default function TabLayout() {
           animation: "fade",
         }}/>
       </Stack>
-
-
-
-      {/* <View style={{
-        position: 'absolute',
-        bottom: insets.bottom + 60 + 5, // 60 is the height of the tab bar, 5 is the margin
-        right: 18,
-        alignSelf: 'center',
-        zIndex: 2,
-        backgroundColor: colorTheme$.colors.primary.get(),
-        width: 60,
-        height: 60,
-        borderRadius: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
-        elevation: 8,
-      }}>
-        <AntDesign name="plus" size={26} color="white" />
-      </View> */}
     </GestureHandlerRootView>
   );
 }
