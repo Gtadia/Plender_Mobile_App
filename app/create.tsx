@@ -305,9 +305,9 @@ const create = () => {
         {/* Floating category selector */}
         <CategoryPopup />
 
-        {/* Toast Popup warning/confirming event creation */}
-        <Toast />
       </KeyboardAvoidingView>
+      {/* Toast Popup warning/confirming event creation */}
+      <Toast />
     </View>
   )
 }
@@ -361,6 +361,13 @@ const addToDatabase = () => {
     // TODO — For testing purposes ONLY
     console.log("Event has successfully been submitted");
     getEventsForDate(new Date(submitTask.rrule.options.dtstart));
+
+    // TODO — Probably need to move <Toast /> to _layout
+    toastShow$.set({
+      type: 'error',
+      title: 'Missing Time',
+      description: "You must include a time goal",
+    })
   }
 }
 
