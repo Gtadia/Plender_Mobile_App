@@ -67,83 +67,50 @@ type Row = {
   tzid?: string | null;        // optional, if you’ll localize boundaries
 };
 
+
+// 🟡 targetDate should be a Date object representing the specific day
 export async function getEventsForDate(targetDate: Date) {
-  const rows: Row[] = await db.getAllAsync(`SELECT * FROM event`);
+  // console.log("FUNC IS CALLED WITH TARGET DATE: ", targetDate.toISOString());
+  const rows = await db.getAllAsync(`SELECT * FROM event`);
+  // console.log("Rows fetched: ", rows.length);
 
+  const matchingEvents: { title: string; date: Date }[] = [];
+
+  // 🟡 define a day window: start and end of the target day
   const startOfDay = dayjs(targetDate).startOf('day').toDate();
-  const endOfDay   = dayjs(targetDate).endOf('day').toDate();
-
-  const matches: { id: number; title: string; date: Date }[] = [];
+  const endOfDay = dayjs(targetDate).endOf('day').toDate();
 
   for (const row of rows) {
-    // Parse fields from DB
-    const dtstart = row.dtstart ? new Date(row.dtstart) : null;
-    const rdates: Date[] = safeParseDates(row.rdates);
-    const exdates: Date[] = safeParseDates(row.exdates);
+    try {
+      const rruleOptions = RRule.parseString(row.rrule);
 
-    // 1) If the row has an RRULE/RDATE/EXDATE, use an RRuleSet (handles exceptions properly)
-    if (row.rrule || rdates.length || exdates.length) {
-      if (!dtstart) {
-        console.warn('Skipping event missing DTSTART:', row);
-        continue;
+      const rule = new RRule(rruleOptions);
+
+      // Check if this event occurs *on* the target day
+      const occursOnDay = rule.between(startOfDay, endOfDay, true).length > 0;
+
+      if (occursOnDay) {
+        matchingEvents.push({
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          date: targetDate,
+          category: row.category,
+          timeGoal: row.timeGoal,
+          timeSpent: row.timeSpent,
+          percentComplete: row.percentComplete,
+        });
       }
-
-      const set = new RRuleSet();
-
-      // RRULE (recurrence pattern)
-      if (row.rrule) {
-        try {
-          const opts = RRule.parseString(row.rrule);
-          // CRITICAL: supply dtstart (parseString doesn’t include it)
-          opts.dtstart = dtstart;
-          set.rrule(new RRule(opts));
-        } catch (e) {
-          console.warn('Invalid RRULE:', row.rrule, e);
-          // fall through to use only RDATEs if present
-        }
-      }
-
-      // RDATEs (extra single occurrences)
-      for (const d of rdates) set.rdate(d);
-
-      // EXDATEs (skip specific dates)
-      for (const d of exdates) set.exdate(d);
-
-      // Get occurrences on this day (inclusive)
-      const occurrences = set.between(startOfDay, endOfDay, true);
-
-      for (const occ of occurrences) {
-        matches.push({ id: row.id, title: row.title, date: occ });
-      }
-      continue;
-    }
-
-    // 2) Non-recurring single event
-    if (dtstart) {
-      // If you store dtend, check interval overlap with the day;
-      // otherwise treat it as an instant occurring on dtstart’s day.
-      const occursSameDay =
-        dtstart >= startOfDay && dtstart <= endOfDay;
-
-      if (occursSameDay) {
-        matches.push({ id: row.id, title: row.title, date: dtstart });
-      }
+    } catch (e) {
+      console.warn('Invalid RRULE for row:', row, e);
     }
   }
 
-  return matches.sort((a, b) => a.date.getTime() - b.date.getTime());
+  return matchingEvents;
 }
 
-// Helpers
-function safeParseDates(jsonish?: string | null): Date[] {
-  if (!jsonish) return [];
-  try {
-    const arr = JSON.parse(jsonish) as string[];
-    return arr.map(s => new Date(s)).filter(d => !isNaN(d.getTime()));
-  } catch {
-    return [];
-  }
-}
+
+
 export async function updateEvent({
   id,
   title,

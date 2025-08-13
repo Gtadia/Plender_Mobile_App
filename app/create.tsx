@@ -416,8 +416,6 @@ const create = () => {
               <TouchableOpacity
                 style={styles.submitButton}
                 onPress={() => {
-                  // TODO — Add functionality for this later
-                  console.log("THIS WILL ADD ITEM TO DATABASE!!!!");
                   addToDatabase();
                   toastShow$.whereToDisplay.get() === 0 && navigation.goBack();
                 }}
@@ -439,7 +437,6 @@ const create = () => {
 };
 
 const addToDatabase = () => {
-  console.log("Button to add to database has been pressed");
   const submitTask = {
     title: task$.title.get(),
     description: task$.description.get(),
@@ -480,15 +477,14 @@ const addToDatabase = () => {
 
     createEvent(task)
       .then((events) => {
-        console.log("Event has been created: ", events);
-        // TODO — For testing purposes ONLY
-        getEventsForDate(new Date(submitTask.rrule.options.dtstart))
-          .then((events) => {
-            console.log("Event has successfully been submitted: ", events);
-          })
-          .catch((err) => {
-            console.error("Error Fetching Events", err);
-          });
+        // // TODO — For testing purposes ONLY
+        // getEventsForDate(new Date(submitTask.rrule.options.dtstart))
+        //   .then((events) => {
+        //     console.log("Event has successfully been submitted: ", events);
+        //   })
+        //   .catch((err) => {
+        //     console.error("Error Fetching Events", err);
+        //   });
       })
       .catch((err) => {
         console.error("Failed to create task: ", err);
