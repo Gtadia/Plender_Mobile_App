@@ -19,7 +19,17 @@ export const Category$ = observable<categoryItem[]>([
 ])
 export const CategoryIDCount$ = observable<number>(Category$.get().length) // TODO — Figure out what I want to do with ID and how I'm going to handle them...
 
-
+interface currentItem {
+  id: number,
+  title: string,
+  rrule: string,
+  timeGoal: number,
+  timeSpent: number,
+  percentComplete: number,
+  category: number,
+  description: string,
+}
+export const CurrentTask$ = observable<currentItem[]>(); // if empty, no current task, ONLY allow task!!
 
 
 

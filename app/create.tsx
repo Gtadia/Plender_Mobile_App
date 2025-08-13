@@ -32,7 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { time$ } from './timeGoalSelectSheet';
 import { Toast } from '@/components/animation-toast/components';
 import { toastShow$ } from '@/components/animation-toast/toastStore';
-import { createEvent, getEventsForDate } from '@/utils/database';
+import { clearEvents, createEvent, getEventsForDate } from '@/utils/database';
 
 interface categoryItem {
   label: string,
@@ -294,6 +294,7 @@ const create = () => {
                   // TODO — Add functionality for this later
                   console.log("THIS WILL ADD ITEM TO DATABASE!!!!")
                   addToDatabase();
+                  toastShow$.whereToDisplay.get() === 0 && navigation.goBack();
                 }}
               >
                 <Entypo name="arrow-up" size={20} color="white" />
@@ -306,7 +307,8 @@ const create = () => {
         <CategoryPopup />
 
       </KeyboardAvoidingView>
-      {/* Toast Popup warning/confirming event creation */}
+      {/* Toast Menu */}
+      {/* { toastShow$.whereToDisplay.get() == 1 && <Toast />} */}
       <Toast />
     </View>
   )
@@ -314,17 +316,6 @@ const create = () => {
 
 const addToDatabase = () => {
   console.log("Button to add to database has been pressed")
-
-/**
- * export const task$ = observable({
-  title: '',
-  description: '',
-  category: {label: '', color: 'rgba(255, 0, 0, 1)', id: 0},
-  rrule: null,
-  isRepeating: false,
-  timeGoal: 0,
-});
- */
   const submitTask = {
     title: task$.title.get(),
     description: task$.description.get(),
@@ -334,18 +325,23 @@ const addToDatabase = () => {
   }
 
   // TODO — Use logic to check if task is untitled (WHEN DISPLAYING). Saves memory in the long term.
+  console.log("Submit Task: ", submitTask)
   if (!submitTask.rrule)  // No start date (or repeats)
-    toastShow$.set({
+    toastShow$.set(({toggleFire}) => ({
       type: 'error',
       title: 'Missing Date',
       description: 'You must include a start date',
-    })
-  else if (!submitTask.timeGoal)  // Time Goal set to 0 (no time goal set)
-    toastShow$.set({
+      toggleFire: !toggleFire,
+      whereToDisplay: 1,
+    }))
+  else if (submitTask.timeGoal === 0)  // Time Goal set to 0 (no time goal set)
+    toastShow$.set(({toggleFire}) => ({
       type: 'error',
       title: 'Missing Time',
       description: "You must include a time goal",
-    })
+      toggleFire: !toggleFire,
+      whereToDisplay: 1,
+    }))
   else {
     // add to database
     const task = {
@@ -359,15 +355,23 @@ const addToDatabase = () => {
     createEvent(task);
 
     // TODO — For testing purposes ONLY
-    console.log("Event has successfully been submitted");
-    getEventsForDate(new Date(submitTask.rrule.options.dtstart));
+    console.log("Getting events for: ", submitTask.rrule.options.dtstart);
+    getEventsForDate(new Date(submitTask.rrule.options.dtstart)).then(events => {
+      console.log("Event has successfully been submitted: ", events);
+    }).catch(err => {
+      console.error("Error Fetching Events", err);
+    })
+
+    // TODO — Add task to current day legendState cache if the startDate includes today.
 
     // TODO — Probably need to move <Toast /> to _layout
-    toastShow$.set({
-      type: 'error',
-      title: 'Missing Time',
-      description: "You must include a time goal",
-    })
+    toastShow$.set(({toggleFire}) => ({
+      type: 'success',
+      title: 'Task Created',
+      description: "",
+      toggleFire: !toggleFire,
+      whereToDisplay: 0,
+    }))
   }
 }
 
