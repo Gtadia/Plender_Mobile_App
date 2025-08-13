@@ -2,6 +2,14 @@ import { StyleSheet, View, ScrollView } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { horizontalPadding } from '@/constants/globalThemeVar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { observable } from '@legendapp/state';
+import { getEventsForDate } from '@/utils/database';
+import dayjs from 'dayjs';
+
+const pageInfo$ = observable({
+  reload: false,
+  events: []
+})
 
 const CurrentTaskView = () => {
   const noTaskView = <View style={[taskStyles.container, {backgroundColor: 'gray'}]}>
@@ -19,12 +27,32 @@ const CurrentTaskView = () => {
   )
 }
 
+// TODO — Implement Tomorrow task views as well...
+const TodayTaskView = () => {
+  getEventsForDate(dayjs().startOf('date').toDate()).then((events) => {
+    pageInfo$.events.set(events)
+  })
+
+  pageInfo$.reload.onChange(() => {
+    getEventsForDate(dayjs().startOf('date').toDate()).then((events) => {
+      pageInfo$.events.set(events)
+    })
+  })
+  return (
+      pageInfo$.events.get().map((data, index) => {
+        return <View>
+          <Text key={data.id}>{data.label}</Text>
+        </View>
+      })
+  )
+}
+
 export default function TabOneScreen() {
   const insets = useSafeAreaInsets();
 
   return (
     <ScreenView style={styles.container}>
-      <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
+      <View style={[styles.titleContainer, { paddingTop: insets.top, marginBottom: 15, }]}>
         <Text style={[styles.title]}>Home</Text>
       </View>
       <ScrollView style={{ width: '100%', }}>
@@ -34,6 +62,8 @@ export default function TabOneScreen() {
   {/* Padding near bottom so users can scroll past UI components */}
 
   <CurrentTaskView />
+
+      <TodayTaskView />
 
 
 

@@ -477,14 +477,16 @@ const addToDatabase = () => {
 
     createEvent(task)
       .then((events) => {
-        // // TODO — For testing purposes ONLY
-        // getEventsForDate(new Date(submitTask.rrule.options.dtstart))
-        //   .then((events) => {
-        //     console.log("Event has successfully been submitted: ", events);
-        //   })
-        //   .catch((err) => {
-        //     console.error("Error Fetching Events", err);
-        //   });
+        // TODO — For testing purposes ONLY
+        console.log("Date being passed in: ", dayjs(submitTask.rrule.options.dtstart).toString(), dayjs().toDate().toString())
+        getEventsForDate(new Date(submitTask.rrule.options.dtstart))
+        // getEventsForDate(dayjs().toDate())
+          .then((events) => {
+            console.log("Event has successfully been submitted: ", events);
+          })
+          .catch((err) => {
+            console.error("Error Fetching Events", err);
+          });
       })
       .catch((err) => {
         console.error("Failed to create task: ", err);

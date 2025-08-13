@@ -31,7 +31,7 @@ interface currentItem {
 }
 export const CurrentTask$ = observable<currentItem[]>(); // if empty, no current task, ONLY allow task!!
 
-
+// TODO — Make a cache that just stores today's events + 100 most recently visisted events (not due today)
 
 
 
