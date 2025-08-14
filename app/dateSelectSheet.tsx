@@ -194,7 +194,7 @@ const DateSelectSheet = () => {
                     // design="material"
                     value={repeat$.startsOn.get().toDate()}
                     onChange={(e, date) => {
-                      repeat$.startsOn.set(moment(date).startOf("day"));
+                      repeat$.startsOn.set(moment(date));
                     }}
                   />
                 </View>
@@ -377,7 +377,7 @@ const DateSelectSheet = () => {
                                       value={repeat$.endsOn.get().toDate()}
                                       onChange={(e, date) =>
                                         repeat$.endsOn.set(
-                                          moment(date).startOf("day")
+                                          moment(date)
                                         )
                                       }
                                     />
