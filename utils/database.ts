@@ -67,6 +67,16 @@ type Row = {
   tzid?: string | null;        // optional, if you’ll localize boundaries
 };
 
+interface eventsType {
+  id: number;
+  title: string;
+  description: string;
+  date: string;
+  category: number;
+  timeGoal: number;
+  timeSpent: number;
+  percentComplete: number;
+}
 
 // 🟡 targetDate should be a Date object representing the specific day
 export async function getEventsForDate(targetDate: Date) {
@@ -74,7 +84,7 @@ export async function getEventsForDate(targetDate: Date) {
   const rows = await db.getAllAsync(`SELECT * FROM event`);
   // console.log("Rows fetched: ", rows.length);
 
-  const matchingEvents: { title: string; date: Date }[] = [];
+  const matchingEvents: eventsType[] = [];
 
   // 🟡 define a day window: start and end of the target day
   const startOfDay = dayjs(targetDate).startOf('day').toDate();

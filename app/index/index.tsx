@@ -1,9 +1,9 @@
-import { StyleSheet, View, ScrollView } from 'react-native';
+import { StyleSheet, View, ScrollView, Button } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { horizontalPadding } from '@/constants/globalThemeVar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { observable } from '@legendapp/state';
-import { getEventsForDate } from '@/utils/database';
+import { getAllEvents, getEventsForDate } from '@/utils/database';
 import dayjs from 'dayjs';
 
 const pageInfo$ = observable({
@@ -40,7 +40,7 @@ const TodayTaskView = () => {
   })
   return (
       pageInfo$.events.get().map((data, index) => {
-        return <View>
+        return <View key={index}>
           <Text key={data.id}>{data.label}</Text>
         </View>
       })
@@ -64,6 +64,23 @@ export default function TabOneScreen() {
   <CurrentTaskView />
 
       <TodayTaskView />
+
+<Button title={'Print all Events'} onPress={() => {
+  console.log("Printing Events")
+  getAllEvents().then((events) => {
+    events.map((e) => {
+      console.log(e)
+    })
+  })
+}}
+/>
+      {/* {
+getAllEvents().then((events) => {
+    events.map((e) => {
+      <Text>{e.rrule}</Text>
+    })
+  })
+      } */}
 
 
 

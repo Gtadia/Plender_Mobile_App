@@ -10,7 +10,7 @@ export default function TabLayout() {
   // intialize sqlite database
   initializeDB();
   useBackNavOverride();   // Overrides default back behavior of Android
-  clearEvents();
+  // clearEvents();
 
   return (
     <GestureHandlerRootView>
