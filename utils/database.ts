@@ -48,6 +48,9 @@ export async function createEvent({
     [title, rrule, category, timeGoal, timeSpent, percentComplete, description]
   );
   console.log("TEST COMPLETED");
+
+  // TODO — create event returns the event from the database (CHATGPT IT)
+  // return null;
 }
 
 type Row = {

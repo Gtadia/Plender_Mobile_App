@@ -46,7 +46,6 @@ const bottomSheet = () => {
             />
 
             <Button title="Select Date" onPress={() => {
-              // console.log("Selected Date: ", date$.get().toISOString());
               console.log("Selected Date: ", date?.toLocaleString());
               selectedDate$.set(date);
               navigation.goBack();

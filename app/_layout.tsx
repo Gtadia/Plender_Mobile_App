@@ -6,6 +6,11 @@ import { useBackNavOverride } from '@/utils/useBackNavOverride';
 import { Toast } from '@/components/animation-toast/components';
 import { toastShow$ } from '@/components/animation-toast/toastStore';
 import { Today$ } from '@/utils/stateManager';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
+import dayjs from 'dayjs';
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 export default function TabLayout() {
   // intialize sqlite database
@@ -13,7 +18,13 @@ export default function TabLayout() {
   useBackNavOverride();   // Overrides default back behavior of Android
   // clearEvents();
 
+  // Set dayjs timezone
+  const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  dayjs.tz.setDefault(localZone);
+  console.log("Default timezone set to:", localZone);
+
   // Load Today's Event's
+  console.log("Initialize DB cache")
   getEventsForDate(new Date()).then((events) => {
     Today$.set(events);
   })

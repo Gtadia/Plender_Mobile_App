@@ -43,7 +43,7 @@ import {
 import { Memo, Show } from "@legendapp/state/react";
 import dayjs from "dayjs";
 import { RRule } from "rrule";
-import { Category$ } from "@/utils/stateManager";
+import { Category$, Today$ } from "@/utils/stateManager";
 import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -477,25 +477,25 @@ const addToDatabase = () => {
 
     createEvent(task)
       .then((events) => {
-        // TODO — For testing purposes ONLY
+        // For testing purposes ONLY
         console.log("Date being passed in: ", dayjs(submitTask.rrule.options.dtstart).toString(), dayjs().toDate().toString())
         getEventsForDate(new Date(submitTask.rrule.options.dtstart))
-        // getEventsForDate(dayjs().toDate())
           .then((events) => {
             console.log("Event has successfully been submitted: ", events);
           })
           .catch((err) => {
             console.error("Error Fetching Events", err);
           });
+
+        // // TODO — Add task to current day legendState cache if the startDate includes today.
+        // if (submitTask.rrule.between(dayjs().startOf('day'), dayjs().endOf('day'), true).length > 0) {
+        //   Today$.push()
+        // }
       })
       .catch((err) => {
         console.error("Failed to create task: ", err);
       });
 
-
-    // TODO — Add task to current day legendState cache if the startDate includes today.
-
-    // TODO — Probably need to move <Toast /> to _layout
     toastShow$.set(({ toggleFire }) => ({
       type: "success",
       title: "Task Created",

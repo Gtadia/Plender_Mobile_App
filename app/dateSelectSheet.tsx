@@ -18,7 +18,6 @@
 // -------------------------------------------------------------
 
 import {
-  Button,
   Dimensions,
   Pressable,
   ScrollView,
@@ -29,7 +28,6 @@ import {
 } from "react-native";
 import React from "react";
 import { Stack, useNavigation } from "expo-router";
-import { BlurView } from "expo-blur";
 import dayjs from "dayjs";
 import { AntDesign } from "@expo/vector-icons";
 import { task$ } from "./create";
@@ -79,59 +77,38 @@ const dayOfWeekRrule = [
 // Build & set RRule into task$
 // -------------------------------------------------------------
 const AddRrule = () => {
-  let rrule = new RRule({ dtstart: repeat$.startsOn.get().toDate() });
-  console.log("The DTSTART Date was: ", repeat$.startsOn.get().toString());
+  const dtstart = repeat$.startsOn.peek().hour(12).minute(0).second(0).millisecond(0).toDate(); // “noon trick” optional
 
-  if (!repeat$.isRepeat.get()) {
-    task$.isRepeating.set(false);
-    rrule = new RRule({
-      dtstart: repeat$.startsOn.get().toDate(),
-      interval: 1,
-      freq: RRule.DAILY,
-      until: repeat$.startsOn.get().toDate(),
-    });
-  } else {
-    task$.isRepeating.set(true);
+  const base: Partial<RRule.Options> = {
+    dtstart,
+    freq:
+      repeat$.type.peek() === 'Day'  ? RRule.DAILY  :
+      repeat$.type.peek() === 'Week' ? RRule.WEEKLY :
+      repeat$.type.peek() === 'Month'? RRule.MONTHLY:
+                                      RRule.YEARLY,
+    interval: repeat$.isRepeat.peek() ? parseInt(repeat$.num.peek() || '1', 10) : 1,
+    // wkst: RRule.MO, // optional
+  };
 
-    let freq;
-    switch (repeat$.type.get()) {
-      case "Day":
-        freq = RRule.DAILY;
-        break;
-      case "Week":
-        freq = RRule.WEEKLY;
-        rrule = new RRule({
-          ...rrule.options,
-          byweekday: dayOfWeekRrule.filter((_, i) => repeat$.weeks[i].get()),
-        });
-        break;
-      case "Month":
-        freq = RRule.MONTHLY;
-        break;
-      case "Year":
-        freq = RRule.YEARLY;
-        break;
-      default:
-        freq = RRule.DAILY;
-    }
-
-    rrule = new RRule({
-      ...rrule.options,
-      interval: parseInt(repeat$.num.get()),
-      freq,
-    });
-
-    if (repeat$.endsOnMode.get()) {
-      rrule = new RRule({
-        ...rrule.options,
-        until: repeat$.endsOn.get().toDate(),
-      });
-    }
+  // Only add byweekday for weekly rules:
+  if (base.freq === RRule.WEEKLY) {
+    const days = [RRule.SU,RRule.MO,RRule.TU,RRule.WE,RRule.TH,RRule.FR,RRule.SA]
+      .filter((_, i) => repeat$.weeks[i].peek());
+    (base as RRule.Options).byweekday = days.length ? days : [RRule.weekday(dayjs(dtstart).day())];
   }
 
-  task$.rrule.set(rrule);
+  // Only add 'until' if "Ends On" is chosen:
+  if (repeat$.isRepeat.peek() && repeat$.endsOnMode.peek()) {
+    (base as RRule.Options).until = repeat$.endsOn.peek().endOf('day').toDate();
+  }
 
-  console.log("The Completed RRule, ", rrule.toText());
+  const rule = !repeat$.isRepeat.peek() || repeat$.type.peek() === 'None'
+    ? new RRule({ dtstart, freq: RRule.DAILY, interval: 1, until: dtstart }) // single occurrence
+    : new RRule(base as RRule.Options);
+
+  task$.rrule.set(rule);
+
+  // console.log("The Completed RRule, ", rrule.toText());
   console.log("isRepeat ", repeat$.isRepeat.get());
 };
 
