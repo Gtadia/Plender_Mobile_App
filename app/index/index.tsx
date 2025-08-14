@@ -5,10 +5,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { observable } from '@legendapp/state';
 import { getAllEvents, getEventsForDate } from '@/utils/database';
 import dayjs from 'dayjs';
+import { Today$ } from '@/utils/stateManager';
+import { Memo } from '@legendapp/state/react';
 
 const pageInfo$ = observable({
   reload: false,
-  events: []
 })
 
 const CurrentTaskView = () => {
@@ -29,19 +30,23 @@ const CurrentTaskView = () => {
 
 // TODO — Implement Tomorrow task views as well...
 const TodayTaskView = () => {
-  getEventsForDate(dayjs().startOf('date').toDate()).then((events) => {
-    pageInfo$.events.set(events)
-  })
-
   pageInfo$.reload.onChange(() => {
     getEventsForDate(dayjs().startOf('date').toDate()).then((events) => {
-      pageInfo$.events.set(events)
+      Today$.set(events)
     })
   })
   return (
-      pageInfo$.events.get().map((data, index) => {
+      Today$.get().map((data, index) => {
         return <View key={index}>
-          <Text key={data.id}>{data.label}</Text>
+          <Memo>
+            {() => {
+
+              // TODO — render the events
+              return (
+                <Text>{data.title}</Text>
+              )
+            }}
+          </Memo>
         </View>
       })
   )
