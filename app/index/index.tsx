@@ -4,11 +4,9 @@ import { horizontalPadding } from "@/constants/globalThemeVar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { observable } from "@legendapp/state";
 import { getAllEvents, getEventsForDate } from "@/utils/database";
-import dayjs from "dayjs";
+import moment from 'moment';
 import { Today$ } from "@/utils/stateManager";
 import { Memo } from "@legendapp/state/react";
-import timezone from "dayjs/plugin/timezone";
-dayjs.extend(timezone);
 
 // TODO — for drag down to reload
 const pageInfo$ = observable({
@@ -38,7 +36,7 @@ const CurrentTaskView = () => {
 // TODO — Implement Tomorrow task views as well...
 const TodayTaskView = () => {
   pageInfo$.reload.onChange(() => {
-    getEventsForDate(dayjs().startOf("date").toDate()).then((events) => {
+    getEventsForDate(moment().startOf("day").toDate()).then((events) => {
       Today$.set(events);
     });
   });
@@ -60,8 +58,6 @@ const TodayTaskView = () => {
 
 export default function TabOneScreen() {
   const insets = useSafeAreaInsets();
-  dayjs.locale('ny');
-  dayjs.tz.setDefault('America/New_York');
 
   return (
     <ScreenView style={styles.container}>
@@ -96,8 +92,8 @@ export default function TabOneScreen() {
         <Button
           title={"Print Today's Events"}
           onPress={() => {
-            console.debug("Printing Today's Events ", dayjs().toLocaleString());
-            getEventsForDate(dayjs().toDate()).then((events) => {
+            console.debug("Printing Today's Events ", moment().toDate().toString());
+            getEventsForDate(moment().toDate()).then((events) => {
               events.map((e) => {
                 console.warn(e);
               });
@@ -110,11 +106,11 @@ export default function TabOneScreen() {
             // TODO — REMEMBER that dayjs() keeps defaulting to UTC so use .startOf('day') to combat it because this fixes it for some reason
             console.debug(
               "Printing Tomorrows's Events ",
-              dayjs().add(1, "day").startOf("day").toString(),
+              moment().add(1, "day").startOf("day").toString(),
               new Date().toString()
             );
             getEventsForDate(
-              dayjs().add(1, "day").startOf("day").toDate()
+              moment().add(1, "day").startOf("day").toDate()
             ).then((events) => {
               events.map((e) => {
                 console.warn(e);

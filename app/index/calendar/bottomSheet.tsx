@@ -3,13 +3,13 @@ import React, { useState } from 'react'
 import { useNavigation } from 'expo-router'
 import { BlurView } from 'expo-blur';
 import DateTimePicker, { useDefaultStyles } from 'react-native-ui-datepicker';
-import dayjs, { Dayjs } from 'dayjs';
+import moment, { Moment } from 'moment';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { selectedDate$ } from './rowCalendar';
 
 const bottomSheet = () => {
   const navigation = useNavigation();
-  const [date, setDate] = useState<Dayjs>(selectedDate$.get());
+  const [date, setDate] = useState<Moment>(selectedDate$.get());
   let { height } = Dimensions.get("window");
 
   return (
@@ -30,7 +30,7 @@ const bottomSheet = () => {
               // date={date$.get()}
               // onChange={(event) => {date$.set(event.date)}}
               date={date}
-              onChange={(event) => {setDate(dayjs(event.date))}}
+              onChange={(event) => {setDate(moment(event.date))}}
               // style={{  }}
               styles={{
                 ...useDefaultStyles,

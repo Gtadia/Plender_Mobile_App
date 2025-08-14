@@ -11,8 +11,7 @@ import {
   Button,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import dayjs, { Dayjs } from 'dayjs';
-import isoWeek from 'dayjs/plugin/isoWeek';
+import moment from 'moment';
 import VerticalProgressBar from '@/components/custom_ui/VerticalProgressBar';
 import { clearEvents, createEvent, getEventOccurrences, getEventsForDate, initializeDB } from '@/utils/database';
 import { observable, observe } from '@legendapp/state';
@@ -26,17 +25,15 @@ import { ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { horizontalPadding } from '@/constants/globalThemeVar';
 
-dayjs.extend(isoWeek);
-
 const { width } = Dimensions.get('window');
 
-export const selectedDate$ = observable(dayjs());
+export const selectedDate$ = observable(moment());
 
 export default function FlatListSwiperExample() {
   const weekListRef = useRef(null);
   const dayListRef = useRef(null);
 
-  const [selectedDate, setSelectedDate] = useState(dayjs());
+  const [selectedDate, setSelectedDate] = useState(moment());
   const [weekOffset, setWeekOffset] = useState(0);
   const [prevWeekIndex, setPrevWeekIndex] = useState(1);
   const [prevDayIndex, setPrevDayIndex] = useState(1);
@@ -67,7 +64,7 @@ export default function FlatListSwiperExample() {
     setSelectedDate(use$(selectedDate$))
     console.log("DATE SELECTED: ", (selectedDate$.get()));
 
-    const base = dayjs().add(weekOffset, 'week').startOf('week');
+    const base = moment().add(weekOffset, 'week').startOf('week');
    return [-1, 0, 1].map((offset) =>
       Array.from({ length: 7 }).map((_, i) => {
         const date = base.add(offset, 'week').add(i, 'day');
@@ -207,7 +204,7 @@ export default function FlatListSwiperExample() {
 
                       return (
                           data.map((event, index) => (
-                            <Text key={index}>{event.title} - {dayjs(event.date).format('YYYY-MM-DD')}</Text>
+                            <Text key={index}>{event.title} - {moment(event.date).format('YYYY-MM-DD')}</Text>
                           ))
                       )
                     })

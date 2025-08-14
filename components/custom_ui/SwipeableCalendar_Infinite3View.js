@@ -7,16 +7,13 @@ import Animated, {
   withSpring,
   runOnJS,
 } from 'react-native-reanimated';
-import dayjs from 'dayjs';
-import isoWeek from 'dayjs/plugin/isoWeek';
-
-dayjs.extend(isoWeek);
+import moment from 'moment';
 
 const { width } = Dimensions.get('window');
 
 const getWeek = (date) => {
-  const start = dayjs(date).startOf('isoWeek');
-  return Array.from({ length: 7 }, (_, i) => start.add(i, 'day'));
+  const start = moment(date).startOf('isoWeek');
+  return Array.from({ length: 7 }, (_, i) => start.clone().add(i, 'day'));
 };
 
 const WeekView = ({ week, activeDate, onDayPress }) => (
@@ -42,7 +39,7 @@ const WeekView = ({ week, activeDate, onDayPress }) => (
 );
 
 export default function SwipeableCalendar() {
-  const baseDateRef = useRef(dayjs());
+  const baseDateRef = useRef(moment());
   const [activeDate, setActiveDate] = useState(baseDateRef.current);
   const indexRef = useRef(1); // start on middle view (index = 1)
   const weeksRef$ = use([   // TODO — LegendApp 

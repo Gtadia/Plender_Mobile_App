@@ -41,7 +41,7 @@ import {
   MaterialIcons,
 } from "@expo/vector-icons";
 import { Memo, Show } from "@legendapp/state/react";
-import dayjs from "dayjs";
+import moment from "moment";
 import { RRule } from "rrule";
 import { Category$, Today$ } from "@/utils/stateManager";
 import Animated, {
@@ -286,9 +286,7 @@ const create = () => {
                                   { color: "rgb(64, 160, 43)" },
                                 ]}
                               >
-                                {dayjs(task$.rrule.get().DTSTART).format(
-                                  "MMM D YYYY"
-                                )}
+                                {moment(task$.rrule.get().DTSTART).format("MMM D YYYY")}
                               </Text>
                               {(() => {
                                 return task$.isRepeating.get() ? (
@@ -478,7 +476,7 @@ const addToDatabase = () => {
     createEvent(task)
       .then((events) => {
         // For testing purposes ONLY
-        console.log("Date being passed in: ", dayjs(submitTask.rrule.options.dtstart).toString(), dayjs().toDate().toString())
+        console.log("Date being passed in: ", moment(submitTask.rrule.options.dtstart).toString(), moment().toDate().toString())
         getEventsForDate(new Date(submitTask.rrule.options.dtstart))
           .then((events) => {
             console.log("Event has successfully been submitted: ", events);

@@ -28,7 +28,7 @@ import {
 } from "react-native";
 import React from "react";
 import { Stack, useNavigation } from "expo-router";
-import dayjs from "dayjs";
+import moment from "moment";
 import { AntDesign } from "@expo/vector-icons";
 import { task$ } from "./create";
 import { RRule } from "rrule";
@@ -36,6 +36,7 @@ import { Memo, Show } from "@legendapp/state/react";
 import { observable } from "@legendapp/state";
 import { Picker } from "react-native-wheel-pick";
 import RNDateTimePicker from "@react-native-community/datetimepicker";
+import { DateTime } from "luxon";
 
 // -------------------------------------------------------------
 // Observable state for repeat settings
@@ -46,9 +47,9 @@ const repeat$ = observable({
   type: "None", // Options: None, Day, Week, Month, Year
   weeks: [false, false, false, false, false, false, false],
   isWeeks: false, // true if weekly recurrence enabled
-  endsOn: dayjs().add(1, "day"), // end date if endsOnMode=true
+  endsOn: moment().add(1, "day"), // end date if endsOnMode=true
   endsOnMode: false, // false = Never, true = Ends On
-  startsOn: dayjs(), // start date
+  startsOn: moment(), // start date
 
   hours: 1, // not currently used here
   minutes: 0, // not currently used here
@@ -77,34 +78,47 @@ const dayOfWeekRrule = [
 // Build & set RRule into task$
 // -------------------------------------------------------------
 const AddRrule = () => {
-  const dtstart = repeat$.startsOn.peek().hour(12).minute(0).second(0).millisecond(0).toDate(); // “noon trick” optional
+  const dtstart = repeat$.startsOn
+    .peek()
+    .hour(12)
+    .minute(0)
+    .second(0)
+    .millisecond(0)
+    .toDate(); // moment syntax is same here
 
   const base: Partial<RRule.Options> = {
     dtstart,
     freq:
-      repeat$.type.peek() === 'Day'  ? RRule.DAILY  :
-      repeat$.type.peek() === 'Week' ? RRule.WEEKLY :
-      repeat$.type.peek() === 'Month'? RRule.MONTHLY:
-                                      RRule.YEARLY,
-    interval: repeat$.isRepeat.peek() ? parseInt(repeat$.num.peek() || '1', 10) : 1,
+      repeat$.type.peek() === "Day"
+        ? RRule.DAILY
+        : repeat$.type.peek() === "Week"
+        ? RRule.WEEKLY
+        : repeat$.type.peek() === "Month"
+        ? RRule.MONTHLY
+        : RRule.YEARLY,
+    interval: repeat$.isRepeat.peek()
+      ? parseInt(repeat$.num.peek() || "1", 10)
+      : 1,
     // wkst: RRule.MO, // optional
   };
 
   // Only add byweekday for weekly rules:
   if (base.freq === RRule.WEEKLY) {
-    const days = [RRule.SU,RRule.MO,RRule.TU,RRule.WE,RRule.TH,RRule.FR,RRule.SA]
-      .filter((_, i) => repeat$.weeks[i].peek());
-    (base as RRule.Options).byweekday = days.length ? days : [RRule.weekday(dayjs(dtstart).day())];
+    const days = dayOfWeekRrule.filter((_, i) => repeat$.weeks[i].peek());
+    (base as RRule.Options).byweekday = days.length
+      ? days
+      : [dayOfWeekRrule[moment(dtstart).day()]];
   }
 
   // Only add 'until' if "Ends On" is chosen:
   if (repeat$.isRepeat.peek() && repeat$.endsOnMode.peek()) {
-    (base as RRule.Options).until = repeat$.endsOn.peek().endOf('day').toDate();
+    (base as RRule.Options).until = repeat$.endsOn.peek().endOf("day").toDate();
   }
 
-  const rule = !repeat$.isRepeat.peek() || repeat$.type.peek() === 'None'
-    ? new RRule({ dtstart, freq: RRule.DAILY, interval: 1, until: dtstart }) // single occurrence
-    : new RRule(base as RRule.Options);
+  const rule =
+    !repeat$.isRepeat.peek() || repeat$.type.peek() === "None"
+      ? new RRule({ dtstart, freq: RRule.DAILY, interval: 1, until: dtstart }) // single occurrence
+      : new RRule(base as RRule.Options);
 
   task$.rrule.set(rule);
 
@@ -120,7 +134,7 @@ const DateSelectSheet = () => {
   let { height } = Dimensions.get("window");
 
   // Default: repeat on current day of the week
-  repeat$.weeks[dayjs().day()].set(true);
+  repeat$.weeks[moment().day()].set(true);
 
   return (
     <View style={{ flex: 1 }}>
@@ -177,10 +191,10 @@ const DateSelectSheet = () => {
                   <RNDateTimePicker
                     mode="date"
                     display="compact"
-                    design="material"
+                    // design="material"
                     value={repeat$.startsOn.get().toDate()}
                     onChange={(e, date) => {
-                      repeat$.startsOn.set(dayjs(date).startOf("day"));
+                      repeat$.startsOn.set(moment(date).startOf("day"));
                     }}
                   />
                 </View>
@@ -207,7 +221,7 @@ const DateSelectSheet = () => {
                     repeat$.type.get() === "None"
                       ? "None"
                       : `${repeat$.num.get()} ${repeat$.type.get()}${
-                          repeat$.num.get() > 1 ? "s" : ""
+                          Number(repeat$.num.get()) > 1 ? "s" : ""
                         }`;
 
                   return (
@@ -359,10 +373,12 @@ const DateSelectSheet = () => {
                                     <RNDateTimePicker
                                       mode="date"
                                       display="compact"
-                                      design="material"
+                                      // design="material"
                                       value={repeat$.endsOn.get().toDate()}
                                       onChange={(e, date) =>
-                                        repeat$.endsOn.set(dayjs(date).startOf('day'))
+                                        repeat$.endsOn.set(
+                                          moment(date).startOf("day")
+                                        )
                                       }
                                     />
                                   </Show>
