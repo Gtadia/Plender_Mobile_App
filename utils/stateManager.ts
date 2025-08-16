@@ -1,74 +1,83 @@
 import { observable } from "@legendapp/state";
-import { fonts } from '@/constants/types';
+import { fonts } from "@/constants/types";
 import { colorTheme } from "@/constants/Colors";
-import type { Theme } from '@/node_modules/@react-navigation/native/src/types';
+import type { Theme } from "@/node_modules/@react-navigation/native/src/types";
 import dayjs from "dayjs";
 
 interface categoryItem {
-  label: string,
-  color: string,
-  id: number
+  label: string;
+  color: string;
 }
-export const Category$ = observable<categoryItem[]>([
-  {label: 'test', color: '#FF0000', id: 0},
-  {label: 'test test, 1 2 3 1 2 3 test', color: '#00FF00', id: 1},
-  {label: 'pop', color: '#0000FF', id: 2},
-  {label: 'deo', color: '#FF00FF', id: 3},
-  {label: 'deo', color: '#FF00FF', id: 4},
-  {label: 'deo', color: '#FF00FF', id: 5},
-])
-export const CategoryIDCount$ = observable<number>(Category$.get().length) // TODO — Figure out what I want to do with ID and how I'm going to handle them...
+
+export const Category$ = observable<Record<number, categoryItem>>({
+  0: { label: "test", color: 'red' },
+  1: { label: "test test, 1 2 3 1 2 3 test", color: "#00FF00" },
+  2: { label: "pop", color: "#0000FF" },
+  3: { label: "deo", color: "#FF00FF" },
+  4: { label: "deo", color: "#FF00FF" },
+  5: { label: "deo", color: "#FF00FF" },
+});
+// max numeric key + 1 (handles empty object)
+const nextId =
+  Object.keys(Category$.get()).length === 0
+    ? 0
+    : Math.max(...Object.keys(Category$.get()).map(Number)) + 1;
+
+export const CategoryIDCount$ = observable<number>(nextId);
 
 interface currentItem {
-  id: number,
-  title: string,
-  rrule: string,
-  timeGoal: number,
-  timeSpent: number,
-  percentComplete: number,
-  category: number,
-  description: string,
+  id: number;
+  title: string;
+  rrule: string;
+  timeGoal: number;
+  timeSpent: number;
+  percentComplete: number;
+  category: number;
+  description: string;
 }
 export const CurrentTask$ = observable<currentItem[]>(); // if empty, no current task, ONLY allow task!!
 
 // TODO — Make a cache that just stores today's events + 100 most recently visisted events (not due today)
-export const Today$ = observable([]);
+export const Today$ = observable();
+
+
 
 
 
 
 
 export const Tags$ = observable({
-  list: { // `value` ==> `id`
+  list: {
+    // `value` ==> `id`
     // WARNING: id == 0 DOES NOT WORK with home.tsx's TagsView
-    1: {label: 'This is a labe', color: 'black', value: 1},
-    2: {label: 'bro', color: 'red', value: 2},
-    3: {label: 'what', color: 'blue', value: 3}
+    1: { label: "This is a labe", color: "black", value: 1 },
+    2: { label: "bro", color: "red", value: 2 },
+    3: { label: "what", color: "blue", value: 3 },
   },
-  addToList: (id: number, tagItem: { label: string, color: string }) => {
+  addToList: (id: number, tagItem: { label: string; color: string }) => {
     Tags$.list.set((prev) => ({
       ...prev,
-      [id]: {...tagItem, value: id}, // Add/Update the tag with the provided ID
+      [id]: { ...tagItem, value: id }, // Add/Update the tag with the provided ID
     }));
-  }
-})
+  },
+});
 
 export const selectedDate$ = observable(dayjs());
 
 export const colorTheme$ = observable({
-  colorTheme: colorTheme.catppuccin.latte,  // default theme
+  colorTheme: colorTheme.catppuccin.latte, // default theme
   nativeTheme: {
     dark: false,
     colors: {
-      primary: 'rgb(10, 132, 255)',
+      primary: "rgb(10, 132, 255)",
       // TODO — Change this so that it changes when 'colorTheme' changes
       background: colorTheme.catppuccin.latte.surface1, // NOTE — this is the background color of the app (the main content covers this area however)
-      card: colorTheme.catppuccin.latte.surface1,  // pop up menu?
+      card: colorTheme.catppuccin.latte.surface1, // pop up menu?
       text: colorTheme.catppuccin.latte.text,
-      border: 'rgb(39, 39, 41)',    // Make it really black (light mode) / white (dark mode)
-      notification: 'rgb(255, 69, 58)',
+      border: "rgb(39, 39, 41)", // Make it really black (light mode) / white (dark mode)
+      notification: "rgb(255, 69, 58)",
     },
-    fonts
+    fonts,
   },
   tabBar: {
     iconColor: colorTheme.catppuccin.latte.text,
@@ -90,6 +99,5 @@ export const colorTheme$ = observable({
 });
 
 export const styling$ = observable({
-  mainContentRadius: 0,  // 55 is the radius of iphone 14 pro max corners
-
+  mainContentRadius: 0, // 55 is the radius of iphone 14 pro max corners
 });

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { clearEvents, getEventsForDate, initializeDB } from '@/utils/database';
+import { clearEvents, eventsType, getEventsForDate, initializeDB } from '@/utils/database';
 import { useBackNavOverride } from '@/utils/useBackNavOverride';
 import { Toast } from '@/components/animation-toast/components';
 import { toastShow$ } from '@/components/animation-toast/toastStore';
@@ -9,6 +9,7 @@ import { Today$ } from '@/utils/stateManager';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import dayjs from 'dayjs';
+import moment from 'moment';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
@@ -25,9 +26,23 @@ export default function TabLayout() {
 
   // Load Today's Event's
   console.log("Initialize DB cache")
-  getEventsForDate(new Date()).then((events) => {
-    Today$.set(events);
-  })
+  // getEventsForDate(new Date()).then((events) => {
+  //   Today$.set(events);
+  // })
+  getEventsForDate(moment().startOf("day").toDate()).then((events) => {
+    // Save Today's events by its category
+    const grouped = events.reduce<Record<number, eventsType[]>>((acc, item) => {
+      const key = item.category; // or item.cateogry if that's the actual spelling
+      if (!acc[key]) {
+        acc[key] = [];
+      }
+      acc[key].push(item);
+      return acc;
+    }, {});
+
+    Today$.set(grouped);
+    console.log("Today's task is running: ", grouped, Today$.get())
+  });
 
   return (
     <GestureHandlerRootView>

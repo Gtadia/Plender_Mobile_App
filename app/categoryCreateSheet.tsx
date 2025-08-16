@@ -56,20 +56,33 @@ export default function CategoryCreateSheet() {
             <Text>Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Select Date</Text>
-          <TouchableOpacity style={styles.button} onPress={() => {
-            console.log("New Category ", newCategory$.label.get(), newCategory$.color.get(), newCategory$.id.get())
-            console.log("Task ", task$.category.label.get(), task$.category.color.get(), task$.category.id.get())
-            console.log("ID Count ", CategoryIDCount$.get())
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => {
+              const id = CategoryIDCount$.get();
+              const cat = newCategory$.get(); // { label, color, id }
 
-            Category$.push(newCategory$.get());
-            task$.category.set(newCategory$.get())
-            CategoryIDCount$.set((prev) => prev + 1)
+              // (optional) basic validation
+              if (!cat.label.trim()) {
+                console.warn("Category name required");
+                return;
+              }
 
-            console.log("New Category ", newCategory$.label.get(), newCategory$.color.get(), newCategory$.id.get())
-            console.log("Task ", task$.category.label.get(), task$.category.color.get(), task$.category.id.get())
-            console.log("ID Count ", CategoryIDCount$.get())
-            navigation.goBack()
-          }}>
+              // 1) Save to global categories (Record<number, {label,color}>)
+              Category$.assign({
+                [id]: { label: cat.label, color: cat.color },
+              });
+
+              // 2) Assign to current task (your task shape seems to include id/label/color)
+              task$.category.set({ id, label: cat.label, color: cat.color });
+
+              // 3) Increment the ID counter for the next category
+              CategoryIDCount$.set(id + 1);
+
+              // close
+              (navigation as any).goBack?.();
+            }}
+          >
             <Text>Done</Text>
           </TouchableOpacity>
         </View>

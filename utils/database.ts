@@ -5,6 +5,16 @@ import { RRule, RRuleSet } from 'rrule';
 
 const db = SQLite.openDatabaseSync('calendar.db');
 
+export interface dbEvents {
+  id: number;
+  title: string;
+  rrule: string;
+  category: number;
+  timeGoal: number;
+  timeSpent: number;
+  percentComplete: number;
+  description?: string;
+}
 // CREATE TABLE
 export async function initializeDB() {
   await db.runAsync(`
@@ -53,28 +63,11 @@ export async function createEvent({
   // return null;
 }
 
-type Row = {
+export interface eventsType {
   id: number;
   title: string;
-
-  // you should persist at least these:
-  dtstart: string;        // ISO string for DTSTART (e.g., "2025-08-13T14:00:00.000Z")
-  rrule?: string | null;  // e.g., "FREQ=WEEKLY;BYDAY=MO,WE,FR"
-  rdates?: string | null; // JSON array of ISO strings (e.g., '["2025-08-20T14:00:00.000Z"]')
-  exdates?: string | null;// JSON array of ISO strings (dates to skip)
-
-  // strongly recommended:
-  durationMin?: number | null; // duration in minutes (or instead store dtend)
-  dtend?: string | null;       // if you prefer end timestamp over duration
-  allDay?: 0 | 1;              // optional
-  tzid?: string | null;        // optional, if you’ll localize boundaries
-};
-
-interface eventsType {
-  id: number;
-  title: string;
-  description: string;
-  date: string;
+  description?: string;
+  date: Date;
   category: number;
   timeGoal: number;
   timeSpent: number;
@@ -84,7 +77,7 @@ interface eventsType {
 // 🟡 targetDate should be a Date object representing the specific day
 export async function getEventsForDate(targetDate: Date) {
   // console.log("FUNC IS CALLED WITH TARGET DATE: ", targetDate.toISOString());
-  const rows = await db.getAllAsync(`SELECT * FROM event`);
+  const rows: dbEvents[] = await db.getAllAsync(`SELECT * FROM event`);
   // console.log("Rows fetched: ", rows.length);
 
   const matchingEvents: eventsType[] = [];

@@ -67,7 +67,7 @@ interface categoryItem {
 export const task$ = observable({
   title: "",
   description: "",
-  category: { label: "", color: "rgba(255, 0, 0, 1)", id: 0 },
+  category: -1,
   rrule: null,
   isRepeating: false,
   timeGoal: 0,
@@ -108,12 +108,14 @@ const CategoryPopup = ({
     list: { paddingVertical: 0 },
     row: {
       paddingVertical: 4,
-      justifyContent: "center",
+      justifyContent: "flex-start",
+      alignItems: 'center',
+      flexDirection: 'row',
     },
     label: { fontSize: 16, color: "#111" },
     createCategory: {
       flexDirection: "row",
-      alignItems: "center",
+      alignContent: "center",
       justifyContent: "flex-start",
     },
   });
@@ -142,35 +144,34 @@ const CategoryPopup = ({
               showsHorizontalScrollIndicator={false}
               keyboardShouldPersistTaps={"always"}
             >
-              {Category$.get().map((item, index) => (
-                <View key={item.id}>
-                  <TouchableOpacity
-                    style={categoryStyles.row}
-                    onPress={() => {
-                      console.log("Un poco loco: ", item.label, item.id);
-                      task$.category.set(item);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        categoryStyles.label,
-                        item.color ? { color: item.color } : null,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                    <View
-                      style={{
-                        width: "100%",
-                        height: 0,
-                        borderWidth: 0.5,
-                        borderColor: "rgba(0, 0, 0, 0.3)",
-                        marginTop: 3,
-                      }}
-                    />
-                  </TouchableOpacity>
-                </View>
-              ))}
+              <Memo>
+  {() => {
+    type CategoryItem = { label: string; color: string };
+    const entries = Object.entries(Category$.get()) as [string, CategoryItem][];
+
+    return (
+      <>
+        {entries.map(([idStr, item]) => {
+          const id = Number(idStr) as number;
+          return (
+            <View key={id} nativeID={`category-${id}`}>
+              <TouchableOpacity
+                style={categoryStyles.row}
+                onPress={() => {
+                  task$.category.set(Number(idStr))
+                  categoryPopup$.set((prev) => !prev);
+                }}
+              >
+                <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: item.color, marginRight: 8 }} />
+                <Text>{item.label}</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+      </>
+    );
+  }}
+</Memo>
 
               {/* Create new category entry */}
               <TouchableOpacity
@@ -286,7 +287,9 @@ const create = () => {
                                   { color: "rgb(64, 160, 43)" },
                                 ]}
                               >
-                                {moment(task$.rrule.get().DTSTART).format("MMM D YYYY")}
+                                {moment(task$.rrule.get().DTSTART).format(
+                                  "MMM D YYYY"
+                                )}
                               </Text>
                               {(() => {
                                 return task$.isRepeating.get() ? (
@@ -366,7 +369,7 @@ const create = () => {
                   >
                     <Memo>
                       {() => {
-                        if (task$.category.id.get() == 0)
+                        if (task$.category.get() == -1)
                           return (
                             <>
                               <AntDesign
@@ -382,20 +385,20 @@ const create = () => {
                             <AntDesign
                               name="flag"
                               size={15}
-                              color={task$.category.color.get()}
+                              color={Category$[task$.category.get()].color.get()}
                             />
                             <Text
                               style={[
                                 styles.actionText,
                                 {
-                                  color: task$.category.color.get(),
+                                  color: Category$[task$.category.get()].color.get(),
                                   maxWidth: 120,
                                 },
                               ]}
                               numberOfLines={1}
                               ellipsizeMode="tail"
                             >
-                              {task$.category.label.get()}
+                              {Category$[task$.category.get()].label.get()}
                             </Text>
                           </>
                         );
@@ -476,7 +479,11 @@ const addToDatabase = () => {
     createEvent(task)
       .then((events) => {
         // For testing purposes ONLY
-        console.log("Date being passed in: ", moment(submitTask.rrule.options.dtstart).toString(), moment().toDate().toString())
+        console.log(
+          "Date being passed in: ",
+          moment(submitTask.rrule.options.dtstart).toString(),
+          moment().toDate().toString()
+        );
         getEventsForDate(new Date(submitTask.rrule.options.dtstart))
           .then((events) => {
             console.log("Event has successfully been submitted: ", events);
