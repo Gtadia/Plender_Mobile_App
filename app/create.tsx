@@ -441,7 +441,7 @@ const addToDatabase = () => {
   const submitTask = {
     title: task$.title.get(),
     description: task$.description.get(),
-    category: task$.category.id.get() === 0 ? 0 : task$.category.id.get(),
+    category: task$.category.get(),
     rrule: task$.rrule.get(),
     timeGoal: task$.timeGoal.get(),
   };

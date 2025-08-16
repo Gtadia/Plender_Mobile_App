@@ -6,5 +6,8 @@ export const globalTheme = StyleSheet.create({
     flex: 1,
     alignItems: "center",
     justifyContent: "flex-start",
+  },
+  tabBarAvoidingPadding: {
+    height: 185,
   }
 })
