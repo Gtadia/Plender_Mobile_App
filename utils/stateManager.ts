@@ -3,6 +3,7 @@ import { fonts } from "@/constants/types";
 import { colorTheme } from "@/constants/Colors";
 import type { Theme } from "@/node_modules/@react-navigation/native/src/types";
 import dayjs from "dayjs";
+import { dbEvents, eventsType } from "./database";
 
 interface categoryItem {
   label: string;
@@ -25,21 +26,20 @@ const nextId =
 
 export const CategoryIDCount$ = observable<number>(nextId);
 
-interface currentItem {
-  id: number;
-  title: string;
-  rrule: string;
-  timeGoal: number;
-  timeSpent: number;
-  percentComplete: number;
-  category: number;
-  description: string;
-}
-export const CurrentTask$ = observable<currentItem[]>(); // if empty, no current task, ONLY allow task!!
+export const CurrentTask$ = observable<dbEvents>(); // if empty, no current task, ONLY allow task!!
+export const CurrentTaskID$ = observable<number>(-1);   // if negative, no task
 
 // TODO — Make a cache that just stores today's events + 100 most recently visisted events (not due today)
-export const Today$ = observable();
-
+export interface TodayTaskType {
+  tasks: eventsType[],
+  total: number,
+}
+export const Today$ = observable<TodayTaskType>({
+  tasks: [],
+  total: (): number => {
+    return Today$.tasks.length;
+  },
+});
 
 
 

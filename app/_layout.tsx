@@ -31,17 +31,7 @@ export default function TabLayout() {
   // })
   getEventsForDate(moment().startOf("day").toDate()).then((events) => {
     // Save Today's events by its category
-    const grouped = events.reduce<Record<number, eventsType[]>>((acc, item) => {
-      const key = item.category; // or item.cateogry if that's the actual spelling
-      if (!acc[key]) {
-        acc[key] = [];
-      }
-      acc[key].push(item);
-      return acc;
-    }, {});
-
-    Today$.set(grouped);
-    console.log("Today's task is running: ", grouped, Today$.get())
+    Today$.tasks.set(events)
   });
 
   return (
