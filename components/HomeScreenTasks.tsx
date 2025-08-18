@@ -1,7 +1,7 @@
 import { StyleSheet, View, ScrollView, Button, TouchableOpacity, RefreshControl } from "react-native";
 import { Text, ScreenView } from "@/components/Themed";
 import { eventsType, getEventsForDate } from "@/utils/database";
-import { Category$, CurrentTask$, CurrentTaskID$, Today$ } from "@/utils/stateManager";
+import { Category$, CurrentTask$, CurrentTaskID$, CurrentTaskNode$, Today$ } from "@/utils/stateManager";
 import moment from "moment";
 import { observable } from "@legendapp/state";
 import { Memo } from "@legendapp/state/react";
@@ -35,7 +35,7 @@ export const CurrentTaskView = () => {
   return (
     <Memo>
       {() =>
-        <View style={[taskStyles.container, { backgroundColor: CurrentTaskID$.get() === -1 ? "gray" : 'blue'} ]}>
+        <View style={[taskStyles.container, { backgroundColor: CurrentTaskID$.get() === -1 ? "gray" : CurrentTaskNode$.category.get() === -1 ? 'gray' : Category$[CurrentTaskNode$.category.get()].color.get() } ]}>
           {CurrentTaskID$.get() === -1 ? noTaskView : taskView}
         </View>
       }
@@ -92,7 +92,9 @@ const TaskRow = ({ e }: { e: eventsType }) => {
       <TouchableOpacity
         onPress={() => {
           CurrentTaskID$.set((prev) => prev === e.id ? -1 : e.id );
-          console.warn("This is the current task: ", CurrentTaskID$.get())
+          console.warn("Current Task: ", CurrentTask$.get())
+          // CurrentTask$.timeSpent.set((prev) => prev + 5)
+          // console.warn("This is the current task: ", CurrentTaskID$.get(), CurrentTask$.get())
         }}
         style={{ marginRight: 8 }}
       >

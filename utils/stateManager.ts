@@ -1,4 +1,4 @@
-import { observable } from "@legendapp/state";
+import { computed, observable } from "@legendapp/state";
 import { fonts } from "@/constants/types";
 import { colorTheme } from "@/constants/Colors";
 import type { Theme } from "@/node_modules/@react-navigation/native/src/types";
@@ -11,7 +11,7 @@ interface categoryItem {
 }
 
 export const Category$ = observable<Record<number, categoryItem>>({
-  0: { label: "test", color: 'red' },
+  0: { label: "test", color: '#FF0000' },
   1: { label: "test test, 1 2 3 1 2 3 test", color: "#00FF00" },
   2: { label: "pop", color: "#0000FF" },
   3: { label: "deo", color: "#FF00FF" },
@@ -27,6 +27,12 @@ const nextId =
 export const CategoryIDCount$ = observable<number>(nextId);
 
 export const CurrentTask$ = observable<dbEvents>(); // if empty, no current task, ONLY allow task!!
+// Helper to get the current task *node* (or undefined)
+export const CurrentTaskNode$ = computed(() => {
+  const id = CurrentTaskID$.get();
+  if (id === -1) return undefined;
+  return Today$.tasks.find(t => t.id.get() === id);
+})
 export const CurrentTaskID$ = observable<number>(-1);   // if negative, no task
 
 // TODO — Make a cache that just stores today's events + 100 most recently visisted events (not due today)
