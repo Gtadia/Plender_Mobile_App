@@ -418,6 +418,9 @@ const create = () => {
                 style={styles.submitButton}
                 onPress={() => {
                   addToDatabase();
+                  getEventsForDate(moment().startOf("day").toDate()).then((tasks) => {
+                    Today$.tasks.set(tasks);
+                  })
                   toastShow$.whereToDisplay.get() === 0 && navigation.goBack();
                 }}
               >

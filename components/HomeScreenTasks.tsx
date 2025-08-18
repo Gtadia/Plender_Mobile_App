@@ -1,14 +1,26 @@
-import { StyleSheet, View, ScrollView, Button, TouchableOpacity, RefreshControl } from "react-native";
+import {
+  StyleSheet,
+  View,
+  ScrollView,
+  Button,
+  TouchableOpacity,
+  RefreshControl,
+} from "react-native";
 import { Text, ScreenView } from "@/components/Themed";
 import { eventsType, getEventsForDate } from "@/utils/database";
-import { Category$, CurrentTask$, CurrentTaskID$, CurrentTaskNode$, Today$ } from "@/utils/stateManager";
+import {
+  Category$,
+  CurrentTask$,
+  CurrentTaskID$,
+  Today$,
+} from "@/utils/stateManager";
 import moment from "moment";
 import { observable } from "@legendapp/state";
 import { Memo } from "@legendapp/state/react";
-import Fontisto from '@expo/vector-icons/Fontisto';
+import Fontisto from "@expo/vector-icons/Fontisto";
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useCallback } from "react";
-
+import HorizontalProgressBarPercentage from "./custom_ui/HorizontalProgressBarPercentage";
 
 export const homePageInfo$ = observable({
   reload: false,
@@ -24,23 +36,56 @@ export const CurrentTaskView = () => {
     </>
   );
 
-  const taskView = (
-    <View>
-      <Text style={taskStyles.taskText}>{}</Text>
-      <Text>Hello</Text>
-    </View>
-  );
+  const taskView = () => {
+    const task = CurrentTask$.get();
+    const taskObj = {
+      title: "Untitled",
+      timeSpent: "00:00",
+      timeGoal: "00:00",
+      percentage: 0
+    };
+    if (task) {
+      taskObj.title = task.title.trim() ? task.title.trim() : "Untitled";
+      taskObj.percentage = task.percentComplete;
+    }
+
+    return (
+      <View style={{ justifyContent: 'center', alignItems: 'center'}}>
+        <Text style={[taskStyles.taskText, taskStyles.pad]}>{taskObj.title}</Text>
+        <View style={taskStyles.pad} >
+          <Text style={taskStyles.taskTimeSpent}>{taskObj.timeSpent}</Text>
+          <View style={{ height: 0}} />
+          <Text style={taskStyles.taskTimeGoal}>{taskObj.timeGoal}</Text>
+        </View>
+        <View style={taskStyles.pad}>
+          <HorizontalProgressBarPercentage width={150} percentage={taskObj.percentage} color={"green"} />
+        </View>
+      </View>
+    );
+  };
 
   // TODO — Find task in each category, save category, print category color
   return (
     <Memo>
-      {() =>
-        <View style={[taskStyles.container, { backgroundColor: CurrentTaskID$.get() === -1 ? "gray" : CurrentTaskNode$.category.get() === -1 ? 'gray' : Category$[CurrentTaskNode$.category.get()].color.get() } ]}>
-          {CurrentTaskID$.get() === -1 ? noTaskView : taskView}
+      {() => (
+        <View
+          style={[
+            taskStyles.container,
+            {
+              backgroundColor:
+                CurrentTaskID$.get() === -1
+                  ? "gray"
+                  : CurrentTask$.category.get() === -1
+                  ? "gray"
+                  : Category$[CurrentTask$.category.get()].color.get(),
+            },
+          ]}
+        >
+          {CurrentTaskID$.get() === -1 ? noTaskView : taskView()}
         </View>
-      }
+      )}
     </Memo>
-  )
+  );
 };
 
 // helper: seconds → H:MM:SS
@@ -73,7 +118,7 @@ const SectionHeader = ({
         ]}
       >
         {/* no cateogry handler */}
-        {Category$[category].label.get() ?? 'General'} ({percent}%)
+        {Category$[category].label.get() ?? "General"} ({percent}%)
       </Text>
       <Text style={taskListStyles.sectionTotals}>
         {fmt(totalSpent)}
@@ -91,24 +136,28 @@ const TaskRow = ({ e }: { e: eventsType }) => {
     <View style={taskListStyles.row}>
       <TouchableOpacity
         onPress={() => {
-          CurrentTaskID$.set((prev) => prev === e.id ? -1 : e.id );
-          console.warn("Current Task: ", CurrentTask$.get())
+          CurrentTaskID$.set((prev) => (prev === e.id ? -1 : e.id));
+          console.warn("Current Task: ", CurrentTask$.get());
           // CurrentTask$.timeSpent.set((prev) => prev + 5)
           // console.warn("This is the current task: ", CurrentTaskID$.get(), CurrentTask$.get())
         }}
         style={{ marginRight: 8 }}
       >
         <Memo>
-        {
-          () => CurrentTaskID$.get() === e.id ? <FontAwesome5 name="pause" size={24} color="red" /> : <FontAwesome5 name="play" size={24} color="green" />
-        }
+          {() =>
+            CurrentTaskID$.get() === e.id ? (
+              <FontAwesome5 name="pause" size={24} color="red" />
+            ) : (
+              <FontAwesome5 name="play" size={24} color="green" />
+            )
+          }
         </Memo>
       </TouchableOpacity>
       <TouchableOpacity
         onPress={() => {
           // TODO — handle opening modal later
         }}
-        style={{ flex: 1, backgroundColor: 'pink' }}
+        style={{ flex: 1, backgroundColor: "pink" }}
       >
         <Text style={taskListStyles.rowTitle}>{taskTitle}</Text>
         {e.date && (
@@ -146,7 +195,7 @@ export const TodayTaskView = () => {
         // const grouped = groupByCategory(Today$.get());
 
         // --- OPTION B: regroup ONLY when the array length changes ---
-        Today$.total.get();            // track just the length (just to fire Memo re-render)
+        Today$.total.get(); // track just the length (just to fire Memo re-render)
         const grouped = groupByCategory(Today$.tasks.peek()); // read without tracking
 
         const entries = Object.entries(grouped).sort(
@@ -191,7 +240,7 @@ const taskStyles = StyleSheet.create({
     justifyContent: "center",
     alignContent: "center",
     paddingVertical: 15,
-    height: 140,
+    minHeight: 170,
     marginTop: 10,
     marginBottom: 30,
   },
@@ -207,6 +256,26 @@ const taskStyles = StyleSheet.create({
     color: "white",
     textAlign: "center",
   },
+  taskTimeSpent: {
+    fontSize: 28,
+    fontWeight: 700,
+    textAlign: "center",
+  },
+  taskTimeGoal: {
+    fontSize: 24,
+    fontWeight: 700,
+    color: 'white',
+    textAlign: "center",
+  },
+  taskPercentage: {
+    fontSize: 16,
+    fontWeight: 500,
+    color: 'white',
+  },
+  pad: {
+    margin: 3,
+    // backgroundColor: 'aqua'
+  }
 });
 
 // ---- styles (tweak to match your UI) ----

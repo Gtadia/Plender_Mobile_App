@@ -26,9 +26,8 @@ const nextId =
 
 export const CategoryIDCount$ = observable<number>(nextId);
 
-export const CurrentTask$ = observable<dbEvents>(); // if empty, no current task, ONLY allow task!!
 // Helper to get the current task *node* (or undefined)
-export const CurrentTaskNode$ = computed(() => {
+export const CurrentTask$ = computed(() => {
   const id = CurrentTaskID$.get();
   if (id === -1) return undefined;
   return Today$.tasks.find(t => t.id.get() === id);
