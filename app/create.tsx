@@ -43,7 +43,7 @@ import {
 import { Memo, Show } from "@legendapp/state/react";
 import moment from "moment";
 import { RRule } from "rrule";
-import { Category$, Today$ } from "@/utils/stateManager";
+import { Category$, tasks$ } from "@/utils/stateManager";
 import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -419,7 +419,7 @@ const create = () => {
                 onPress={() => {
                   addToDatabase();
                   getEventsForDate(moment().startOf("day").toDate()).then((tasks) => {
-                    Today$.tasks.set(tasks);
+                    tasks$.tasks.set(tasks);  // TODO — Convert to tasks$
                   })
                   toastShow$.whereToDisplay.get() === 0 && navigation.goBack();
                 }}

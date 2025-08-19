@@ -3,7 +3,8 @@ import { fonts } from "@/constants/types";
 import { colorTheme } from "@/constants/Colors";
 import type { Theme } from "@/node_modules/@react-navigation/native/src/types";
 import dayjs from "dayjs";
-import { dbEvents, eventsType } from "./database";
+import { dbEvents, eventsType, getEventsForDate } from "./database";
+import moment from "moment";
 
 interface categoryItem {
   label: string;
@@ -25,20 +26,6 @@ const nextId =
     : Math.max(...Object.keys(Category$.get()).map(Number)) + 1;
 
 export const CategoryIDCount$ = observable<number>(nextId);
-
-// ID → Observable node inside Today$.tasks
-export const CurrentTask$ = computed(() => {
-  const id = CurrentTaskID$.get();
-  if (id === -1) return undefined;
-
-  // Search on plain array to find the index…
-  const arr = Today$.tasks.get();                // plain values
-  const idx = arr.findIndex(t => t.id === id);   // search by value
-
-  // …then return the observable node at that index
-  return idx >= 0 ? Today$.tasks[idx] : undefined;
-});
-export const CurrentTaskID$ = observable<number>(-1);   // if negative, no task
 
 // Event selected to be viewed
 export const ViewTask$ = computed(() => {
@@ -68,17 +55,60 @@ export const SelectedDate$ = observable<TaskType>({
   total: (): number => SelectedDate$.tasks.length
 });
 
-// export type TodayWithPercent = eventsType & { percent: number };
-// // Derived view with percentage
-// export const TodayWithPercent$ = computed<TodayWithPercent[]>(() =>
-//   Today$.tasks.get().map((t) => {
-//     const plain = t as eventsType; // or t.get() if each task is observable
-//     return {
-//       ...plain,
-//       percent: plain.timeGoal > 0 ? (plain.timeSpent / plain.timeGoal) * 100 : 0,
-//     };
-//   })
-// );
+// helper
+const groupByCategory = (items: eventsType[]) =>
+  items.reduce((acc, item) => {
+    (acc[item.category] ??= []).push(item.id);
+    return acc;
+  }, {} as Record<number, number[]>);
+
+// Task Observable
+export const tasks$ = observable({
+  entities: {} as Record<number, eventsType>,   // id -> event
+  lists: {
+    byDate: {} as Record<string, number[]>,     // "YYYY-MM-DD" -> [ids]
+    byDateCategory: {} as Record<string, Record<number, number[]>>,   // "YYYY-MM-DD" -> { 0: [ids], 1: [ids], etc. }
+    // add byCategory, byWeek, etc. as needed
+  },
+});
+
+// Load once per screen/range
+export async function loadDay(date: Date) {
+  const rows = await getEventsForDate(date);  // DB query ONCE
+  const key = moment(date).format('YYYY-MM-DD');
+
+  tasks$.lists.byDate[key].set(rows.map(r => r.id));
+  tasks$.lists.byDateCategory[key].set(groupByCategory(rows));
+  rows.forEach(r => { tasks$.entities[r.id].set(r) })
+}
+export async function loadWeek() {
+  // TODO — For Calendar View
+}
+
+// Selection
+export const CurrentTaskID$ = observable<number>(-1);   // if negative, no task
+export const CurrentTask$ = computed(() => {
+  const id = CurrentTaskID$.get();
+  return id === -1 ? undefined : tasks$.entities[id]; // <- node
+});
+// export const CurrentTask$ = computed(() => {
+//   const id = CurrentTaskID$.get();
+//   if (id === -1) return undefined;
+
+//   // Search on plain array to find the index…
+//   const arr = Today$.tasks.get();                // plain values
+//   const idx = arr.findIndex(t => t.id === id);   // search by value
+
+//   // …then return the observable node at that index
+//   return idx >= 0 ? Today$.tasks[idx] : undefined;
+// });
+
+
+
+// import { throttle } from 'lodash-es';
+// const persistTimeSpent = throttle(async (id: number, value: number) => {
+//   await db.runAsync('UPDATE event SET timeSpent=? WHERE id=?', [value, id]);
+// }, 500);
 
 
 

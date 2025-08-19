@@ -12,7 +12,7 @@ import {
   Category$,
   CurrentTask$,
   CurrentTaskID$,
-  Today$,
+  tasks$
 } from "@/utils/stateManager";
 import moment from "moment";
 import { computed, observable } from "@legendapp/state";
@@ -109,133 +109,126 @@ export const CurrentTaskView = () => {
 
 const SectionHeader = ({
   category,
-  items,
+  ids,
 }: {
   category: number;
-  items: eventsType[];
+  ids: number[];
 }) => {
-  const totalSpent = items.reduce((a, e) => a + (e.timeSpent ?? 0), 0);
-  const totalGoal = items.reduce((a, e) => a + (e.timeGoal ?? 0), 0);
-  const percent =
-    totalGoal > 0 ? Math.round((totalSpent / totalGoal) * 100) : 0;
-
-  return (
-    <View style={taskListStyles.sectionHeader}>
-      <Text
-        style={[
-          taskListStyles.sectionTitle,
-          { color: Category$[category].color.get() ?? "#000" },
-        ]}
-      >
-        {/* no cateogry handler */}
-        {Category$[category].label.get() ?? "General"} ({percent}%)
-      </Text>
-      <Text style={taskListStyles.sectionTotals}>
-        {fmt(totalSpent)}
-        {totalGoal ? ` / ${fmt(totalGoal)}` : ""}
-      </Text>
-    </View>
-  );
-};
-
-const TaskRow = ({ e }: { e: eventsType }) => {
-  // no title handler
-  const taskTitle = e.title.trim() ? e.title : "Untitled";
-
-  return (
-    <View style={taskListStyles.row}>
-      <TouchableOpacity
-        onPress={() => {
-          CurrentTaskID$.set((prev) => (prev === e.id ? -1 : e.id));
-          console.warn("Current Task: ", CurrentTask$.get());
-
-          const temp = CurrentTask$
-          if (temp) temp.timeSpent.set((prev) => prev + 60) // TODO — Test
-        }}
-        style={{ marginRight: 8 }}
-      >
-        <Memo>
-          {() =>
-            CurrentTaskID$.get() === e.id ? (
-              <FontAwesome5 name="pause" size={24} color="red" />
-            ) : (
-              <FontAwesome5 name="play" size={24} color="green" />
-            )
-          }
-        </Memo>
-      </TouchableOpacity>
-      <TouchableOpacity
-        onPress={() => {
-          // TODO — handle opening modal later
-        }}
-        style={{ flex: 1, backgroundColor: "pink" }}
-      >
-        <Text style={taskListStyles.rowTitle}>{taskTitle}</Text>
-        {e.date && (
-          <Text style={taskListStyles.rowSub}>
-            {moment(e.date).format("MMMM D, YYYY")}
-          </Text>
-        )}
-      </TouchableOpacity>
-      <View style={{ alignItems: "flex-end" }}>
-        <Text style={taskListStyles.rowTime}>
-          {fmt(e.timeSpent ?? 0)}
-          {e.timeGoal ? ` / ${fmt(e.timeGoal)}` : ""}
-        </Text>
-        {/* {typeof e.percent === "number" && (
-          <Memo>
-            <Text style={taskListStyles.rowPercent}>{e.percentComplete}%</Text>
-          </Memo>
-        )} */}
-      </View>
-    </View>
-  );
-};
-
-// TODO — Implement Tomorrow task views as well...
-// helper
-const groupByCategory = (items: eventsType[]) =>
-  items.reduce((acc, item) => {
-    (acc[item.category] ??= []).push(item);
-    return acc;
-  }, {} as Record<number, eventsType[]>);
-
-export const TodayTaskView = () => {
   return (
     <Memo>
       {() => {
-        // --- OPTION A: regroup on any change to Today$ (deep tracking) ---
-        // const grouped = groupByCategory(Today$.get());
-
-        // --- OPTION B: regroup ONLY when the array length changes ---
-        Today$.total.get(); // track just the length (just to fire Memo re-render)
-        const grouped = groupByCategory(Today$.tasks.get()); // read without tracking
-
-        const entries = Object.entries(grouped).sort(
-          ([a], [b]) => Number(a) - Number(b)
-        );
+        let spent = 0, goal = 0;
+        for (const id of ids) {
+          const n = tasks$.entities[id];
+          if (!n) continue;
+          spent += n.timeSpent.get() ?? 0;  // tracked read
+          goal  += n.timeGoal.get()  ?? 0;  // tracked read
+        }
+        const percent = goal > 0 ? Math.round((spent / goal) * 100) : 0;
 
         return (
-          <ScrollView
-            contentContainerStyle={taskListStyles.container}
-            scrollEnabled={false}
+          <View style={taskListStyles.sectionHeader}>
+            <Text
+              style={[
+                taskListStyles.sectionTitle,
+                { color: Category$[category].color.get() ?? "#000" }, // tracked category color
+              ]}
+            >
+              {Category$[category].label.get() ?? "General"} ({percent}%)
+            </Text>
+            <Text style={taskListStyles.sectionTotals}>
+              {fmt(spent)}{goal ? ` / ${fmt(goal)}` : ""}
+            </Text>
+          </View>
+        );
+      }}
+    </Memo>
+  )
+};
+
+const TaskRow = ({ id }: { id: number }) => (
+  <Memo>
+    {() => {
+      const node = tasks$.entities[id];
+      if (!node) return null;
+
+      const isCurrent = CurrentTaskID$.get() === id;
+
+      const title = node.title.get()?.trim() || "Untitled";
+      const timeSpent = node.timeSpent.get() ?? 0;
+      const timeGoal  = node.timeGoal.get()  ?? 0;
+      const date      = node.date?.get?.(); // optional
+
+      const onToggle = () => {
+        // toggle current selection
+        CurrentTaskID$.set(prev => (prev === id ? -1 : id));
+        // example: increment this row's time (updates cache & UI)
+        node.timeSpent.set(prev => (prev ?? 0) + 60);
+        // (optionally debounce persist to DB here)
+      };
+
+      return (
+        <View style={taskListStyles.row}>
+          <TouchableOpacity onPress={onToggle} style={{ marginRight: 8 }}>
+            {isCurrent ? (
+              <FontAwesome5 name="pause" size={24} color="red" />
+            ) : (
+              <FontAwesome5 name="play" size={24} color="green" />
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => {
+              // open details modal, etc.
+            }}
+            style={{ flex: 1 }}
           >
+            <Text style={taskListStyles.rowTitle}>{title}</Text>
+            {date && (
+              <Text style={taskListStyles.rowSub}>
+                {moment(date).format("MMMM D, YYYY")}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={{ alignItems: "flex-end" }}>
+            <Text style={taskListStyles.rowTime}>
+              {fmt(timeSpent)}{timeGoal ? ` / ${fmt(timeGoal)}` : ""}
+            </Text>
+          </View>
+        </View>
+      );
+    }}
+  </Memo>
+);
+
+// TODO — Implement Tomorrow task views as well...
+
+export const TodayTaskView = () => {
+  const key = moment().format("YYYY-MM-DD");
+  // const byCat$ = tasks$.lists.byDateCategory[key];
+
+  return (
+    <Memo>
+      {() => {
+        // 🔍 tracked: the object mapping category -> [ids]
+        const byCat = tasks$.lists.byDateCategory[key].get();
+        const entries = byCat === undefined ? [] : Object.entries(byCat).sort(([a], [b]) => +a - +b);
+
+        return (
+          <ScrollView contentContainerStyle={taskListStyles.container} scrollEnabled={false}>
             {entries.length ? (
-              entries.map(([catKey, items]) => {
-                const category = Number(catKey);
-                return (
-                  <View key={catKey} style={taskListStyles.section}>
-                    <SectionHeader category={category} items={items} />
-                    {items.map((e) => (
-                      <TaskRow key={e.id} e={e} />
+              entries.map(([catKey, ids]) => (
+                // <SectionView key={catKey} category={+catKey} ids={ids} />
+                  <View style={taskListStyles.section}>
+                    <SectionHeader category={+catKey} ids={ids} />
+                    {ids.map((id) => (
+                      <TaskRow key={id} id={id} />
                     ))}
                   </View>
-                );
-              })
+              ))
             ) : (
-              <View>
-                <Text>No tasks for today!</Text>
-              </View>
+              <View><Text>No tasks for today!</Text></View>
             )}
           </ScrollView>
         );
@@ -243,6 +236,10 @@ export const TodayTaskView = () => {
     </Memo>
   );
 };
+
+const SectionView = () => {
+
+}
 
 const taskStyles = StyleSheet.create({
   container: {
