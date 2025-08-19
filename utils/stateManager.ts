@@ -26,26 +26,59 @@ const nextId =
 
 export const CategoryIDCount$ = observable<number>(nextId);
 
-// Helper to get the current task *node* (or undefined)
+// ID → Observable node inside Today$.tasks
 export const CurrentTask$ = computed(() => {
   const id = CurrentTaskID$.get();
   if (id === -1) return undefined;
-  return Today$.tasks.find(t => t.id.get() === id);
-})
+
+  // Search on plain array to find the index…
+  const arr = Today$.tasks.get();                // plain values
+  const idx = arr.findIndex(t => t.id === id);   // search by value
+
+  // …then return the observable node at that index
+  return idx >= 0 ? Today$.tasks[idx] : undefined;
+});
 export const CurrentTaskID$ = observable<number>(-1);   // if negative, no task
 
+// Event selected to be viewed
+export const ViewTask$ = computed(() => {
+  const id = ViewTaskID$.get();
+  if (id === -1) return undefined;
+
+  // Search on plain array to find the index…
+  const arr = SelectedDate$.tasks.get();                // plain values
+  const idx = arr.findIndex(t => t.id === id);   // search by value
+
+  // …then return the observable node at that index
+  return idx >= 0 ? SelectedDate$.tasks[idx] : undefined;
+});
+export const ViewTaskID$ = observable<number>(-1);   // if negative, no task
+
 // TODO — Make a cache that just stores today's events + 100 most recently visisted events (not due today)
-export interface TodayTaskType {
+export interface TaskType {
   tasks: eventsType[],
   total: number,
 }
-export const Today$ = observable<TodayTaskType>({
+export const Today$ = observable<TaskType>({
   tasks: [],
-  total: (): number => {
-    return Today$.tasks.length;
-  },
+  total: (): number => Today$.tasks.length,
+});
+export const SelectedDate$ = observable<TaskType>({
+  tasks: [],
+  total: (): number => SelectedDate$.tasks.length
 });
 
+// export type TodayWithPercent = eventsType & { percent: number };
+// // Derived view with percentage
+// export const TodayWithPercent$ = computed<TodayWithPercent[]>(() =>
+//   Today$.tasks.get().map((t) => {
+//     const plain = t as eventsType; // or t.get() if each task is observable
+//     return {
+//       ...plain,
+//       percent: plain.timeGoal > 0 ? (plain.timeSpent / plain.timeGoal) * 100 : 0,
+//     };
+//   })
+// );
 
 
 

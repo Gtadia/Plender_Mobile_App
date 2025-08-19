@@ -12,7 +12,6 @@ export interface dbEvents {
   category: number;
   timeGoal: number;
   timeSpent: number;
-  percentComplete: number;
   description?: string;
 }
 // CREATE TABLE
@@ -26,7 +25,6 @@ export async function initializeDB() {
       category INTEGER NOT NULL DEFAULT 0, -- 0: no category
       timeGoal INTEGER NOT NULL,        -- store in seconds
       timeSpent INTEGER NOT NULL,       -- store in seconds
-      percentComplete INTEGER NOT NULL DEFAULT 0, -- 0-100%
       -- Optional Fields
       description TEXT,              -- Optional description
     );
@@ -40,22 +38,19 @@ export async function createEvent({
   timeGoal, // 1 hour in seconds
   timeSpent = 0,
   category = 0,
-  percentComplete = 0,
   description = '',
-
 }: {
   title: string;
   rrule: string;     // e.g., 'FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=2025-12-31'
   timeGoal: number;
   timeSpent?: number;
   category?: number;
-  percentComplete?: number;
   description?: string;
 }) {
-  console.log("TEST: ", { title, rrule, category, timeGoal, timeSpent, percentComplete, description });
+  console.log("TEST: ", { title, rrule, category, timeGoal, timeSpent, description });
   await db.runAsync(
-    `INSERT INTO event (title, rrule, category, timeGoal, timeSpent, percentComplete, description) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [title, rrule, category, timeGoal, timeSpent, percentComplete, description]
+    `INSERT INTO event (title, rrule, category, timeGoal, timeSpent, description) VALUES (?, ?, ?, ?, ?, ?)`,
+    [title, rrule, category, timeGoal, timeSpent, description]
   );
   console.log("TEST COMPLETED");
 
@@ -71,7 +66,6 @@ export interface eventsType {
   category: number;
   timeGoal: number;
   timeSpent: number;
-  percentComplete: number;
 }
 
 // 🟡 targetDate should be a Date object representing the specific day
@@ -104,7 +98,6 @@ export async function getEventsForDate(targetDate: Date) {
           category: row.category,
           timeGoal: row.timeGoal,
           timeSpent: row.timeSpent,
-          percentComplete: row.percentComplete,
         });
       }
     } catch (e) {
@@ -125,7 +118,6 @@ export async function updateEvent({
   category,
   timeGoal,
   timeSpent,
-  percentComplete,
   description
 }: {
   id: number;
@@ -135,7 +127,6 @@ export async function updateEvent({
   category?: number;
   timeGoal?: number;
   timeSpent?: number;
-  percentComplete?: number;
   description?: string;
 }) {
 const fields: string[] = [];
@@ -160,10 +151,6 @@ const fields: string[] = [];
   if (timeSpent !== undefined) {
     fields.push('timeSpent = ?');
     values.push(timeSpent);
-  }
-  if (percentComplete !== undefined) {
-    fields.push('percentComplete = ?');
-    values.push(percentComplete);
   }
   if (description !== undefined) {
     fields.push('description = ?');
@@ -208,7 +195,6 @@ export async function clearEvents() {
       category INTEGER NOT NULL DEFAULT 0,   -- 0: no category
       timeGoal INTEGER NOT NULL,      -- in seconds
       timeSpent INTEGER NOT NULL,     -- in seconds
-      percentComplete INTEGER NOT NULL DEFAULT 0, -- 0–100%
       description TEXT                -- optional
     );
   `);

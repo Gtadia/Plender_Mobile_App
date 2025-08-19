@@ -15,12 +15,14 @@ import {
   Today$,
 } from "@/utils/stateManager";
 import moment from "moment";
-import { observable } from "@legendapp/state";
+import { computed, observable } from "@legendapp/state";
 import { Memo } from "@legendapp/state/react";
 import Fontisto from "@expo/vector-icons/Fontisto";
 import { FontAwesome5 } from "@expo/vector-icons";
 import { useCallback } from "react";
 import HorizontalProgressBarPercentage from "./custom_ui/HorizontalProgressBarPercentage";
+import { colorTheme } from "@/constants/Colors";
+import { fmt, fmtDisappearingHour } from "@/helpers/fmt";
 
 export const homePageInfo$ = observable({
   reload: false,
@@ -37,28 +39,45 @@ export const CurrentTaskView = () => {
   );
 
   const taskView = () => {
-    const task = CurrentTask$.get();
-    const taskObj = {
-      title: "Untitled",
-      timeSpent: "00:00",
-      timeGoal: "00:00",
-      percentage: 0
-    };
-    if (task) {
-      taskObj.title = task.title.trim() ? task.title.trim() : "Untitled";
-      taskObj.percentage = task.percentComplete;
-    }
+    const taskObj$ = observable({
+      title: computed(() => {
+        const curr = CurrentTask$.get()
+        if (curr && typeof curr.title === 'string') return (curr.title.trim() ? curr.title.trim() : "Untitled") ?? "Untitled"
+        return "Untitled"
+      }),
+      timeSpent: computed(() => {
+        const curr = CurrentTask$.get()
+        if (curr) return fmtDisappearingHour(curr.timeSpent)
+        return "00:00"
+      }),
+      timeGoal: computed(() => {
+        const curr = CurrentTask$.get()
+        if (curr) return fmtDisappearingHour(curr.timeGoal)
+        return "00:00"
+      }),
+      percentage: computed(() => {
+        const curr = CurrentTask$.get()
+        let division = 0;
+        if (curr) {
+          try {
+            division = curr.timeSpent / curr.timeGoal;
+          } catch (err) {
+            console.warn("Probably divided by 0 somehow...", err)
+          }
+        }
+        return division
+      })
+    });
 
     return (
       <View style={{ justifyContent: 'center', alignItems: 'center'}}>
-        <Text style={[taskStyles.taskText, taskStyles.pad]}>{taskObj.title}</Text>
+        <Memo><Text style={[taskStyles.taskText, taskStyles.pad]}>{taskObj$.title.get()}</Text></Memo>
         <View style={taskStyles.pad} >
-          <Text style={taskStyles.taskTimeSpent}>{taskObj.timeSpent}</Text>
-          <View style={{ height: 0}} />
-          <Text style={taskStyles.taskTimeGoal}>{taskObj.timeGoal}</Text>
+          <Memo><Text style={taskStyles.taskTimeSpent}>{taskObj$.timeSpent.get()}</Text></Memo>
+          <Memo><Text style={taskStyles.taskTimeGoal}>{taskObj$.timeGoal.get()}</Text></Memo>
         </View>
         <View style={taskStyles.pad}>
-          <HorizontalProgressBarPercentage width={150} percentage={taskObj.percentage} color={"green"} />
+          <Memo><HorizontalProgressBarPercentage width={150} percentage={taskObj$.percentage.get()} color={"green"} /></Memo>
         </View>
       </View>
     );
@@ -86,15 +105,6 @@ export const CurrentTaskView = () => {
       )}
     </Memo>
   );
-};
-
-// helper: seconds → H:MM:SS
-const fmt = (s = 0) => {
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = s % 60;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${h}:${pad(m)}:${pad(sec)}`;
 };
 
 const SectionHeader = ({
@@ -138,8 +148,9 @@ const TaskRow = ({ e }: { e: eventsType }) => {
         onPress={() => {
           CurrentTaskID$.set((prev) => (prev === e.id ? -1 : e.id));
           console.warn("Current Task: ", CurrentTask$.get());
-          // CurrentTask$.timeSpent.set((prev) => prev + 5)
-          // console.warn("This is the current task: ", CurrentTaskID$.get(), CurrentTask$.get())
+
+          const temp = CurrentTask$
+          if (temp) temp.timeSpent.set((prev) => prev + 60) // TODO — Test
         }}
         style={{ marginRight: 8 }}
       >
@@ -171,9 +182,11 @@ const TaskRow = ({ e }: { e: eventsType }) => {
           {fmt(e.timeSpent ?? 0)}
           {e.timeGoal ? ` / ${fmt(e.timeGoal)}` : ""}
         </Text>
-        {typeof e.percentComplete === "number" && (
-          <Text style={taskListStyles.rowPercent}>{e.percentComplete}%</Text>
-        )}
+        {/* {typeof e.percent === "number" && (
+          <Memo>
+            <Text style={taskListStyles.rowPercent}>{e.percentComplete}%</Text>
+          </Memo>
+        )} */}
       </View>
     </View>
   );
@@ -196,7 +209,7 @@ export const TodayTaskView = () => {
 
         // --- OPTION B: regroup ONLY when the array length changes ---
         Today$.total.get(); // track just the length (just to fire Memo re-render)
-        const grouped = groupByCategory(Today$.tasks.peek()); // read without tracking
+        const grouped = groupByCategory(Today$.tasks.get()); // read without tracking
 
         const entries = Object.entries(grouped).sort(
           ([a], [b]) => Number(a) - Number(b)
@@ -260,6 +273,7 @@ const taskStyles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 700,
     textAlign: "center",
+    color: colorTheme.catppuccin.latte.crust
   },
   taskTimeGoal: {
     fontSize: 24,

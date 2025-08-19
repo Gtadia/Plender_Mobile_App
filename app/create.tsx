@@ -490,6 +490,7 @@ const addToDatabase = () => {
         getEventsForDate(new Date(submitTask.rrule.options.dtstart))
           .then((events) => {
             console.log("Event has successfully been submitted: ", events);
+            Today$.tasks.set(events); // TODO — Don't be lazy like
           })
           .catch((err) => {
             console.error("Error Fetching Events", err);

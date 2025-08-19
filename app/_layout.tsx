@@ -15,9 +15,9 @@ dayjs.extend(timezone);
 
 export default function TabLayout() {
   // intialize sqlite database
+  // clearEvents();
   initializeDB();
   useBackNavOverride();   // Overrides default back behavior of Android
-  // clearEvents();
 
   // Set dayjs timezone
   const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
