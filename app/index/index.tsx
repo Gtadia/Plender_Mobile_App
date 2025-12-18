@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { observable } from "@legendapp/state";
 import { eventsType, getAllEvents, getEventsForDate } from "@/utils/database";
 import moment from "moment";
-import { Category$, Today$ } from "@/utils/stateManager";
+import { Category$, loadDay, tasks$ } from "@/utils/stateManager";
 import { Memo, useObservable } from "@legendapp/state/react";
 import { CurrentTaskView, TodayTaskView } from "@/components/HomeScreenTasks";
 import { useCallback } from "react";
@@ -23,7 +23,8 @@ export default function TabOneScreen() {
     homePageInfo$.reload.set(true);
     try {
       const events = await getEventsForDate(moment().startOf("day").toDate());
-      Today$.tasks.set(events);
+      events.forEach(r => tasks$.entities[r.id].set(r));
+      loadDay(new Date());
     } finally {
       // hide spinner
       homePageInfo$.reload.set(false);

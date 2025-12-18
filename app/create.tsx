@@ -43,7 +43,7 @@ import {
 import { Memo, Show } from "@legendapp/state/react";
 import moment from "moment";
 import { RRule } from "rrule";
-import { Category$, tasks$ } from "@/utils/stateManager";
+import { Category$, loadDay, tasks$ } from "@/utils/stateManager";
 import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -419,8 +419,9 @@ const create = () => {
                 onPress={() => {
                   addToDatabase();
                   getEventsForDate(moment().startOf("day").toDate()).then((tasks) => {
-                    tasks$.tasks.set(tasks);  // TODO — Convert to tasks$
+                    tasks.forEach(r => tasks$.entities[r.id].set(r));
                   })
+                  loadDay(new Date());
                   toastShow$.whereToDisplay.get() === 0 && navigation.goBack();
                 }}
               >
@@ -488,9 +489,10 @@ const addToDatabase = () => {
           moment().toDate().toString()
         );
         getEventsForDate(new Date(submitTask.rrule.options.dtstart))
-          .then((events) => {
-            console.log("Event has successfully been submitted: ", events);
-            Today$.tasks.set(events); // TODO — Don't be lazy like
+          .then((tasks) => {
+            console.log("Event has successfully been submitted: ", tasks);
+            // Today$.tasks.set(events); // TODO — Don't be lazy like
+            tasks.forEach(r => tasks$.entities[r.id].set(r));
           })
           .catch((err) => {
             console.error("Error Fetching Events", err);

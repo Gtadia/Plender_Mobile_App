@@ -5,7 +5,7 @@ import { clearEvents, eventsType, getEventsForDate, initializeDB } from '@/utils
 import { useBackNavOverride } from '@/utils/useBackNavOverride';
 import { Toast } from '@/components/animation-toast/components';
 import { toastShow$ } from '@/components/animation-toast/toastStore';
-import { Today$ } from '@/utils/stateManager';
+import { loadDay, tasks$ } from '@/utils/stateManager';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import dayjs from 'dayjs';
@@ -29,10 +29,11 @@ export default function TabLayout() {
   // getEventsForDate(new Date()).then((events) => {
   //   Today$.set(events);
   // })
-  getEventsForDate(moment().startOf("day").toDate()).then((events) => {
+  getEventsForDate(moment().startOf("day").toDate()).then((tasks) => {
     // Save Today's events by its category
-    Today$.tasks.set(events)
+    tasks.forEach(r => tasks$.entities[r.id].set(r));
   });
+  loadDay(new Date());
 
   return (
     <GestureHandlerRootView>
