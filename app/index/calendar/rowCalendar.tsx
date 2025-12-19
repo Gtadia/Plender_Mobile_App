@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   View,
   InteractionManager,
+  ScrollView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import moment, { Moment } from 'moment';
@@ -20,7 +21,7 @@ import { observable } from '@legendapp/state';
 import { useRouter } from 'expo-router';
 import { ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { horizontalPadding } from '@/constants/globalThemeVar';
+import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
 import Animated, { runOnUI, scrollTo, useAnimatedRef } from 'react-native-reanimated';
 import { colorTheme } from '@/constants/Colors';
 import { loadDay, Category$, tasks$ } from '@/utils/stateManager';
@@ -447,7 +448,7 @@ export default function FlatListSwiperExample() {
                     <MaterialIcons name="edit" size={20} color="#000" style={{ paddingLeft: 5 }} />
                   </View>
                 </TouchableOpacity>
-                <View style={styles.placeholder}>
+                <ScrollView style={styles.placeholder}>
                   {blocks.length === 0 ? (
                     <View style={[styles.placeholderInset, { alignItems: 'center', justifyContent: 'center' }]}>
                       <Text style={styles.emptyStateText}>No tasks for this day</Text>
@@ -457,9 +458,12 @@ export default function FlatListSwiperExample() {
                       {blocks.map((block) => (
                         <CategoryCard key={`${item.format('YYYY-MM-DD')}-${block.title}`} block={block} />
                       ))}
+
+                      {/* Padding Bottom */}
+                      <View style={globalTheme.tabBarAvoidingPadding} />
                     </View>
                   )}
-                </View>
+                </ScrollView>
               </View>
             );
           }}
@@ -496,10 +500,6 @@ export default function FlatListSwiperExample() {
                     }
                     );
           }}>
-            <View style={styles.btn}>
-              <MaterialIcons name="add" size={22} color="#fff" style={{ marginRight: 6 }} />
-              <Text style={styles.btnText}>Add Event</Text>
-            </View>
           </TouchableOpacity>
         </View>
       </View>

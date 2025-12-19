@@ -244,11 +244,16 @@ export default function StatsScreen() {
           <Text style={styles.dateHeadingText}>{selectedDate.format('MMMM D, YYYY (ddd)')}</Text>
         </View>
 
-        <View style={{ gap: 16 }}>
+        <ScrollView
+          style={{ marginBottom: 32 }}
+          contentContainerStyle={styles.cardListContent}
+          showsVerticalScrollIndicator={false}
+        >
           {categoryBlocks.map((block) => (
             <CategoryCard key={block.title} block={block} />
           ))}
-        </View>
+          <View style={{ height: 32 }} />
+        </ScrollView>
       </ScrollView>
     </ScreenView>
   );
@@ -271,6 +276,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     marginLeft: 0,
     fontWeight: 'bold',
+  },
+  cardListContent: {
+    width: '100%',
+    paddingBottom: 40,
+    gap: 16,
   },
   weekRow: {
     flexDirection: 'row',
