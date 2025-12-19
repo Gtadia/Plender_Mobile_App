@@ -207,7 +207,7 @@ export default function FlatListSwiperExample() {
 
   useEffect(() => {
     scrollToCenter();
-  }, [scrollToCenter]);
+  }, [panes, scrollToCenter]);
 
   const finalizeSnap = useCallback(() => {
     requestAnimationFrame(() => {
