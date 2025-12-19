@@ -25,6 +25,7 @@ const TabBar = ({ state, descriptors, navigation }) => {
     stats: (props: any) => <AntDesign name="barchart" size={itemSize} color={textColor} {...props} />,
     pieChart: (props: any) => <AntDesign name="piechart" size={itemSize} color={textColor} {...props} />,
     test: (props: any) => <AntDesign name="linechart" size={itemSize} color={textColor} {...props} />,
+    test2: (props: any) => <AntDesign name="linechart" size={itemSize} color={textColor} {...props} />,
     settings: (props: any) => <AntDesign name="setting" size={itemSize} color={textColor} {...props} />,
   }
 
