@@ -22,7 +22,6 @@ import { useRouter } from 'expo-router';
 import { ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
-import Animated, { runOnUI, scrollTo, useAnimatedRef } from 'react-native-reanimated';
 import { colorTheme } from '@/constants/Colors';
 import { loadDay, Category$, tasks$ } from '@/utils/stateManager';
 
@@ -95,7 +94,7 @@ const CategoryCard = ({ block }: { block: CategoryBlock }) => (
 );
 
 export default function FlatListSwiperExample() {
-  const scrollRef = useAnimatedRef<Animated.ScrollView>();
+  const weekScrollRef = useRef<ScrollView>(null);
   const dayListRef = useRef<FlatList<Moment>>(null);
 
   const [selectedDate, setSelectedDate] = useState(moment());
@@ -196,19 +195,18 @@ export default function FlatListSwiperExample() {
     };
   }, [selectedDate, ensureDateCached]);
 
-  const scrollToCenter = useCallback(
-    (animated = false) => {
-      runOnUI(() => {
-        'worklet';
-        scrollTo(scrollRef, width * CENTER_INDEX, 0, animated);
-      })();
-    },
-    [scrollRef],
-  );
+  const scrollToCenter = useCallback((animated = false) => {
+    weekScrollRef.current?.scrollTo({ x: width * CENTER_INDEX, animated });
+  }, []);
 
   useEffect(() => {
     scrollToCenter();
   }, [panes, scrollToCenter]);
+
+  useEffect(() => {
+    setIsSnapping(false);
+    setIsDaySnapping(false);
+  }, [selectedDate]);
 
   const finalizeSnap = useCallback(() => {
     requestAnimationFrame(() => {
@@ -322,31 +320,40 @@ export default function FlatListSwiperExample() {
       const tasksForDay = getTasksForDate(date);
       const totalsByCategory = tasksForDay.reduce((acc, t) => {
         const cat = t.category ?? 0;
-        if (!acc[cat]) acc[cat] = { spent: 0, goal: 0, tasks: [] as typeof tasksForDay };
-        acc[cat].spent += t.timeSpent ?? 0;
-        acc[cat].goal += t.timeGoal ?? 0;
+        if (!acc[cat]) acc[cat] = { spent: 0, goal: 0, completed: 0, tasks: [] as typeof tasksForDay };
+        const spent = t.timeSpent ?? 0;
+        const goal = Math.max(t.timeGoal ?? 0, 0);
+        const completed = goal > 0 ? Math.min(spent, goal) : spent;
+        acc[cat].spent += spent;
+        acc[cat].goal += goal;
+        acc[cat].completed += completed;
         acc[cat].tasks.push(t);
         return acc;
-      }, {} as Record<number, { spent: number; goal: number; tasks: typeof tasksForDay }>);
-
-      const totalGoal = Object.values(totalsByCategory).reduce((sum, v) => sum + v.goal, 0);
+      }, {} as Record<number, { spent: number; goal: number; completed: number; tasks: typeof tasksForDay }>);
 
       return Object.entries(totalsByCategory).map(([catId, data]) => {
         const node = (Category$ as any)[Number(catId)];
         const label = node?.label?.get?.() ?? `Category ${catId}`;
         const accent = node?.color?.get?.() ?? palette.peach;
+        const completionPercent = data.goal > 0 ? Math.round((data.completed / data.goal) * 100) : (data.completed > 0 ? 100 : 0);
         return {
           title: label,
           accent,
-          percent: totalGoal > 0 ? `${Math.round((data.goal / totalGoal) * 100)}%` : '0%',
+          percent: `${Math.min(completionPercent, 100)}%`,
           total: secondsToHms(data.spent),
-          tasks: data.tasks.map((task) => ({
-            title: task.title,
-            date: date.format('MMMM D, YYYY'),
-            time: secondsToHms(task.timeSpent ?? 0),
-            goal: secondsToHms(task.timeGoal ?? 0),
-            percent: task.timeGoal ? `${Math.round(((task.timeSpent ?? 0) / task.timeGoal) * 100)}%` : '0%',
-          })),
+          tasks: data.tasks.map((task) => {
+            const spentSeconds = Math.max(task.timeSpent ?? 0, 0);
+            const goalSeconds = Math.max(task.timeGoal ?? 0, 0);
+            const completedSeconds = goalSeconds > 0 ? Math.min(spentSeconds, goalSeconds) : spentSeconds;
+            const percent = goalSeconds > 0 ? Math.round((completedSeconds / goalSeconds) * 100) : (spentSeconds > 0 ? 100 : 0);
+            return {
+              title: task.title,
+              date: date.format('MMMM D, YYYY'),
+              time: secondsToHms(spentSeconds),
+              goal: secondsToHms(goalSeconds),
+              percent: `${Math.min(percent, 100)}%`,
+            };
+          }),
         };
       });
     },
@@ -398,8 +405,8 @@ export default function FlatListSwiperExample() {
       </View>
     <SafeAreaView style={{ flex: 1 }}>
       <View style={styles.calContainer}>
-        <Animated.ScrollView
-          ref={scrollRef}
+        <ScrollView
+          ref={weekScrollRef}
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
@@ -415,7 +422,7 @@ export default function FlatListSwiperExample() {
               {renderWeek(pane)}
             </View>
           ))}
-        </Animated.ScrollView>
+        </ScrollView>
 
         <FlatList
           ref={dayListRef}
@@ -468,40 +475,6 @@ export default function FlatListSwiperExample() {
             );
           }}
         />
-
-        <View style={styles.footer}>
-          <TouchableOpacity onPress={() => {
-            const title = new Date().toLocaleDateString('en-US', { dateStyle: 'full' });
-            const startDate = new Date('2025-08-01T00:00:00').toISOString();
-            const rrule = 'FREQ=DAILY;UNTIL=2025-09-01';
-            createEvent({ title, startDate, rrule }).then(() => {
-              console.log("Event Created: ", { title, startDate, rrule });
-            })
-
-            // console.log("Event Created?>?>?")
-
-            // getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).then((data) => {
-            //   console.log("Events fetched:");
-            //   events.data.set(data);
-            //   console.log("Events after fetching: ", data);
-            // })
-  // clearEvents();
-                    // getEventOccurrences(new Date(), new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).then((data) => {
-                    // getEventOccurrences(new Date(), new Date(Date.now() + 1 * 24 * 60 * 60 * 1000)).then((data) => {
-                    // getEventOccurrences(dayjs().startOf('date').toDate(), dayjs().startOf('date').add(1, 'day').subtract(1, 'second').toDate()).then((data) => {
-                    //   console.log("Events fetched:", data);
-                    //   // events.data.set(data);
-                    //   // console.log("Events after fetching: ", data);
-                    // })
-                    getEventsForDate(new Date()).then((data) => {
-                      console.log("Events fetched:", data);
-                      // events.data.set(data);
-                      // console.log("Events after fetching: ", data);
-                    }
-                    );
-          }}>
-          </TouchableOpacity>
-        </View>
       </View>
     </SafeAreaView>
     </ScreenView>
