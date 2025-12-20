@@ -2,110 +2,100 @@ import {
   StyleSheet,
   View,
   ScrollView,
-  Button,
   TouchableOpacity,
-  RefreshControl,
+  ActionSheetIOS,
+  Alert,
+  Platform,
+  Dimensions,
 } from "react-native";
-import { Text, ScreenView } from "@/components/Themed";
-import { eventsType, getEventsForDate } from "@/utils/database";
+import { Text } from "@/components/Themed";
 import {
   Category$,
-  CurrentTask$,
   CurrentTaskID$,
-  tasks$
+  tasks$,
+  colorTheme$,
 } from "@/utils/stateManager";
-import moment from "moment";
-import { computed, observable } from "@legendapp/state";
-import { Memo } from "@legendapp/state/react";
-import Fontisto from "@expo/vector-icons/Fontisto";
-import { FontAwesome5 } from "@expo/vector-icons";
-import { useCallback } from "react";
-import HorizontalProgressBarPercentage from "./custom_ui/HorizontalProgressBarPercentage";
 import { colorTheme } from "@/constants/Colors";
-import { fmt, fmtDisappearingHour } from "@/helpers/fmt";
+import moment from "moment";
+import { observable } from "@legendapp/state";
+import { Memo } from "@legendapp/state/react";
+import { FontAwesome5 } from "@expo/vector-icons";
+import HorizontalProgressBarPercentage from "./custom_ui/HorizontalProgressBarPercentage";
+import { fmt } from "@/helpers/fmt";
 
 export const homePageInfo$ = observable({
   reload: false,
 });
 
-export const CurrentTaskView = () => {
-  const noTaskView = (
-    <>
-      <Text style={taskStyles.taskText}>No Task Running</Text>
-      <Text style={taskStyles.taskSubText}>
-        Start a task to see it running here!
-      </Text>
-    </>
-  );
+export const CurrentTaskView = () => (
+  <Memo>
+    {() => {
+      const currentId = CurrentTaskID$.get();
+      if (currentId === -1) {
+        return (
+          <View
+            style={[
+              taskStyles.container,
+              taskStyles.noTaskContainer,
+              { backgroundColor: colorTheme$.colors.surface0.get() },
+            ]}
+          >
+            <Text style={taskStyles.noTaskTitle}>No tasks currently running</Text>
+            <Text style={taskStyles.noTaskSubtitle}>
+              Start a task to begin tracking time.
+            </Text>
+          </View>
+        );
+      }
 
-  const taskView = () => {
-    const taskObj$ = observable({
-      title: computed(() => {
-        const curr = CurrentTask$.get()
-        if (curr && typeof curr.title === 'string') return (curr.title.trim() ? curr.title.trim() : "Untitled") ?? "Untitled"
-        return "Untitled"
-      }),
-      timeSpent: computed(() => {
-        const curr = CurrentTask$.get()
-        if (curr) return fmtDisappearingHour(curr.timeSpent)
-        return "00:00"
-      }),
-      timeGoal: computed(() => {
-        const curr = CurrentTask$.get()
-        if (curr) return fmtDisappearingHour(curr.timeGoal)
-        return "00:00"
-      }),
-      percentage: computed(() => {
-        const curr = CurrentTask$.get()
-        let division = 0;
-        if (curr) {
-          try {
-            division = curr.timeSpent / curr.timeGoal;
-          } catch (err) {
-            console.warn("Probably divided by 0 somehow...", err)
-          }
-        }
-        return division
-      })
-    });
+      const node = tasks$.entities[currentId];
+      if (!node) {
+        return (
+          <View
+            style={[
+              taskStyles.container,
+              taskStyles.noTaskContainer,
+              { backgroundColor: colorTheme$.colors.surface0.get() },
+            ]}
+          >
+            <Text style={taskStyles.noTaskTitle}>No tasks currently running</Text>
+          </View>
+        );
+      }
 
-    return (
-      <View style={{ justifyContent: 'center', alignItems: 'center'}}>
-        <Memo><Text style={[taskStyles.taskText, taskStyles.pad]}>{taskObj$.title.get()}</Text></Memo>
-        <View style={taskStyles.pad} >
-          <Memo><Text style={taskStyles.taskTimeSpent}>{taskObj$.timeSpent.get()}</Text></Memo>
-          <Memo><Text style={taskStyles.taskTimeGoal}>{taskObj$.timeGoal.get()}</Text></Memo>
-        </View>
-        <View style={taskStyles.pad}>
-          <Memo><HorizontalProgressBarPercentage width={150} percentage={taskObj$.percentage.get()} color={"green"} /></Memo>
-        </View>
-      </View>
-    );
-  };
+      const title = node.title.get()?.trim() || "Untitled Task";
+      const spent = node.timeSpent.get() ?? 0;
+      const goal = node.timeGoal.get() ?? 0;
+      const percent = goal > 0 ? Math.min(spent / goal, 1) : 0;
+      const catId = node.category?.get?.() ?? 0;
+      const color = (Category$[catId]?.color?.get?.()) || colorTheme$.colors.primary.get();
+      const progressWidth = Math.min(
+        Dimensions.get("window").width - 140,
+        360,
+      );
 
-  // TODO — Find task in each category, save category, print category color
-  return (
-    <Memo>
-      {() => (
-        <View
-          style={[
-            taskStyles.container,
-            {
-              backgroundColor:
-                CurrentTaskID$.get() === -1
-                  ? "gray"
-                  : CurrentTask$.category.get() === -1
-                  ? "gray"
-                  : Category$[CurrentTask$.category.get()].color.get(),
-            },
-          ]}
-        >
-          {CurrentTaskID$.get() === -1 ? noTaskView : taskView()}
+      return (
+        <View style={[taskStyles.container, { backgroundColor: color }]}> 
+          <View style={taskStyles.cardHeader}>
+            <Text style={taskStyles.currentTitle}>{title}</Text>
+            <Text style={taskStyles.cardPercent}>{Math.round(percent * 100)}%</Text>
+          </View>
+          <Text style={taskStyles.currentTime}>{fmt(spent)}</Text>
+          {!!goal && <Text style={taskStyles.currentGoal}>{fmt(goal)}</Text>}
+          <View style={taskStyles.progressWrapper}>
+            <HorizontalProgressBarPercentage
+              width={progressWidth}
+              percentage={percent}
+              color={colorTheme$.colors.accent.get()}
+              trackColor="rgba(255,255,255,0.35)"
+              textColor="#fff"
+            />
+          </View>
         </View>
-      )}
-    </Memo>
-  );
-};
+      );
+    }}
+  </Memo>
+);
 
 const SectionHeader = ({
   category,
@@ -125,16 +115,21 @@ const SectionHeader = ({
           goal  += n.timeGoal.get()  ?? 0;  // tracked read
         }
         const percent = goal > 0 ? Math.round((spent / goal) * 100) : 0;
+        const catNode = Category$[category];
+        const color = catNode?.color?.get?.() ?? colorTheme$.colors.primary.get();
+        const label = catNode?.label?.get?.() ?? "General";
 
         return (
           <View style={taskListStyles.sectionHeader}>
             <Text
               style={[
                 taskListStyles.sectionTitle,
-                { color: Category$[category].color.get() ?? "#000" }, // tracked category color
+                { color },
               ]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
             >
-              {Category$[category].label.get() ?? "General"} ({percent}%)
+              {label} ({percent}%)
             </Text>
             <Text style={taskListStyles.sectionTotals}>
               {fmt(spent)}{goal ? ` / ${fmt(goal)}` : ""}
@@ -146,61 +141,126 @@ const SectionHeader = ({
   )
 };
 
-const TaskRow = ({ id }: { id: number }) => (
-  <Memo>
-    {() => {
-      const node = tasks$.entities[id];
-      if (!node) return null;
-
-      const isCurrent = CurrentTaskID$.get() === id;
-
-      const title = node.title.get()?.trim() || "Untitled";
-      const timeSpent = node.timeSpent.get() ?? 0;
-      const timeGoal  = node.timeGoal.get()  ?? 0;
-      const date      = node.date?.get?.(); // optional
-
-      const onToggle = () => {
-        // toggle current selection
-        CurrentTaskID$.set(prev => (prev === id ? -1 : id));
-        // example: increment this row's time (updates cache & UI)
-        node.timeSpent.set(prev => (prev ?? 0) + 60);
-        // (optionally debounce persist to DB here)
-      };
-
-      return (
-        <View style={taskListStyles.row}>
-          <TouchableOpacity onPress={onToggle} style={{ marginRight: 8 }}>
-            {isCurrent ? (
-              <FontAwesome5 name="pause" size={24} color="red" />
-            ) : (
-              <FontAwesome5 name="play" size={24} color="green" />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => {
-              // open details modal, etc.
-            }}
-            style={{ flex: 1 }}
-          >
-            <Text style={taskListStyles.rowTitle}>{title}</Text>
-            {date && (
-              <Text style={taskListStyles.rowSub}>
-                {moment(date).format("MMMM D, YYYY")}
-              </Text>
-            )}
-          </TouchableOpacity>
-
-          <View style={{ alignItems: "flex-end" }}>
-            <Text style={taskListStyles.rowTime}>
-              {fmt(timeSpent)}{timeGoal ? ` / ${fmt(timeGoal)}` : ""}
-            </Text>
-          </View>
-        </View>
+const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
+  const confirmStop = (onStop: () => void) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: 'Pause Menu',
+          message: 'Do you want to stop this task?',
+          options: ['Stop Task', 'Cancel'],
+          destructiveButtonIndex: 0,
+          cancelButtonIndex: 1,
+        },
+        (index) => {
+          if (index === 0) onStop();
+        },
       );
-    }}
-  </Memo>
-);
+    } else {
+      Alert.alert('Pause Menu', 'Do you want to stop this task?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Stop Task', style: 'destructive', onPress: onStop },
+      ]);
+    }
+  };
+
+  const confirmSwap = (onStart: () => void, onStop: () => void) => {
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: 'Start New Task?',
+          message: 'Another task is running.',
+          options: ['Start New Task', 'Stop Current Task', 'Cancel'],
+          destructiveButtonIndex: 1,
+          cancelButtonIndex: 2,
+        },
+        (index) => {
+          if (index === 0) {
+            onStart();
+          } else if (index === 1) {
+            onStop();
+          }
+        },
+      );
+    } else {
+      Alert.alert('Start New Task?', 'Another task is running.', [
+        { text: 'Start New Task', onPress: onStart },
+        { text: 'Stop Current Task', style: 'destructive', onPress: onStop },
+        { text: 'Cancel', style: 'cancel' },
+      ]);
+    }
+  };
+
+  return (
+    <Memo>
+      {() => {
+        const node = tasks$.entities[id];
+        if (!node) return null;
+
+        const currentId = CurrentTaskID$.get();
+        const isCurrent = currentId === id;
+
+        const title = node.title.get()?.trim() || "Untitled";
+        const timeSpent = node.timeSpent.get() ?? 0;
+        const timeGoal = node.timeGoal.get() ?? 0;
+        const percent = timeGoal > 0 ? timeSpent / timeGoal : 0;
+        const date = node.date?.get?.();
+
+        const startTask = () => CurrentTaskID$.set(id);
+        const stopTask = () => CurrentTaskID$.set(-1);
+
+        const handlePress = () => {
+          if (isCurrent) {
+            confirmStop(stopTask);
+            return;
+          }
+          if (currentId !== -1) {
+            confirmSwap(startTask, stopTask);
+            return;
+          }
+          startTask();
+        };
+
+        const iconColor = isCurrent ? '#ef4444' : '#16a34a';
+        const dividerColor = colorTheme$.colors.surface0.get();
+
+        return (
+          <View
+            style={[
+              taskListStyles.row,
+              {
+                borderBottomColor: dividerColor,
+                borderBottomWidth: showDivider ? StyleSheet.hairlineWidth : 0,
+              },
+            ]}
+          >
+            <TouchableOpacity onPress={handlePress} style={taskListStyles.iconButton}>
+              <FontAwesome5 name={isCurrent ? 'pause' : 'play'} size={18} color={iconColor} />
+            </TouchableOpacity>
+            <View style={{ flex: 1 }}>
+              <Text style={taskListStyles.rowTitle}>{title}</Text>
+              {date && (
+                <Text style={taskListStyles.rowSub}>{moment(date).format("MMMM D, YYYY")}</Text>
+              )}
+            </View>
+            <View style={taskListStyles.rowRight}>
+              <Text style={taskListStyles.rowTime}>
+                {fmt(timeSpent)}{timeGoal ? ` / ${fmt(timeGoal)}` : ""}
+              </Text>
+              <HorizontalProgressBarPercentage
+                width={110}
+                height={28}
+                percentage={percent}
+                color={iconColor}
+                trackColor={colorTheme$.colors.surface1.get()}
+              />
+            </View>
+          </View>
+        );
+      }}
+    </Memo>
+  );
+};
 
 // TODO — Implement Tomorrow task views as well...
 
@@ -219,16 +279,17 @@ export const TodayTaskView = () => {
           <ScrollView contentContainerStyle={taskListStyles.container} scrollEnabled={false}>
             {entries.length ? (
               entries.map(([catKey, ids]) => (
-                // <SectionView key={catKey} category={+catKey} ids={ids} />
-                  <View style={taskListStyles.section}>
-                    <SectionHeader category={+catKey} ids={ids} />
-                    {ids.map((id) => (
-                      <TaskRow key={id} id={id} />
-                    ))}
-                  </View>
+                <View key={catKey} style={taskListStyles.section}>
+                  <SectionHeader category={+catKey} ids={ids as number[]} />
+                  {(ids as number[]).map((id, idx, arr) => (
+                    <TaskRow key={id} id={id} showDivider={idx !== arr.length - 1} />
+                  ))}
+                </View>
               ))
             ) : (
-              <View><Text>No tasks for today!</Text></View>
+              <View style={taskListStyles.emptyView}>
+                <Text style={taskListStyles.emptyText}>No tasks for today!</Text>
+              </View>
             )}
           </ScrollView>
         );
@@ -253,6 +314,21 @@ const taskStyles = StyleSheet.create({
     minHeight: 170,
     marginTop: 10,
     marginBottom: 30,
+    paddingHorizontal: 24,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  cardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  cardPercent: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#fff",
   },
   taskText: {
     fontSize: 16,
@@ -286,7 +362,44 @@ const taskStyles = StyleSheet.create({
   pad: {
     margin: 3,
     // backgroundColor: 'aqua'
-  }
+  },
+  noTaskContainer: {
+    backgroundColor: "#ececec",
+  },
+  noTaskTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: colorTheme$.colors.subtext1.get(),
+    textAlign: "center",
+  },
+  noTaskSubtitle: {
+    fontSize: 14,
+    color: colorTheme$.colors.subtext0.get(),
+    marginTop: 8,
+    textAlign: "center",
+  },
+  currentTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#fff",
+  },
+  currentTime: {
+    fontSize: 38,
+    fontWeight: "800",
+    color: "#fff",
+    marginTop: 18,
+    textAlign: "center",
+  },
+  currentGoal: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "rgba(255,255,255,0.9)",
+    textAlign: "center",
+  },
+  progressWrapper: {
+    marginTop: 20,
+    alignItems: "center",
+  },
 });
 
 // ---- styles (tweak to match your UI) ----
@@ -297,13 +410,14 @@ const taskListStyles = StyleSheet.create({
   },
   section: {
     backgroundColor: "#fff",
-    borderRadius: 14,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
+    marginBottom: 18,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -315,6 +429,8 @@ const taskListStyles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
+    flexShrink: 1,
+    marginRight: 8,
   },
   sectionTotals: {
     fontSize: 14,
@@ -324,7 +440,7 @@ const taskListStyles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
     paddingHorizontal: 6,
     borderRadius: 12,
   },
@@ -347,10 +463,32 @@ const taskListStyles = StyleSheet.create({
   rowTime: {
     fontSize: 14,
     fontWeight: "600",
+    textAlign: "right",
   },
   rowPercent: {
     fontSize: 12,
     color: "#7A7A7A",
     marginTop: 2,
+  },
+  iconButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 12,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  rowRight: {
+    alignItems: "flex-end",
+    gap: 4,
+  },
+  emptyView: {
+    paddingVertical: 40,
+    alignItems: "center",
+  },
+  emptyText: {
+    fontSize: 16,
+    color: colorTheme$.colors.subtext0.get(),
   },
 });
