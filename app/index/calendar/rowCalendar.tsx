@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
 import { colorTheme } from '@/constants/Colors';
 import { loadDay, Category$, tasks$ } from '@/utils/stateManager';
+import { ensureDirtyTasksHydrated, flushDirtyTasksToDB, getDirtySnapshot } from '@/utils/dirtyTaskStore';
 
 const { width } = Dimensions.get('window');
 const PANES = 5;
@@ -195,6 +196,15 @@ export default function FlatListSwiperExample() {
     };
   }, [selectedDate, ensureDateCached]);
 
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(async () => {
+      await ensureDirtyTasksHydrated();
+      await flushDirtyTasksToDB();
+      await ensureDateCached(selectedDate);
+    });
+    return () => task.cancel();
+  }, [ensureDateCached, selectedDate]);
+
   const scrollToCenter = useCallback((animated = false) => {
     weekScrollRef.current?.scrollTo({ x: width * CENTER_INDEX, animated });
   }, []);
@@ -276,8 +286,14 @@ export default function FlatListSwiperExample() {
         void ensureDateCached(date);
         return [];
       }
+      const dirty = getDirtySnapshot();
       return ids
-        .map((id: number) => tasks$.entities[id]?.get?.())
+        .map((id: number) => {
+          const base = tasks$.entities[id]?.get?.();
+          if (!base) return null;
+          const dirtyEntry = dirty[id];
+          return dirtyEntry ? { ...base, timeSpent: dirtyEntry.timeSpent } : base;
+        })
         .filter(Boolean) as ReturnType<typeof tasks$.entities[number]['get']>[];
     },
     [ensureDateCached, dataVersion],

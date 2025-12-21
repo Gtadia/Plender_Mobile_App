@@ -3,12 +3,12 @@ import { Text, ScreenView } from "@/components/Themed";
 import { globalTheme, horizontalPadding } from "@/constants/globalThemeVar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { observable } from "@legendapp/state";
-import { eventsType, getAllEvents, getEventsForDate } from "@/utils/database";
 import moment from "moment";
 import { Category$, loadDay, tasks$ } from "@/utils/stateManager";
 import { Memo, useObservable } from "@legendapp/state/react";
 import { CurrentTaskView, TodayTaskView } from "@/components/HomeScreenTasks";
 import { useCallback } from "react";
+import { flushDirtyTasksToDB } from "@/utils/dirtyTaskStore";
 
 // TODO — for drag down to reload
 
@@ -22,9 +22,8 @@ export default function TabOneScreen() {
     // show spinner immediately
     homePageInfo$.reload.set(true);
     try {
-      const events = await getEventsForDate(moment().startOf("day").toDate());
-      events.forEach(r => tasks$.entities[r.id].set(r));
-      loadDay(new Date());
+      await flushDirtyTasksToDB();
+      await loadDay(new Date());
     } finally {
       // hide spinner
       homePageInfo$.reload.set(false);

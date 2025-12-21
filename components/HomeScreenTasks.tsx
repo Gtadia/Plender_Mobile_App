@@ -278,14 +278,18 @@ const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
 
 export const TodayTaskView = () => {
   const key = moment().format("YYYY-MM-DD");
-  // const byCat$ = tasks$.lists.byDateCategory[key];
-
   return (
     <Memo>
       {() => {
-        // 🔍 tracked: the object mapping category -> [ids]
-        const byCat = tasks$.lists.byDateCategory[key].get();
-        const entries = byCat === undefined ? [] : Object.entries(byCat).sort(([a], [b]) => +a - +b);
+        const ids = tasks$.lists.byDate[key]?.get?.() ?? [];
+        const grouped = ids.reduce((acc, id) => {
+          const task = tasks$.entities[id]?.get?.();
+          if (!task) return acc;
+          const cat = task.category ?? 0;
+          (acc[cat] ??= []).push(id);
+          return acc;
+        }, {} as Record<number, number[]>);
+        const entries = Object.entries(grouped).sort(([a], [b]) => +a - +b);
 
         return (
           <ScrollView contentContainerStyle={taskListStyles.container} scrollEnabled={false}>

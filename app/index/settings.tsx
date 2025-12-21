@@ -6,6 +6,7 @@ import moment from 'moment';
 import { clearEvents, createEvent } from '@/utils/database';
 import { loadDay, tasks$ } from '@/utils/stateManager';
 import { clearActiveTimerState } from '@/utils/activeTimerStore';
+import { dirtyTasks$ } from '@/utils/dirtyTaskStore';
 
 export default function SettingsScreen() {
   const refreshToday = useCallback(async () => {
@@ -20,6 +21,7 @@ export default function SettingsScreen() {
   const handleClearDb = useCallback(async () => {
     await clearEvents();
     clearActiveTimerState();
+    dirtyTasks$.set({});
     await refreshToday();
     Alert.alert('Database cleared');
   }, [refreshToday]);
@@ -57,7 +59,6 @@ export default function SettingsScreen() {
   const handleClearCache = useCallback(() => {
     tasks$.entities.set({});
     tasks$.lists.byDate.set({});
-    tasks$.lists.byDateCategory.set({});
     Alert.alert('tasks$ cache cleared');
   }, []);
 

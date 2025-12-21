@@ -55,31 +55,29 @@ export const SelectedDate$ = observable<TaskType>({
   total: (): number => SelectedDate$.tasks.length
 });
 
-// helper
-const groupByCategory = (items: eventsType[]) =>
-  items.reduce((acc, item) => {
-    (acc[item.category] ??= []).push(item.id);
-    return acc;
-  }, {} as Record<number, number[]>);
+import { ensureDirtyTasksHydrated, getDirtySnapshot } from "./dirtyTaskStore";
 
 // Task Observable
 export const tasks$ = observable({
   entities: {} as Record<number, eventsType>,   // id -> event
   lists: {
     byDate: {} as Record<string, number[]>,     // "YYYY-MM-DD" -> [ids]
-    byDateCategory: {} as Record<string, Record<number, number[]>>,   // "YYYY-MM-DD" -> { 0: [ids], 1: [ids], etc. }
-    // add byCategory, byWeek, etc. as needed
   },
 });
 
 // Load once per screen/range
 export async function loadDay(date: Date) {
+  await ensureDirtyTasksHydrated();
   const rows = await getEventsForDate(date);  // DB query ONCE
   const key = moment(date).format('YYYY-MM-DD');
+  const dirty = getDirtySnapshot();
 
   tasks$.lists.byDate[key].set(rows.map(r => r.id));
-  tasks$.lists.byDateCategory[key].set(groupByCategory(rows));
-  rows.forEach(r => { tasks$.entities[r.id].set(r) })
+  rows.forEach((r) => {
+    const dirtyEntry = dirty[r.id];
+    const withDirty = dirtyEntry ? { ...r, timeSpent: dirtyEntry.timeSpent } : r;
+    tasks$.entities[r.id].set(withDirty);
+  });
 }
 export async function loadWeek() {
   // TODO — For Calendar View

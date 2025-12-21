@@ -2,6 +2,7 @@ import { AppState, AppStateStatus } from 'react-native';
 import { CurrentTaskID$, tasks$ } from './stateManager';
 import { updateEvent } from './database';
 import { activeTimer$, hydrateActiveTimer, clearActiveTimerState } from './activeTimerStore';
+import { clearDirtyTask, ensureDirtyTasksHydrated, markTaskDirty } from './dirtyTaskStore';
 
 type RunningTimer = {
   taskId: number;
@@ -32,6 +33,7 @@ class TimerManager {
   async init() {
     if (this.initialized) return;
     this.initialized = true;
+    await ensureDirtyTasksHydrated();
     await hydrateActiveTimer();
     const row = activeTimer$.get();
     if (row) {
@@ -65,6 +67,7 @@ class TimerManager {
     const total = this.computeTotalSeconds();
     const node = tasks$.entities[this.running.taskId];
     node?.timeSpent?.set?.(total);
+    markTaskDirty(this.running.taskId, total);
   }
 
   async start(taskId: number) {
@@ -89,15 +92,17 @@ class TimerManager {
   private async finalizeRunning(opts?: { preserveCurrentId?: boolean }) {
     if (!this.running) return;
     const total = this.computeTotalSeconds();
+    const finishedTaskId = this.running.taskId;
     await updateEvent({
-      id: this.running.taskId,
+      id: finishedTaskId,
       timeSpent: total,
     });
-    const node = tasks$.entities[this.running.taskId];
+    const node = tasks$.entities[finishedTaskId];
     node?.timeSpent?.set?.(total);
     this.stopTicker();
     this.running = undefined;
     clearActiveTimerState();
+    clearDirtyTask(finishedTaskId);
     if (!opts?.preserveCurrentId) {
       CurrentTaskID$.set(-1);
     }
