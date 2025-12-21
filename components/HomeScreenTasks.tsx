@@ -22,14 +22,21 @@ import { Memo } from "@legendapp/state/react";
 import { FontAwesome5 } from "@expo/vector-icons";
 import HorizontalProgressBarPercentage from "./custom_ui/HorizontalProgressBarPercentage";
 import { fmt } from "@/helpers/fmt";
+import { initTimerService, startTaskTimer, stopTaskTimer } from "@/utils/timerService";
+import { useEffect } from "react";
 
 export const homePageInfo$ = observable({
   reload: false,
 });
 
-export const CurrentTaskView = () => (
-  <Memo>
-    {() => {
+export const CurrentTaskView = () => {
+  useEffect(() => {
+    void initTimerService();
+  }, []);
+
+  return (
+    <Memo>
+      {() => {
       const currentId = CurrentTaskID$.get();
       if (currentId === -1) {
         return (
@@ -93,9 +100,10 @@ export const CurrentTaskView = () => (
           </View>
         </View>
       );
-    }}
-  </Memo>
-);
+      }}
+    </Memo>
+  );
+};
 
 const SectionHeader = ({
   category,
@@ -206,8 +214,12 @@ const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
         const percent = timeGoal > 0 ? timeSpent / timeGoal : 0;
         const date = node.date?.get?.();
 
-        const startTask = () => CurrentTaskID$.set(id);
-        const stopTask = () => CurrentTaskID$.set(-1);
+        const startTask = () => {
+          void startTaskTimer(id);
+        };
+        const stopTask = () => {
+          void stopTaskTimer();
+        };
 
         const handlePress = () => {
           if (isCurrent) {

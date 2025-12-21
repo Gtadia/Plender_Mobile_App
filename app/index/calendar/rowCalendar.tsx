@@ -295,8 +295,8 @@ export default function FlatListSwiperExample() {
       const active = date.isSame(selectedDate, 'day');
 
       const colors = {
-        spent: active ? palette.green : '#9ad2b6',
-        goal: active ? palette.peach : '#f2c2ae',
+        spent: palette.green,
+        goal: active ? palette.peach : palette.overlay0,
       };
 
       if (goalRatio === 0 && spentRatio === 0) {
@@ -393,7 +393,7 @@ export default function FlatListSwiperExample() {
   const insets = useSafeAreaInsets();
 
   // TODO — move database initialization to a more appropriate place
-  initializeDB();
+  initializeDB(); // TODO — what in the world? Why do we need this here? Can't we just delete it? Does initializing a database that already exists hurt anything?
 
   const router = useRouter();
 

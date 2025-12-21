@@ -5,6 +5,7 @@ import AnimationToast from '@/components/animation-toast/animation-toast';
 import moment from 'moment';
 import { clearEvents, createEvent } from '@/utils/database';
 import { loadDay, tasks$ } from '@/utils/stateManager';
+import { clearActiveTimerState } from '@/utils/activeTimerStore';
 
 export default function SettingsScreen() {
   const refreshToday = useCallback(async () => {
@@ -18,6 +19,7 @@ export default function SettingsScreen() {
 
   const handleClearDb = useCallback(async () => {
     await clearEvents();
+    clearActiveTimerState();
     await refreshToday();
     Alert.alert('Database cleared');
   }, [refreshToday]);
