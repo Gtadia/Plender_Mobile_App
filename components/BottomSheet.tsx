@@ -13,6 +13,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
+  runOnJS,
 } from "react-native-reanimated";
 
 
@@ -30,9 +31,20 @@ const gestureOffset = 10;
 const lineMargin = 15;
 const lineHeight = 4;
 
+// Default controller for legacy usages
 export const openAddMenu$ = observable(false);
 
-const BottomSheet = ({ close, children }: any) => {
+type ObservableLike<T> = { onChange: (fn: (ev: { value: T }) => void, opts?: any) => void; set: (v: T) => void };
+
+const BottomSheet = ({
+  close,
+  children,
+  open$,
+}: {
+  close?: ObservableLike<any>;
+  open$?: ObservableLike<boolean>;
+  children: React.ReactNode;
+}) => {
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(0);
 
@@ -42,41 +54,35 @@ const BottomSheet = ({ close, children }: any) => {
   }, []);
 
   const context = useSharedValue({ y: 0 }); // to keep context of the previous scroll position
+  const openHeight = (-height * 5) / 8;
+
+  const closeSheet = useCallback(() => {
+    openObservable.set(false);
+  }, [openObservable]);
+
   const gesture = Gesture.Pan()
     .onStart(() => {
       context.value = { y: translateY.value };
     })
     .onUpdate((event) => {
-      console.log(context.value.y, -height * 5 / 8, event.translationY);
-      if (context.value.y <= (-height * 5) / 8 + 30 && event.translationY >= -30) {
-        translateY.value = event.translationY + context.value.y; // adding previous scroll position
-        translateY.value = Math.max(translateY.value, MAX_TRANSLATE_Y);
-      }
+      const next = context.value.y + event.translationY;
+      translateY.value = Math.min(0, Math.max(openHeight, next));
     })
     .onEnd((event) => {
-      if (event.translationY > gestureOffset) {
-        // Swiping Down
-        if (context.value.y + (height * 5) / 8 < 10) {
-          console.log("1");
-          scrollTo(0);
-        } else {
-          console.log("2");
-          scrollTo(context.value.y);
-        }
-      } else if (event.translationY < -gestureOffset) {
-        // Swiping Up
-        if (context.value.y + (height * 5) / 8 < 10) {
-          // scrollTo(MAX_TRANSLATE_Y);
-          console.log("3");
-          scrollTo((-height * 5) / 8)
-        } else {
-          console.log("4");
-          scrollTo(context.value.y);
-        }
+      const drag = event.translationY;
+      if (drag < -50) {
+        scrollTo(openHeight);
+      } else if (drag > 50) {
+        scrollTo(0);
+        runOnJS(closeSheet)();
       } else {
-        console.log("5")
-        // if (context.value.y )
-        //   scrollTo(context.value.y);
+        // settle to nearest state
+        if (translateY.value < openHeight / 2) {
+          scrollTo(openHeight);
+        } else {
+          scrollTo(0);
+          runOnJS(closeSheet)();
+        }
       }
     });
 
@@ -110,15 +116,18 @@ const BottomSheet = ({ close, children }: any) => {
     };
   });
 
-  openAddMenu$.onChange(
+  const openObservable = open$ ?? openAddMenu$;
+  openObservable.onChange?.(
     ({ value }) => {
-      scrollTo((-height * 5) / 8);
+      if (value) scrollTo(openHeight);
+      else scrollTo(0);
     },
     { initial: false, trackingType: true }
   );
-  close.onChange(
-    ({ value }: any) => {
+  close?.onChange?.(
+    () => {
       scrollTo(0);
+      closeSheet();
     },
     { initial: false, trackingType: true }
   );
@@ -132,29 +141,30 @@ const BottomSheet = ({ close, children }: any) => {
     <Animated.View
       style={[styles.container, rBottomSheetStyle, { overflow: "hidden" }]}
     >
-        <GestureDetector gesture={gesture}>
+      <GestureDetector gesture={gesture}>
+        <BlurView intensity={90} tint="light" style={{ flex: 1, backgroundColor: "white" }}>
           <View style={[styles.gestureArea]}>
             <View style={styles.line} />
           </View>
-        </GestureDetector>
-        <View style={{ overflow: "hidden" }}>
-          <Animated.View style={[animatedStyles]}>
-            <View
-              style={{ paddingTop: insets.top - 2 * lineMargin - lineHeight }}
-            ></View>
-            <TouchableOpacity
-              onPress={() => scrollTo(0)}
-              style={{ alignSelf: "flex-start" }}
-            >
-              <AntDesign name="close" size={24} color="black" />
-            </TouchableOpacity>
-          </Animated.View>
-          {
-            // TODO — Use ...props to import clear functions to clear form when 'close' is pressed
-          }
-        </View>
-        <View style={{ flex: 1 }}>{children}</View>
-      </BlurView>
+          <View style={{ overflow: "hidden" }}>
+            <Animated.View style={[animatedStyles]}>
+              <View
+                style={{ paddingTop: insets.top - 2 * lineMargin - lineHeight }}
+              ></View>
+              <TouchableOpacity
+                onPress={() => {
+                  scrollTo(0);
+                  closeSheet();
+                }}
+                style={{ alignSelf: "flex-start" }}
+              >
+                <AntDesign name="close" size={24} color="black" />
+              </TouchableOpacity>
+            </Animated.View>
+          </View>
+          <View style={{ flex: 1 }}>{children}</View>
+        </BlurView>
+      </GestureDetector>
     </Animated.View>
   );
 };

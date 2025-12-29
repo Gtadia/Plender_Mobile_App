@@ -7,6 +7,7 @@ import { clearEvents, createEvent } from '@/utils/database';
 import { loadDay, tasks$ } from '@/utils/stateManager';
 import { clearActiveTimerState } from '@/utils/activeTimerStore';
 import { dirtyTasks$ } from '@/utils/dirtyTaskStore';
+import { clearFakeNow, setFakeNow, fakeNow$ } from '@/utils/timeOverride';
 
 export default function SettingsScreen() {
   const refreshToday = useCallback(async () => {
@@ -62,6 +63,21 @@ export default function SettingsScreen() {
     Alert.alert('tasks$ cache cleared');
   }, []);
 
+  const handleSetFakeNow = useCallback((date: Date) => {
+    setFakeNow(date);
+    Alert.alert('Fake time set', moment(date).format('LLLL'));
+  }, []);
+
+  const handleSetFakeNowTomorrow = useCallback(() => {
+    const d = moment().add(1, 'day').startOf('day').add(9, 'hours').toDate();
+    handleSetFakeNow(d);
+  }, [handleSetFakeNow]);
+
+  const handleClearFakeNow = useCallback(() => {
+    clearFakeNow();
+    Alert.alert('Fake time cleared');
+  }, []);
+
   return (
     <ScreenView style={styles.container}>
       <Text style={styles.title}>Settings</Text>
@@ -80,6 +96,15 @@ export default function SettingsScreen() {
         <View style={styles.panelButton}>
           <Button title="Clear Tasks Cache" onPress={handleClearCache} />
         </View>
+        <View style={styles.panelButton}>
+          <Button title="Set Fake Now (Tomorrow 9am)" onPress={handleSetFakeNowTomorrow} />
+        </View>
+        <View style={styles.panelButton}>
+          <Button title="Clear Fake Now" onPress={handleClearFakeNow} />
+        </View>
+        <Text style={styles.fakeLabel}>
+          {fakeNow$.get() ? `Fake now: ${moment(fakeNow$.get()).format('LLLL')}` : 'Fake now: off'}
+        </Text>
       </View>
     </ScreenView>
   );
@@ -114,5 +139,9 @@ const styles = StyleSheet.create({
   },
   panelButton: {
     width: '100%',
+  },
+  fakeLabel: {
+    fontSize: 12,
+    color: '#555',
   },
 });

@@ -292,7 +292,10 @@ export default function FlatListSwiperExample() {
           const base = tasks$.entities[id]?.get?.();
           if (!base) return null;
           const dirtyEntry = dirty[id];
-          return dirtyEntry ? { ...base, timeSpent: dirtyEntry.timeSpent } : base;
+          if (!dirtyEntry) return base;
+          const dayKey = date.format("YYYY-MM-DD");
+          const override = dirtyEntry.byDate?.[dayKey] ?? dirtyEntry.timeSpent;
+          return override !== undefined ? { ...base, timeSpent: override } : base;
         })
         .filter(Boolean) as ReturnType<typeof tasks$.entities[number]['get']>[];
     },

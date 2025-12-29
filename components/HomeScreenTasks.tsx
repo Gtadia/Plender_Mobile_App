@@ -24,12 +24,60 @@ import HorizontalProgressBarPercentage from "./custom_ui/HorizontalProgressBarPe
 import { fmt } from "@/helpers/fmt";
 import { initTimerService, startTaskTimer, stopTaskTimer } from "@/utils/timerService";
 import { useEffect } from "react";
+import { activeTimer$ } from "@/utils/activeTimerStore";
+import { useRouter } from "expo-router";
 
 export const homePageInfo$ = observable({
   reload: false,
 });
 
-export const CurrentTaskView = () => {
+const stopCurrentWithSplitPrompt = () => {
+  const running = activeTimer$.get();
+  if (!running) {
+    void stopTaskTimer();
+    return;
+  }
+  const startKey = moment(running.startedAt).format("YYYY-MM-DD");
+  const todayKey = moment().format("YYYY-MM-DD");
+  const spans = startKey !== todayKey;
+  const todayIds = tasks$.lists.byDate[todayKey]?.get?.() ?? [];
+  const appearsToday = todayIds.includes(running.taskId);
+  const doStop = (splitAcrossDays: boolean) => {
+    void stopTaskTimer({ splitAcrossDays });
+  };
+  if (!spans || !appearsToday) {
+    doStop(false);
+    return;
+  }
+  const message = "This task started yesterday. Split time between yesterday and today?";
+  if (Platform.OS === "ios") {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: message,
+        options: ["Split across days", "Keep on previous day", "Cancel"],
+        cancelButtonIndex: 2,
+      },
+      (index) => {
+        if (index === 0) doStop(true);
+        else if (index === 1) doStop(false);
+      }
+    );
+  } else {
+    Alert.alert(
+      "Split time?",
+      message,
+      [
+        { text: "Split", onPress: () => doStop(true) },
+        { text: "Keep on previous day", onPress: () => doStop(false) },
+        { text: "Cancel", style: "cancel" },
+      ],
+      { cancelable: true }
+    );
+  }
+};
+
+export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: number) => void }) => {
+  const router = useRouter();
   useEffect(() => {
     void initTimerService();
   }, []);
@@ -82,10 +130,28 @@ export const CurrentTaskView = () => {
       );
 
       return (
+        <TouchableOpacity
+          activeOpacity={0.92}
+          onPress={() => {
+            if (onPressDetails) {
+              onPressDetails(currentId);
+            } else {
+              router.push({
+                pathname: "/index/taskDetails",
+                params: { id: String(currentId) },
+              });
+            }
+          }}
+        >
         <View style={[taskStyles.container, { backgroundColor: color }]}> 
           <View style={taskStyles.cardHeader}>
             <Text style={taskStyles.currentTitle}>{title}</Text>
-            <Text style={taskStyles.cardPercent}>{Math.round(percent * 100)}%</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+              <Text style={taskStyles.cardPercent}>{Math.round(percent * 100)}%</Text>
+              <TouchableOpacity onPress={stopCurrentWithSplitPrompt} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <FontAwesome5 name="stop" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
           </View>
           <Text style={taskStyles.currentTime}>{fmt(spent)}</Text>
           {!!goal && <Text style={taskStyles.currentGoal}>{fmt(goal)}</Text>}
@@ -99,6 +165,7 @@ export const CurrentTaskView = () => {
             />
           </View>
         </View>
+        </TouchableOpacity>
       );
       }}
     </Memo>
@@ -218,7 +285,7 @@ const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
           void startTaskTimer(id);
         };
         const stopTask = () => {
-          void stopTaskTimer();
+          stopCurrentWithSplitPrompt();
         };
 
         const handlePress = () => {

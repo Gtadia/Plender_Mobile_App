@@ -1,8 +1,9 @@
-import { AppState, AppStateStatus } from 'react-native';
+import { AppState, AppStateStatus, Alert, Platform } from 'react-native';
+import moment from 'moment';
 import { CurrentTaskID$, tasks$ } from './stateManager';
 import { updateEvent } from './database';
 import { activeTimer$, hydrateActiveTimer, clearActiveTimerState } from './activeTimerStore';
-import { clearDirtyTask, ensureDirtyTasksHydrated, markTaskDirty } from './dirtyTaskStore';
+import { ensureDirtyTasksHydrated, markTaskDirty } from './dirtyTaskStore';
 
 type RunningTimer = {
   taskId: number;
@@ -66,8 +67,14 @@ class TimerManager {
     if (!this.running) return;
     const total = this.computeTotalSeconds();
     const node = tasks$.entities[this.running.taskId];
+    const { startKey, startDaySeconds, todayKey, todaySeconds } = this.computeDaySplit(total);
+    // Keep entity showing total for general views
     node?.timeSpent?.set?.(total);
-    markTaskDirty(this.running.taskId, total);
+    // Persist per-day
+    if (todaySeconds > 0) {
+      markTaskDirty(this.running.taskId, todaySeconds, todayKey);
+    }
+    markTaskDirty(this.running.taskId, startDaySeconds, startKey);
   }
 
   async start(taskId: number) {
@@ -84,25 +91,62 @@ class TimerManager {
     this.pushUpdate();
   }
 
-  async stop() {
+  async stop(opts?: { splitAcrossDays?: boolean }) {
     await this.init();
-    await this.finalizeRunning();
+    await this.finalizeRunning(opts);
   }
 
-  private async finalizeRunning(opts?: { preserveCurrentId?: boolean }) {
+  private computeDaySplit(totalSeconds: number) {
+    if (!this.running) {
+      const todayKey = moment().format('YYYY-MM-DD');
+      return { startKey: todayKey, todayKey, startDaySeconds: totalSeconds, todaySeconds: 0 };
+    }
+    const startMoment = moment(this.running.startedAt);
+    const nowMoment = moment();
+    const startKey = startMoment.format('YYYY-MM-DD');
+    const todayKey = nowMoment.format('YYYY-MM-DD');
+    const elapsed = Math.max(0, Math.floor((Date.now() - this.running.startedAt) / 1000));
+    const endOfStart = startMoment.clone().endOf('day');
+    const secondsToMidnight = Math.max(0, Math.floor(endOfStart.diff(startMoment, 'seconds')));
+    if (startKey === todayKey || elapsed <= secondsToMidnight) {
+      return { startKey, todayKey, startDaySeconds: totalSeconds, todaySeconds: 0 };
+    }
+    const startDaySeconds = this.running.baseSeconds + secondsToMidnight;
+    const todaySeconds = Math.max(0, totalSeconds - startDaySeconds);
+    return { startKey, todayKey, startDaySeconds, todaySeconds };
+  }
+
+  private async finalizeRunning(opts?: { preserveCurrentId?: boolean; splitAcrossDays?: boolean }) {
     if (!this.running) return;
     const total = this.computeTotalSeconds();
     const finishedTaskId = this.running.taskId;
-    await updateEvent({
-      id: finishedTaskId,
-      timeSpent: total,
-    });
-    const node = tasks$.entities[finishedTaskId];
-    node?.timeSpent?.set?.(total);
+    const split = opts?.splitAcrossDays ?? false;
+
+    const { startKey, todayKey, startDaySeconds, todaySeconds } = this.computeDaySplit(total);
+    if (split && todaySeconds > 0) {
+      // store per-day values
+      markTaskDirty(finishedTaskId, startDaySeconds, startKey);
+      markTaskDirty(finishedTaskId, todaySeconds, todayKey);
+      // persist sum to DB so total stays accurate
+      await updateEvent({
+        id: finishedTaskId,
+        timeSpent: startDaySeconds + todaySeconds,
+      });
+      const node = tasks$.entities[finishedTaskId];
+      node?.timeSpent?.set?.(startDaySeconds + todaySeconds);
+    } else {
+      // no split, all time goes to start day
+      markTaskDirty(finishedTaskId, total, startKey);
+      await updateEvent({
+        id: finishedTaskId,
+        timeSpent: total,
+      });
+      const node = tasks$.entities[finishedTaskId];
+      node?.timeSpent?.set?.(total);
+    }
     this.stopTicker();
     this.running = undefined;
     clearActiveTimerState();
-    clearDirtyTask(finishedTaskId);
     if (!opts?.preserveCurrentId) {
       CurrentTaskID$.set(-1);
     }
@@ -113,4 +157,4 @@ const manager = new TimerManager();
 
 export const initTimerService = () => manager.init();
 export const startTaskTimer = (taskId: number) => manager.start(taskId);
-export const stopTaskTimer = () => manager.stop();
+export const stopTaskTimer = (opts?: { splitAcrossDays?: boolean }) => manager.stop(opts);

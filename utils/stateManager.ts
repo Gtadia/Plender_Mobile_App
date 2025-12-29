@@ -75,7 +75,9 @@ export async function loadDay(date: Date) {
   tasks$.lists.byDate[key].set(rows.map(r => r.id));
   rows.forEach((r) => {
     const dirtyEntry = dirty[r.id];
-    const withDirty = dirtyEntry ? { ...r, timeSpent: dirtyEntry.timeSpent } : r;
+    const dayOverride = dirtyEntry?.byDate?.[key];
+    const timeSpent = dayOverride ?? dirtyEntry?.timeSpent;
+    const withDirty = timeSpent !== undefined ? { ...r, timeSpent } : r;
     tasks$.entities[r.id].set(withDirty);
   });
 }

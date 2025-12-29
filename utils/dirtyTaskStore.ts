@@ -3,7 +3,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { updateEvent } from "./database";
 
 export interface DirtyTaskRecord {
-  timeSpent: number;
+  // Latest total (fallback)
+  timeSpent?: number;
+  // Optional per-day overrides keyed by YYYY-MM-DD
+  byDate?: Record<string, number>;
   updatedAt: number;
 }
 
@@ -52,11 +55,19 @@ export function getDirtyEntry(id: number) {
   return dirtyTasks$[id]?.get?.();
 }
 
-export function markTaskDirty(id: number, timeSpent: number) {
-  dirtyTasks$[id].set({
-    timeSpent,
+export function markTaskDirty(id: number, timeSpent: number, dateKey?: string) {
+  const prev = dirtyTasks$[id]?.get?.() ?? { byDate: {} };
+  const next: DirtyTaskRecord = {
+    timeSpent: dateKey ? prev.timeSpent : timeSpent,
+    byDate: { ...(prev.byDate ?? {}) },
     updatedAt: Date.now(),
-  });
+  };
+  if (dateKey) {
+    next.byDate![dateKey] = timeSpent;
+  } else {
+    next.timeSpent = timeSpent;
+  }
+  dirtyTasks$[id].set(next);
 }
 
 export function clearDirtyTask(id: number) {
@@ -70,9 +81,16 @@ export async function flushDirtyTasksToDB() {
   for (const id of ids) {
     const record = snapshot[Number(id)];
     if (!record) continue;
+    const byDateTotal = record.byDate
+      ? Object.values(record.byDate).reduce((acc, v) => acc + v, 0)
+      : undefined;
+    const toPersist =
+      byDateTotal !== undefined
+        ? Math.max(record.timeSpent ?? 0, byDateTotal)
+        : record.timeSpent ?? 0;
     await updateEvent({
       id: Number(id),
-      timeSpent: record.timeSpent,
+      timeSpent: toPersist,
     });
   }
   dirtyTasks$.set({});
