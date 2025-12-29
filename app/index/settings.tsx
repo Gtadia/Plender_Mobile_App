@@ -1,6 +1,6 @@
-import { StyleSheet, View, Button, Alert } from 'react-native';
+import { StyleSheet, View, Button, Alert, ScrollView } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import AnimationToast from '@/components/animation-toast/animation-toast';
 import moment from 'moment';
 import { clearEvents, createEvent } from '@/utils/database';
@@ -8,11 +8,14 @@ import { loadDay, tasks$ } from '@/utils/stateManager';
 import { clearActiveTimerState } from '@/utils/activeTimerStore';
 import { dirtyTasks$ } from '@/utils/dirtyTaskStore';
 import { clearFakeNow, setFakeNow, fakeNow$ } from '@/utils/timeOverride';
+import DateTimePicker, { useDefaultStyles } from 'react-native-ui-datepicker';
 
 export default function SettingsScreen() {
   const refreshToday = useCallback(async () => {
     await loadDay(new Date());
   }, []);
+  const [showPicker, setShowPicker] = useState(false);
+  const [pickerDate, setPickerDate] = useState<Date>(new Date());
 
   const singleDayRule = useCallback((date: Date) => {
     const dtstart = moment(date).utc().format('YYYYMMDD[T]HHmmss[Z]');
@@ -80,32 +83,64 @@ export default function SettingsScreen() {
 
   return (
     <ScreenView style={styles.container}>
-      <Text style={styles.title}>Settings</Text>
-      <AnimationToast />
-      <View style={styles.devPanel}>
-        <Text style={styles.panelTitle}>Debug Tasks</Text>
-        <View style={styles.panelButton}>
-          <Button title="Clear Database" onPress={handleClearDb} />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>Settings</Text>
+        <AnimationToast />
+        <View style={styles.devPanel}>
+          <Text style={styles.panelTitle}>Debug Tasks</Text>
+          <View style={styles.panelButton}>
+            <Button title="Clear Database" onPress={handleClearDb} />
+          </View>
+          <View style={styles.panelButton}>
+            <Button title="Create Custom Event" onPress={handleCreateCustom} />
+          </View>
+          <View style={styles.panelButton}>
+            <Button title="Random Event (Today)" onPress={handleCreateRandomToday} />
+          </View>
+          <View style={styles.panelButton}>
+            <Button title="Clear Tasks Cache" onPress={handleClearCache} />
+          </View>
+          <View style={styles.panelButton}>
+            <Button title="Set Fake Now (Tomorrow 9am)" onPress={handleSetFakeNowTomorrow} />
+          </View>
+          <View style={styles.panelButton}>
+            <Button title="Pick Fake Now…" onPress={() => { setPickerDate(new Date()); setShowPicker(true); }} />
+          </View>
+          {showPicker && (
+            <View style={styles.pickerCard}>
+              <DateTimePicker
+                mode="single"
+                date={pickerDate}
+                onChange={(ev) => {
+                  if (ev.date) setPickerDate(ev.date);
+                }}
+                styles={{
+                  ...useDefaultStyles,
+                  today: { borderColor: 'black', borderRadius: 12, borderWidth: 1, backgroundColor: 'transparent' },
+                  selected: { backgroundColor: '#000', borderRadius: 12 },
+                  selected_label: { color: 'white' },
+                }}
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                <Button title="Cancel" onPress={() => setShowPicker(false)} />
+                <Button
+                  title="Set Fake Now"
+                  onPress={() => {
+                    handleSetFakeNow(pickerDate);
+                    setShowPicker(false);
+                  }}
+                />
+              </View>
+            </View>
+          )}
+          <View style={styles.panelButton}>
+            <Button title="Clear Fake Now" onPress={handleClearFakeNow} />
+          </View>
+          <Text style={styles.fakeLabel}>
+            {fakeNow$.get() ? `Fake now: ${moment(fakeNow$.get()).format('LLLL')}` : 'Fake now: off'}
+          </Text>
         </View>
-        <View style={styles.panelButton}>
-          <Button title="Create Custom Event" onPress={handleCreateCustom} />
-        </View>
-        <View style={styles.panelButton}>
-          <Button title="Random Event (Today)" onPress={handleCreateRandomToday} />
-        </View>
-        <View style={styles.panelButton}>
-          <Button title="Clear Tasks Cache" onPress={handleClearCache} />
-        </View>
-        <View style={styles.panelButton}>
-          <Button title="Set Fake Now (Tomorrow 9am)" onPress={handleSetFakeNowTomorrow} />
-        </View>
-        <View style={styles.panelButton}>
-          <Button title="Clear Fake Now" onPress={handleClearFakeNow} />
-        </View>
-        <Text style={styles.fakeLabel}>
-          {fakeNow$.get() ? `Fake now: ${moment(fakeNow$.get()).format('LLLL')}` : 'Fake now: off'}
-        </Text>
-      </View>
+      </ScrollView>
     </ScreenView>
   );
 }
@@ -113,8 +148,11 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  },
+  scrollContent: {
+    paddingVertical: 16,
+    paddingHorizontal: 12,
+    gap: 12,
   },
   title: {
     fontSize: 20,
@@ -139,6 +177,17 @@ const styles = StyleSheet.create({
   },
   panelButton: {
     width: '100%',
+  },
+  pickerCard: {
+    marginTop: 4,
+    borderRadius: 12,
+    padding: 8,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   fakeLabel: {
     fontSize: 12,

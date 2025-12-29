@@ -215,6 +215,15 @@ const create = () => {
   const navigation = useNavigation();
   const router = useRouter();
   let { height } = Dimensions.get("window");
+  const titleRef = React.useRef<any>(null);
+
+  // Keep keyboard visible by refocusing the title when it hides
+  React.useEffect(() => {
+    const sub = Keyboard.addListener("keyboardDidHide", () => {
+      titleRef.current?.focus?.();
+    });
+    return () => sub.remove();
+  }, []);
 
   return (
     <View style={styles.overlay}>
@@ -244,6 +253,7 @@ const create = () => {
               multiline
               placeholder={"Task Name"}
               placeholderTextColor={"rgba(0, 0, 0, 0.5)"}
+              ref={titleRef}
             />
 
             {/* Description */}
