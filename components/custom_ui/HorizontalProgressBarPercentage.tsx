@@ -76,15 +76,15 @@ const HorizontalProgressBar = observer(
           <Circle cx={headCX} cy={headCY} r={r} color={color} />
         </Canvas>
 
-        {/* % label centered at the head (clamped is not needed since headCX∈[r,width-r]) */}
+        {/* % label centered in the middle of the bar */}
         <View
           pointerEvents="none"
           style={{
             position: "absolute",
-            left: headCX,
+            left: trackW / 2,
             top: headCY,
-            transform: [{ translateX: -11 }, { translateY: -6 }], // tweak for your font
-          }}
+            transform: [{ translateX: -14 }, { translateY: -6 }], // tweak for your font
+            }}
         >
           <Text style={{ fontSize: 10, fontWeight: "800", color: textColor }}>
             {Math.round(pct * 100)}%

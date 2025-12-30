@@ -12,6 +12,7 @@ import {
   View,
   InteractionManager,
   ScrollView,
+  RefreshControl,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import moment, { Moment } from 'moment';
@@ -103,6 +104,7 @@ export default function FlatListSwiperExample() {
   const [isSnapping, setIsSnapping] = useState(false);
   const [isDaySnapping, setIsDaySnapping] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
   const pendingLoadsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -139,6 +141,8 @@ export default function FlatListSwiperExample() {
     scrollDayListToCenter();
   }, [days, scrollDayListToCenter]);
 
+  // Ensure that the date is cache synced when...
+  // 1. (JUST GOTTA LOOK AT THE IMPLEMENATION MORE CLOSELY LATER)
   const ensureDateCached = useCallback(
     async (date: Moment) => {
       const key = date.format('YYYY-MM-DD');
@@ -366,7 +370,6 @@ export default function FlatListSwiperExample() {
       return (
         <View style={styles.itemRowContainer}>
           <View style={styles.itemRow}>
-            // TODO — The issue lies in here somewhere.
             {weekDays.map((day) => {
               const isActive = day.isSame(selectedDate, 'day');
               const progbar = buildProgressSegments(day);
@@ -392,6 +395,16 @@ export default function FlatListSwiperExample() {
   );
 
   const insets = useSafeAreaInsets();
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await flushDirtyTasksToDB();
+      await ensureDirtyTasksHydrated();
+      await ensureDateCached(selectedDate);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [ensureDateCached, selectedDate]);
 
   // TODO — move database initialization to a more appropriate place
   initializeDB(); // TODO — what in the world? Why do we need this here? Can't we just delete it? Does initializing a database that already exists hurt anything?
@@ -404,80 +417,87 @@ export default function FlatListSwiperExample() {
       <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.title]}>Calendar</Text>
       </View>
-    <SafeAreaView style={{ flex: 1 }}>
-      <View style={styles.calContainer}>
-        <ScrollView
-          ref={weekScrollRef}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          decelerationRate="fast"
-          bounces={false}
-          scrollEnabled={!isSnapping}
-          onMomentumScrollEnd={handleWeekSwipe}
-          scrollEventThrottle={16}
-          contentOffset={{ x: width * CENTER_INDEX, y: 0 }}
-        >
-          {panes.map((pane) => (
-            <View key={pane.key} style={{ width }}>
-              {renderWeek(pane)}
-            </View>
-          ))}
-        </ScrollView>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={{ flexGrow: 1 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        alwaysBounceVertical
+      >
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.calContainer}>
+            <ScrollView
+              ref={weekScrollRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              bounces={false}
+              scrollEnabled={!isSnapping}
+              onMomentumScrollEnd={handleWeekSwipe}
+              scrollEventThrottle={16}
+              contentOffset={{ x: width * CENTER_INDEX, y: 0 }}
+            >
+              {panes.map((pane) => (
+                <View key={pane.key} style={{ width }}>
+                  {renderWeek(pane)}
+                </View>
+              ))}
+            </ScrollView>
 
-        <FlatList
-          ref={dayListRef}
-          data={days}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          initialScrollIndex={1}
-          getItemLayout={(_, index) => ({
-            length: width,
-            offset: width * index,
-            index,
-          })}
-          onMomentumScrollEnd={handleDaySwipe}
-          scrollEnabled={!isDaySnapping}
-          keyExtractor={(item, index) => `day-${index}`}
-          renderItem={({ item }) => {
-            const blocks = buildCategoryBlocks(item);
-            return (
-              <View style={{ width, paddingHorizontal: 16, paddingVertical: 24 }}>
-                <TouchableOpacity
-                  onPress={() => {
-                    router.push('/calendar/bottomSheet');
-                  }}
-                >
-                  <View style={{ flexDirection: 'row', alignContent: 'center' }}>
-                    <Text style={styles.subtitle}>
-                      {item.toDate().toLocaleDateString('en-US', { dateStyle: 'full' })}
-                    </Text>
-                    <MaterialIcons name="edit" size={20} color="#000" style={{ paddingLeft: 5 }} />
+            <FlatList
+              ref={dayListRef}
+              data={days}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              initialScrollIndex={1}
+              getItemLayout={(_, index) => ({
+                length: width,
+                offset: width * index,
+                index,
+              })}
+              onMomentumScrollEnd={handleDaySwipe}
+              scrollEnabled={!isDaySnapping}
+              keyExtractor={(item, index) => `day-${index}`}
+              renderItem={({ item }) => {
+                const blocks = buildCategoryBlocks(item);
+                return (
+                  <View style={{ width, paddingHorizontal: 16, paddingVertical: 24 }}>
+                    <TouchableOpacity
+                      onPress={() => {
+                        router.push('/calendar/bottomSheet');
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignContent: 'center' }}>
+                        <Text style={styles.subtitle}>
+                          {item.toDate().toLocaleDateString('en-US', { dateStyle: 'full' })}
+                        </Text>
+                        <MaterialIcons name="edit" size={20} color="#000" style={{ paddingLeft: 5 }} />
+                      </View>
+                    </TouchableOpacity>
+                    <ScrollView style={styles.placeholder}>
+                      {blocks.length === 0 ? (
+                        <View style={[styles.placeholderInset, { alignItems: 'center', justifyContent: 'center' }]}>
+                          <Text style={styles.emptyStateText}>No tasks for this day</Text>
+                        </View>
+                      ) : (
+                        <View style={{ gap: 16 }}>
+                          {blocks.map((block) => (
+                            <CategoryCard key={`${item.format('YYYY-MM-DD')}-${block.title}`} block={block} />
+                          ))}
+
+                          {/* Padding Bottom */}
+                          <View style={globalTheme.tabBarAvoidingPadding} />
+                        </View>
+                      )}
+                    </ScrollView>
                   </View>
-                </TouchableOpacity>
-                <ScrollView style={styles.placeholder}>
-                  {blocks.length === 0 ? (
-                    <View style={[styles.placeholderInset, { alignItems: 'center', justifyContent: 'center' }]}>
-                      <Text style={styles.emptyStateText}>No tasks for this day</Text>
-                    </View>
-                  ) : (
-                    <View style={{ gap: 16 }}>
-                      {blocks.map((block) => (
-                        <CategoryCard key={`${item.format('YYYY-MM-DD')}-${block.title}`} block={block} />
-                      ))}
-
-                      {/* Padding Bottom */}
-                      <View style={globalTheme.tabBarAvoidingPadding} />
-                    </View>
-                  )}
-                </ScrollView>
-              </View>
-            );
-          }}
-        />
-      </View>
-    </SafeAreaView>
+                );
+              }}
+            />
+          </View>
+        </SafeAreaView>
+      </ScrollView>
     </ScreenView>
   );
 }
