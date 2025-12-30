@@ -161,21 +161,18 @@ export default function FlatListSwiperExample() {
     [setDataVersion],
   );
 
+  // Only prefetch current week's days; debounce to avoid hammering JS thread
   useEffect(() => {
     let cancelled = false;
-    const task = InteractionManager.runAfterInteractions(() => {
-      const loadVisibleWeeks = async () => {
-        const loaders: Promise<any>[] = [];
-        for (const pane of panes) {
-          for (let i = 0; i < 7; i++) {
-            loaders.push(ensureDateCached(pane.start.clone().add(i, 'day')));
-          }
+    const task = InteractionManager.runAfterInteractions(async () => {
+      const loaders: Promise<any>[] = [];
+      const centerStart = panes[CENTER_INDEX]?.start;
+      if (centerStart) {
+        for (let i = 0; i < 7; i++) {
+          loaders.push(ensureDateCached(centerStart.clone().add(i, 'day')));
         }
-        await Promise.all(loaders);
-      };
-      if (!cancelled) {
-        loadVisibleWeeks();
       }
+      await Promise.all(loaders);
     });
     return () => {
       cancelled = true;
@@ -184,25 +181,10 @@ export default function FlatListSwiperExample() {
   }, [panes, ensureDateCached]);
 
   useEffect(() => {
-    let cancelled = false;
-    const task = InteractionManager.runAfterInteractions(() => {
-      if (!cancelled) {
-        ensureDateCached(selectedDate);
-      }
+    const t = InteractionManager.runAfterInteractions(() => {
+      void ensureDirtyTasksHydrated().then(() => ensureDateCached(selectedDate));
     });
-    return () => {
-      cancelled = true;
-      task.cancel();
-    };
-  }, [selectedDate, ensureDateCached]);
-
-  useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(async () => {
-      await ensureDirtyTasksHydrated();
-      await flushDirtyTasksToDB();
-      await ensureDateCached(selectedDate);
-    });
-    return () => task.cancel();
+    return () => t.cancel();
   }, [ensureDateCached, selectedDate]);
 
   const scrollToCenter = useCallback((animated = false) => {
@@ -283,7 +265,6 @@ export default function FlatListSwiperExample() {
       const key = date.format('YYYY-MM-DD');
       const ids = tasks$.lists.byDate[key]?.get?.();
       if (!ids || ids.length === 0) {
-        void ensureDateCached(date);
         return [];
       }
       const dirty = getDirtySnapshot();
@@ -385,6 +366,7 @@ export default function FlatListSwiperExample() {
       return (
         <View style={styles.itemRowContainer}>
           <View style={styles.itemRow}>
+            // TODO — The issue lies in here somewhere.
             {weekDays.map((day) => {
               const isActive = day.isSame(selectedDate, 'day');
               const progbar = buildProgressSegments(day);

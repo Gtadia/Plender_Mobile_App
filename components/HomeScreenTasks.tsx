@@ -7,6 +7,7 @@ import {
   Alert,
   Platform,
   Dimensions,
+  AppState,
 } from "react-native";
 import { Text } from "@/components/Themed";
 import {
@@ -22,10 +23,11 @@ import { Memo } from "@legendapp/state/react";
 import { FontAwesome5 } from "@expo/vector-icons";
 import HorizontalProgressBarPercentage from "./custom_ui/HorizontalProgressBarPercentage";
 import { fmt } from "@/helpers/fmt";
-import { initTimerService, startTaskTimer, stopTaskTimer } from "@/utils/timerService";
-import { useEffect } from "react";
+import { initTimerService, startTaskTimer, stopTaskTimer, syncRunningTimer, uiTick$ } from "@/utils/timerService";
+import React, { useEffect, useCallback, useState } from "react";
 import { activeTimer$ } from "@/utils/activeTimerStore";
 import { useRouter } from "expo-router";
+import { useFocusEffect } from "@react-navigation/native";
 
 export const homePageInfo$ = observable({
   reload: false,
@@ -78,13 +80,39 @@ const stopCurrentWithSplitPrompt = () => {
 
 export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: number) => void }) => {
   const router = useRouter();
+  const [nowTick, setNowTick] = useState(0);
   useEffect(() => {
     void initTimerService();
+    const tick = setInterval(() => syncRunningTimer(), 1000);
+    const unsub = uiTick$.onChange?.(({ value }) => setNowTick(value));
+    const localTick = setInterval(() => setNowTick((v) => v + 1), 1000);
+    return () => {
+      clearInterval(tick);
+      unsub?.();
+      clearInterval(localTick);
+    };
   }, []);
+  useFocusEffect(
+    useCallback(() => {
+      syncRunningTimer();
+      const tick = setInterval(() => syncRunningTimer(), 1000);
+      const sub = AppState.addEventListener("change", (state) => {
+        if (state === "active") {
+          syncRunningTimer();
+        }
+      });
+      return () => {
+        sub?.remove?.();
+        clearInterval(tick);
+      };
+    }, [])
+  );
 
   return (
     <Memo>
       {() => {
+      // consume tick to force re-render when timerService heartbeat updates
+      void nowTick;
       const currentId = CurrentTaskID$.get();
       if (currentId === -1) {
         return (
@@ -121,7 +149,12 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
       const title = node.title.get()?.trim() || "Untitled Task";
       const spent = node.timeSpent.get() ?? 0;
       const goal = node.timeGoal.get() ?? 0;
-      const percent = goal > 0 ? Math.min(spent / goal, 1) : 0;
+      const active = activeTimer$.get();
+      const liveSpent =
+        active?.taskId === currentId
+          ? active.baseSeconds + Math.max(0, Math.floor((Date.now() - active.startedAt) / 1000))
+          : spent;
+      const percent = goal > 0 ? Math.min(liveSpent / goal, 1) : 0;
       const catId = node.category?.get?.() ?? 0;
       const color = (Category$[catId]?.color?.get?.()) || colorTheme$.colors.primary.get();
       const progressWidth = Math.min(
@@ -153,7 +186,7 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
               </TouchableOpacity>
             </View>
           </View>
-          <Text style={taskStyles.currentTime}>{fmt(spent)}</Text>
+          <Text style={taskStyles.currentTime}>{fmt(liveSpent)}</Text>
           {!!goal && <Text style={taskStyles.currentGoal}>{fmt(goal)}</Text>}
           <View style={taskStyles.progressWrapper}>
             <HorizontalProgressBarPercentage

@@ -4,6 +4,7 @@ import { CurrentTaskID$, tasks$ } from './stateManager';
 import { updateEvent } from './database';
 import { activeTimer$, hydrateActiveTimer, clearActiveTimerState } from './activeTimerStore';
 import { ensureDirtyTasksHydrated, markTaskDirty } from './dirtyTaskStore';
+import { observable } from '@legendapp/state';
 
 type RunningTimer = {
   taskId: number;
@@ -15,19 +16,25 @@ class TimerManager {
   private ticker?: ReturnType<typeof setInterval>;
   private running?: RunningTimer;
   private initialized = false;
+  private watchdog?: ReturnType<typeof setInterval>;
+  private heartbeat?: ReturnType<typeof setInterval>;
 
   constructor() {
     AppState.addEventListener('change', this.handleAppStateChange);
-  }
-
-  private handleAppStateChange = (state: AppStateStatus) => {
-    if (state === 'active') {
+    // Global heartbeat to keep UI in sync even if ticker gets cleared
+    this.heartbeat = setInterval(() => {
+      uiTick$.set((v) => v + 1);
       if (this.running) {
-        this.startTicker();
         this.pushUpdate();
       }
-    } else {
-      this.stopTicker();
+    }, 1000);
+  }
+
+  private handleAppStateChange = (_state: AppStateStatus) => {
+    // Keep ticker alive across inactive/background to avoid pauses when switching tabs
+    if (this.running) {
+      this.startTicker();
+      this.pushUpdate();
     }
   };
 
@@ -43,6 +50,13 @@ class TimerManager {
       this.startTicker();
       this.pushUpdate();
     }
+    // Watchdog to restart ticker if it ever gets cleared unexpectedly
+    this.watchdog = setInterval(() => {
+      if (this.running && !this.ticker) {
+        this.startTicker();
+        this.pushUpdate();
+      }
+    }, 3000);
   }
 
   private startTicker() {
@@ -61,6 +75,12 @@ class TimerManager {
     if (!this.running) return 0;
     const elapsed = Math.max(0, Math.floor((Date.now() - this.running.startedAt) / 1000));
     return this.running.baseSeconds + elapsed;
+  }
+
+  forceSync() {
+    if (!this.running) return;
+    this.startTicker();
+    this.pushUpdate();
   }
 
   private pushUpdate() {
@@ -158,3 +178,5 @@ const manager = new TimerManager();
 export const initTimerService = () => manager.init();
 export const startTaskTimer = (taskId: number) => manager.start(taskId);
 export const stopTaskTimer = (opts?: { splitAcrossDays?: boolean }) => manager.stop(opts);
+export const syncRunningTimer = () => manager.forceSync();
+export const uiTick$ = observable(0);
