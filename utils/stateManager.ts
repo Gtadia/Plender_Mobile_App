@@ -12,12 +12,7 @@ interface categoryItem {
 }
 
 export const Category$ = observable<Record<number, categoryItem>>({
-  0: { label: "test", color: '#FF0000' },
-  1: { label: "test test, 1 2 3 1 2 3 test", color: "#00FF00" },
-  2: { label: "pop", color: "#0000FF" },
-  3: { label: "deo", color: "#FF00FF" },
-  4: { label: "deo", color: "#FF00FF" },
-  5: { label: "deo", color: "#FF00FF" },
+  0: { label: "General", color: colorTheme.catppuccin.latte.peach },
 });
 // max numeric key + 1 (handles empty object)
 const nextId =

@@ -64,12 +64,22 @@ interface categoryItem {
 
 // -------------------------------------------------------------
 // Global observable state for the new task
+// No defaults; we apply fallbacks on submit if fields are empty
 // -------------------------------------------------------------
+const todayRRule = () => {
+  const dtstart = moment().startOf("day").toDate();
+  return new RRule({
+    freq: RRule.DAILY,
+    count: 1,
+    dtstart,
+  });
+};
+
 export const task$ = observable({
   title: "",
   description: "",
-  category: -1,
-  rrule: null,
+  category: null as number | null,
+  rrule: null as RRule | null,
   isRepeating: false,
   timeGoal: 0,
 });
@@ -380,37 +390,38 @@ const create = () => {
                   >
                     <Memo>
                       {() => {
-                        if (task$.category.get() == -1)
+                        if (task$.category.get()) {
                           return (
                             <>
                               <AntDesign
                                 name="flag"
                                 size={15}
-                                color="rgba(0, 0, 0, 0.75)"
+                                color={Category$[task$.category.get()].color.get()}
                               />
-                              <Text style={styles.actionText}>Category</Text>
+                              <Text
+                                style={[
+                                  styles.actionText,
+                                  {
+                                    color: Category$[task$.category.get()].color.get(),
+                                    maxWidth: 120,
+                                  },
+                                ]}
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                              >
+                                {Category$[task$.category.get()].label.get()}
+                              </Text>
                             </>
                           );
+                        }
                         return (
                           <>
                             <AntDesign
                               name="flag"
                               size={15}
-                              color={Category$[task$.category.get()].color.get()}
+                              color="rgba(0, 0, 0, 0.75)"
                             />
-                            <Text
-                              style={[
-                                styles.actionText,
-                                {
-                                  color: Category$[task$.category.get()].color.get(),
-                                  maxWidth: 120,
-                                },
-                              ]}
-                              numberOfLines={1}
-                              ellipsizeMode="tail"
-                            >
-                              {Category$[task$.category.get()].label.get()}
-                            </Text>
+                            <Text style={styles.actionText}>Category</Text>
                           </>
                         );
                       }}
@@ -453,69 +464,75 @@ const create = () => {
 };
 
 const addToDatabase = () => {
+  // Apply defaults only when empty
+  let rrule = task$.rrule.get();
+  if (!rrule) {
+    rrule = todayRRule();
+    task$.rrule.set(rrule);
+  }
+  let timeGoal = task$.timeGoal.get();
+  if (!timeGoal || timeGoal <= 0) {
+    timeGoal = 3600;
+    task$.timeGoal.set(3600);
+  }
+  let category = task$.category.get();
+  if (category === undefined || category === null || category < 0) {
+    category = 0;
+    task$.category.set(0);
+  }
+
+  const title = task$.title.get()?.trim() ?? "";
+  if (!title) {
+    toastShow$.set(({ toggleFire }) => ({
+      type: "error",
+      title: "Name is missing",
+      description: "Please enter a task name.",
+      toggleFire: !toggleFire,
+      whereToDisplay: 1,
+    }));
+    return;
+  }
+
   const submitTask = {
-    title: task$.title.get(),
+    title,
     description: task$.description.get(),
-    category: task$.category.get(),
-    rrule: task$.rrule.get(),
-    timeGoal: task$.timeGoal.get(),
+    category,
+    rrule,
+    timeGoal,
   };
 
-  // TODO — Use logic to check if task is untitled (WHEN DISPLAYING). Saves memory in the long term.
-  // console.log("Submit Task: ", submitTask)
-  if (!submitTask.rrule)
-    // No start date (or repeats)
-    toastShow$.set(({ toggleFire }) => ({
-      type: "error",
-      title: "Missing Date",
-      description: "You must include a start date",
-      toggleFire: !toggleFire,
-      whereToDisplay: 1,
-    }));
-  else if (submitTask.timeGoal === 0)
-    // Time Goal set to 0 (no time goal set)
-    toastShow$.set(({ toggleFire }) => ({
-      type: "error",
-      title: "Missing Time",
-      description: "You must include a time goal",
-      toggleFire: !toggleFire,
-      whereToDisplay: 1,
-    }));
-  else {
-    // add to database
-    const task = {
-      title: submitTask.title,
-      rrule: submitTask.rrule.toString(),
-      category: submitTask.category,
-      timeGoal: submitTask.timeGoal,
-      description: submitTask.description,
-    };
+  const task = {
+    title: submitTask.title,
+    rrule: submitTask.rrule.toString(),
+    category: submitTask.category,
+    timeGoal: submitTask.timeGoal,
+    description: submitTask.description,
+  };
 
-    createEvent(task)
-      .then(async () => {
-        const target = new Date(submitTask.rrule.options.dtstart);
-        await loadDay(target);
-        task$.set({
-          title: "",
-          description: "",
-          category: -1,
-          rrule: null,
-          isRepeating: false,
-          timeGoal: 0,
-        });
-      })
-      .catch((err) => {
-        console.error("Failed to create task: ", err);
+  createEvent(task)
+    .then(async () => {
+      const target = new Date(submitTask.rrule.options.dtstart);
+      await loadDay(target);
+      task$.set({
+        title: "",
+        description: "",
+        category: null,
+        rrule: null,
+        isRepeating: false,
+        timeGoal: 0,
       });
+    })
+    .catch((err) => {
+      console.error("Failed to create task: ", err);
+    });
 
-    toastShow$.set(({ toggleFire }) => ({
-      type: "success",
-      title: "Task Created",
-      description: "",
-      toggleFire: !toggleFire,
-      whereToDisplay: 0,
-    }));
-  }
+  toastShow$.set(({ toggleFire }) => ({
+    type: "success",
+    title: "Task Created",
+    description: "",
+    toggleFire: !toggleFire,
+    whereToDisplay: 0,
+  }));
 };
 
 // title,
