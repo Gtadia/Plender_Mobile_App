@@ -229,16 +229,19 @@ const SectionHeader = ({
 
         return (
           <View style={taskListStyles.sectionHeader}>
-            <Text
-              style={[
-                taskListStyles.sectionTitle,
-                { color },
-              ]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {label} ({percent}%)
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text
+                style={[
+                  taskListStyles.sectionTitle,
+                  { color },
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {label}
+              </Text>
+              <Text style={taskListStyles.sectionPercent}> ({percent}%)</Text>
+            </View>
             <Text style={taskListStyles.sectionTotals}>
               {fmt(spent)}{goal ? ` / ${fmt(goal)}` : ""}
             </Text>
@@ -395,7 +398,7 @@ export const TodayTaskView = () => {
           <ScrollView contentContainerStyle={taskListStyles.container} scrollEnabled={false}>
             {entries.length ? (
               entries.map(([catKey, ids]) => (
-                <View key={catKey} style={taskListStyles.section}>
+                <View key={catKey} style={taskListStyles.sectionCard}>
                   <SectionHeader category={+catKey} ids={ids as number[]} />
                   {(ids as number[]).map((id, idx, arr) => (
                     <TaskRow key={id} id={id} showDivider={idx !== arr.length - 1} />
@@ -535,6 +538,18 @@ const taskListStyles = StyleSheet.create({
     elevation: 2,
     marginBottom: 18,
   },
+  sectionCard: {
+    backgroundColor: "#fff",
+    borderRadius: 18,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    marginBottom: 18,
+    gap: 8,
+  },
   sectionHeader: {
     flexDirection: "row",
     alignItems: "baseline",
@@ -548,6 +563,11 @@ const taskListStyles = StyleSheet.create({
     flexShrink: 1,
     marginRight: 8,
   },
+  sectionPercent: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: colorTheme$.colors.subtext1.get(),
+  },
   sectionTotals: {
     fontSize: 14,
     fontWeight: "600",
@@ -559,6 +579,7 @@ const taskListStyles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 6,
     borderRadius: 12,
+    backgroundColor: "#f7f7fb",
   },
   bullet: {
     width: 10,

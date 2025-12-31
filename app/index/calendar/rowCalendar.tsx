@@ -22,6 +22,10 @@ import { observable } from '@legendapp/state';
 import { useRouter } from 'expo-router';
 import { ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
+import { activeTimer$ } from '@/utils/activeTimerStore';
+import { uiTick$ } from '@/utils/timerService';
+import { getNow } from '@/utils/timeOverride';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
 import { colorTheme } from '@/constants/Colors';
 import { loadDay, Category$, tasks$ } from '@/utils/stateManager';
@@ -31,7 +35,7 @@ const { width } = Dimensions.get('window');
 const PANES = 5;
 const CENTER_INDEX = Math.floor(PANES / 2);
 
-export const selectedDate$ = observable(moment());
+export const selectedDate$ = observable(moment(getNow()));
 
 type WeekPane = {
   key: string;
@@ -99,8 +103,8 @@ export default function FlatListSwiperExample() {
   const weekScrollRef = useRef<ScrollView>(null);
   const dayListRef = useRef<FlatList<Moment>>(null);
 
-  const [selectedDate, setSelectedDate] = useState(moment());
-  const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(moment()));
+  const [selectedDate, setSelectedDate] = useState(moment(getNow()));
+  const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(moment(getNow())));
   const [isSnapping, setIsSnapping] = useState(false);
   const [isDaySnapping, setIsDaySnapping] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
@@ -204,6 +208,19 @@ export default function FlatListSwiperExample() {
     setIsDaySnapping(false);
   }, [selectedDate]);
 
+  useFocusEffect(
+    useCallback(() => {
+      const now = moment(getNow()).startOf('day');
+      if (!now.isSame(selectedDate, 'day')) {
+        selectedDate$.set(now);
+        setSelectedDate(now);
+        setPanes(generatePaneSet(now));
+        ensureDateCached(now);
+      }
+      return () => {};
+    }, [selectedDate, ensureDateCached])
+  );
+
   const finalizeSnap = useCallback(() => {
     requestAnimationFrame(() => {
       scrollToCenter();
@@ -267,20 +284,24 @@ export default function FlatListSwiperExample() {
   const getTasksForDate = useCallback(
     (date: Moment) => {
       const key = date.format('YYYY-MM-DD');
-      const ids = tasks$.lists.byDate[key]?.get?.();
-      if (!ids || ids.length === 0) {
-        return [];
-      }
+      // tracked read to respond to changes
+      uiTick$.get();
+      const ids = tasks$.lists.byDate[key]?.get?.() ?? [];
+      if (!ids.length) return [];
       const dirty = getDirtySnapshot();
+      const running = activeTimer$.get();
       return ids
         .map((id: number) => {
           const base = tasks$.entities[id]?.get?.();
           if (!base) return null;
-          const dirtyEntry = dirty[id];
-          if (!dirtyEntry) return base;
           const dayKey = date.format("YYYY-MM-DD");
-          const override = dirtyEntry.byDate?.[dayKey] ?? dirtyEntry.timeSpent;
-          return override !== undefined ? { ...base, timeSpent: override } : base;
+          const dirtyEntry = dirty[id];
+          const dirtySpent = dirtyEntry?.byDate?.[dayKey] ?? dirtyEntry?.timeSpent;
+          let timeSpent = dirtySpent ?? base.timeSpent ?? 0;
+          if (running && running.taskId === id) {
+            timeSpent = running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000));
+          }
+          return { ...base, timeSpent };
         })
         .filter(Boolean) as ReturnType<typeof tasks$.entities[number]['get']>[];
     },
@@ -400,11 +421,22 @@ export default function FlatListSwiperExample() {
     try {
       await flushDirtyTasksToDB();
       await ensureDirtyTasksHydrated();
-      await ensureDateCached(selectedDate);
+      await loadDay(selectedDate.toDate());
     } finally {
       setRefreshing(false);
     }
-  }, [ensureDateCached, selectedDate]);
+  }, [selectedDate]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const run = async () => {
+        await ensureDirtyTasksHydrated();
+        await ensureDateCached(selectedDate);
+      };
+      void run();
+      return () => {};
+    }, [ensureDateCached, selectedDate])
+  );
 
   // TODO — move database initialization to a more appropriate place
   initializeDB(); // TODO — what in the world? Why do we need this here? Can't we just delete it? Does initializing a database that already exists hurt anything?
@@ -417,12 +449,7 @@ export default function FlatListSwiperExample() {
       <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.title]}>Calendar</Text>
       </View>
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ flexGrow: 1 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        alwaysBounceVertical
-      >
+      <SafeAreaView style={{ flex: 1 }}>
         <SafeAreaView style={{ flex: 1 }}>
           <View style={styles.calContainer}>
             <ScrollView
@@ -475,7 +502,12 @@ export default function FlatListSwiperExample() {
                         <MaterialIcons name="edit" size={20} color="#000" style={{ paddingLeft: 5 }} />
                       </View>
                     </TouchableOpacity>
-                    <ScrollView style={styles.placeholder}>
+                    <ScrollView
+                      style={styles.placeholder}
+                      bounces
+                      overScrollMode="always"
+                      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+                    >
                       {blocks.length === 0 ? (
                         <View style={[styles.placeholderInset, { alignItems: 'center', justifyContent: 'center' }]}>
                           <Text style={styles.emptyStateText}>No tasks for this day</Text>
@@ -497,7 +529,7 @@ export default function FlatListSwiperExample() {
             />
           </View>
         </SafeAreaView>
-      </ScrollView>
+      </SafeAreaView>
     </ScreenView>
   );
 }

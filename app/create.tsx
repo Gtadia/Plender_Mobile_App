@@ -54,6 +54,7 @@ import { time$ } from "./timeGoalSelectSheet";
 import { Toast } from "@/components/animation-toast/components";
 import { toastShow$ } from "@/components/animation-toast/toastStore";
 import { clearEvents, createEvent, getEventsForDate } from "@/utils/database";
+import { useFocusEffect } from "@react-navigation/native";
 
 interface categoryItem {
   label: string;
@@ -491,27 +492,17 @@ const addToDatabase = () => {
     };
 
     createEvent(task)
-      .then((events) => {
-        // For testing purposes ONLY
-        console.log(
-          "Date being passed in: ",
-          moment(submitTask.rrule.options.dtstart).toString(),
-          moment().toDate().toString()
-        );
-        getEventsForDate(new Date(submitTask.rrule.options.dtstart))
-          .then((tasks) => {
-            console.log("Event has successfully been submitted: ", tasks);
-            // Today$.tasks.set(events); // TODO — Don't be lazy like
-            tasks.forEach(r => tasks$.entities[r.id].set(r));
-          })
-          .catch((err) => {
-            console.error("Error Fetching Events", err);
-          });
-
-        // // TODO — Add task to current day legendState cache if the startDate includes today.
-        // if (submitTask.rrule.between(dayjs().startOf('day'), dayjs().endOf('day'), true).length > 0) {
-        //   Today$.push()
-        // }
+      .then(async () => {
+        const target = new Date(submitTask.rrule.options.dtstart);
+        await loadDay(target);
+        task$.set({
+          title: "",
+          description: "",
+          category: -1,
+          rrule: null,
+          isRepeating: false,
+          timeGoal: 0,
+        });
       })
       .catch((err) => {
         console.error("Failed to create task: ", err);
