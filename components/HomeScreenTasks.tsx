@@ -346,6 +346,7 @@ const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
               {
                 borderBottomColor: dividerColor,
                 borderBottomWidth: showDivider ? StyleSheet.hairlineWidth : 0,
+                borderRadius: 0,
               },
             ]}
           >
@@ -359,8 +360,11 @@ const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
               )}
             </View>
             <View style={taskListStyles.rowRight}>
+                    {/* <Text style={taskListStyles.taskTime}>
+                      {task.time} <Text style={styles.taskGoal}>/ {task.goal}</Text>
+                    </Text> */}
               <Text style={taskListStyles.rowTime}>
-                {fmt(timeSpent)}{timeGoal ? ` / ${fmt(timeGoal)}` : ""}
+                {fmt(timeSpent)}<Text style={taskListStyles.taskGoal}>{timeGoal ? ` / ${fmt(timeGoal)}` : ""}</Text>
               </Text>
               <HorizontalProgressBarPercentage
                 width={110}
@@ -378,6 +382,7 @@ const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
 };
 
 // TODO — Implement Tomorrow task views as well...
+// TODO — Implement OVERDUE task views as well
 
 export const TodayTaskView = () => {
   const key = moment().format("YYYY-MM-DD");
@@ -400,9 +405,11 @@ export const TodayTaskView = () => {
               entries.map(([catKey, ids]) => (
                 <View key={catKey} style={taskListStyles.sectionCard}>
                   <SectionHeader category={+catKey} ids={ids as number[]} />
-                  {(ids as number[]).map((id, idx, arr) => (
-                    <TaskRow key={id} id={id} showDivider={idx !== arr.length - 1} />
-                  ))}
+                  <View style={taskListStyles.categoryTaskList}>
+                    {(ids as number[]).map((id, idx, arr) => (
+                      <TaskRow key={id} id={id} showDivider={idx !== arr.length - 1} />
+                    ))}
+                  </View>
                 </View>
               ))
             ) : (
@@ -416,10 +423,6 @@ export const TodayTaskView = () => {
     </Memo>
   );
 };
-
-const SectionView = () => {
-
-}
 
 const taskStyles = StyleSheet.create({
   container: {
@@ -548,7 +551,7 @@ const taskListStyles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
     marginBottom: 18,
-    gap: 8,
+    gap: 0,
   },
   sectionHeader: {
     flexDirection: "row",
@@ -559,26 +562,29 @@ const taskListStyles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "800",
     flexShrink: 1,
     marginRight: 8,
   },
   sectionPercent: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
     color: colorTheme$.colors.subtext1.get(),
   },
   sectionTotals: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#4A4A4A",
+    fontSize: 15,
+    fontWeight: "700",
+    color: colorTheme$.colors.subtext1.get(),
+  },
+  categoryTaskList: {
+    borderRadius: 12,
+    overflow: 'hidden',
   },
   row: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
     paddingHorizontal: 6,
-    borderRadius: 12,
     backgroundColor: "#f7f7fb",
   },
   bullet: {
@@ -590,17 +596,24 @@ const taskListStyles = StyleSheet.create({
   },
   rowTitle: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   rowSub: {
-    fontSize: 12,
-    color: "#7A7A7A",
+    fontSize: 13,
+    color: colorTheme$.colors.subtext0.get(),
     marginTop: 2,
   },
   rowTime: {
-    fontSize: 14,
-    fontWeight: "600",
     textAlign: "right",
+    fontSize: 15,
+    fontWeight: '700',
+    // color: colorTheme$.nativeTheme.colors.primary.get(),
+    color: "#111",
+  },
+  taskGoal: {
+    fontSize: 14,
+    color: colorTheme$.colors.subtext0.get(),
+    fontWeight: '600',
   },
   rowPercent: {
     fontSize: 12,

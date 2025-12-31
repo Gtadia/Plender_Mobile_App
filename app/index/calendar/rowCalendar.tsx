@@ -66,18 +66,21 @@ const secondsToHms = (value: number) => {
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-const TaskRowItem = ({ task }: { task: TaskRow }) => (
-  <View style={styles.taskRow}>
-    <View>
-      <Text style={styles.taskTitle}>{task.title}</Text>
-      <Text style={styles.taskDate}>{task.date}</Text>
+const TaskRowItem = ({ task, showDivider }: { task: TaskRow; showDivider: boolean }) => (
+  <View style={styles.taskRowWrapper}>
+    <View style={styles.taskRow}>
+      <View>
+        <Text style={styles.taskTitle}>{task.title}</Text>
+        <Text style={styles.taskDate}>{task.date}</Text>
+      </View>
+      <View style={{ alignItems: 'flex-end' }}>
+        <Text style={styles.taskTime}>
+          {task.time} <Text style={styles.taskGoal}>/ {task.goal}</Text>
+        </Text>
+        <Text style={styles.taskPercent}>{task.percent}</Text>
+      </View>
     </View>
-    <View style={{ alignItems: 'flex-end' }}>
-      <Text style={styles.taskTime}>
-        {task.time} <Text style={styles.taskGoal}>/ {task.goal}</Text>
-      </Text>
-      <Text style={styles.taskPercent}>{task.percent}</Text>
-    </View>
+    {showDivider && <View style={styles.taskDivider} />}
   </View>
 );
 
@@ -90,12 +93,15 @@ const CategoryCard = ({ block }: { block: CategoryBlock }) => (
       <Text style={styles.cardTotal}>{block.total}</Text>
     </View>
     <View style={styles.divider} />
-    {block.tasks.map((task, idx) => (
-      <React.Fragment key={`${block.title}-${idx}`}>
-        <TaskRowItem task={task} />
-        {idx !== block.tasks.length - 1 && <View style={styles.rowDivider} />}
-      </React.Fragment>
-    ))}
+    <View style={styles.taskListContainer}>
+      {block.tasks.map((task, idx) => (
+        <TaskRowItem
+          key={`${block.title}-${idx}`}
+          task={task}
+          showDivider={idx !== block.tasks.length - 1}
+        />
+      ))}
+    </View>
   </View>
 );
 
@@ -623,7 +629,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     borderRadius: 18,
-    backgroundColor: '#f5f4fb',
+    backgroundColor: '#fff',
     padding: 14,
     shadowColor: '#000',
     shadowOpacity: 0.06,
@@ -658,11 +664,25 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: 'rgba(0,0,0,0.1)',
   },
+  taskListContainer: {
+    marginTop: 8,
+    borderRadius: 14,
+    backgroundColor: '#f5f4fb',
+    overflow: 'hidden',
+  },
+  taskRowWrapper: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
   taskRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 10,
+  },
+  taskDivider: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+    marginTop: 12,
   },
   taskTitle: {
     fontSize: 15,

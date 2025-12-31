@@ -81,12 +81,16 @@ const HorizontalProgressBar = observer(
           pointerEvents="none"
           style={{
             position: "absolute",
-            left: trackW / 2,
-            top: headCY,
-            transform: [{ translateX: -14 }, { translateY: -6 }], // tweak for your font
+
+            left: 0,
+            width,
+            height,
+            justifyContent: 'center',
+            alignContent: 'center',
+            bottom: 0,
             }}
         >
-          <Text style={{ fontSize: 10, fontWeight: "800", color: textColor }}>
+          <Text style={{ fontSize: 10, fontWeight: "800", textAlign:'center', color: textColor }}>
             {Math.round(pct * 100)}%
           </Text>
         </View>
