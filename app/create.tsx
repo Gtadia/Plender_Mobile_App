@@ -438,13 +438,11 @@ const create = () => {
               {/* Submit button (currently logs; TODO hook to DB) */}
               <TouchableOpacity
                 style={styles.submitButton}
-                onPress={() => {
-                  addToDatabase();
-                  getEventsForDate(moment().startOf("day").toDate()).then((tasks) => {
-                    tasks.forEach(r => tasks$.entities[r.id].set(r));
-                  })
-                  loadDay(new Date());
-                  toastShow$.whereToDisplay.get() === 0 && navigation.goBack();
+                onPress={async () => {
+                  const ok = await addToDatabase();
+                  if (ok && toastShow$.whereToDisplay.get() === 0) {
+                    navigation.goBack();
+                  }
                 }}
               >
                 <Entypo name="arrow-up" size={20} color="white" />
@@ -463,7 +461,7 @@ const create = () => {
   );
 };
 
-const addToDatabase = () => {
+const addToDatabase = async () => {
   // Apply defaults only when empty
   let rrule = task$.rrule.get();
   if (!rrule) {
@@ -509,30 +507,37 @@ const addToDatabase = () => {
     description: submitTask.description,
   };
 
-  createEvent(task)
-    .then(async () => {
-      const target = new Date(submitTask.rrule.options.dtstart);
-      await loadDay(target);
-      task$.set({
-        title: "",
-        description: "",
-        category: null,
-        rrule: null,
-        isRepeating: false,
-        timeGoal: 0,
-      });
-    })
-    .catch((err) => {
-      console.error("Failed to create task: ", err);
+  try {
+    await createEvent(task);
+    const target = new Date(submitTask.rrule.options.dtstart);
+    await loadDay(target);
+    task$.set({
+      title: "",
+      description: "",
+      category: null,
+      rrule: null,
+      isRepeating: false,
+      timeGoal: 0,
     });
-
-  toastShow$.set(({ toggleFire }) => ({
-    type: "success",
-    title: "Task Created",
-    description: "",
-    toggleFire: !toggleFire,
-    whereToDisplay: 0,
-  }));
+    toastShow$.set(({ toggleFire }) => ({
+      type: "success",
+      title: "Task Created",
+      description: "",
+      toggleFire: !toggleFire,
+      whereToDisplay: 0,
+    }));
+    return true;
+  } catch (err) {
+    console.error("Failed to create task: ", err);
+    toastShow$.set(({ toggleFire }) => ({
+      type: "error",
+      title: "Create failed",
+      description: "Could not save task.",
+      toggleFire: !toggleFire,
+      whereToDisplay: 1,
+    }));
+    return false;
+  }
 };
 
 // title,

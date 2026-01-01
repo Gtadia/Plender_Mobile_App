@@ -92,7 +92,7 @@ const CategoryCard = ({ block }: { block: CategoryBlock }) => (
       <View style={styles.cardSpacer} />
       <Text style={styles.cardTotal}>{block.total}</Text>
     </View>
-    <View style={styles.divider} />
+    {/* <View style={styles.divider} /> */}
     <View style={styles.taskListContainer}>
       {block.tasks.map((task, idx) => (
         <TaskRowItem

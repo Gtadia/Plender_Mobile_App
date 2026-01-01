@@ -15,11 +15,13 @@
 // -------------------------------------------------------------
 
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { Stack, useNavigation } from 'expo-router'
 import { task$ } from './create'
 import { Memo } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
+import { editTaskSheet$, tasks$ } from '@/utils/stateManager';
+import { updateEvent } from '@/utils/database';
 // import Picker from '@/components/TimeCarousel/Picker';
 // import { Picker } from 'react-native-wheel-pick';
 import Picker from '@/components/TimeCarousel/Picker';
@@ -53,6 +55,16 @@ const hours = new Array(24).fill(0).map((_, index) => (index));
 const TimeGoalSelectSheet = () => {
   const navigation = useNavigation();
   let { width, height } = Dimensions.get("window");
+  const editingId = editTaskSheet$.taskId.get();
+  const isEditing = editingId !== null && editingId !== undefined;
+
+  useEffect(() => {
+    const goalSeconds = isEditing
+      ? tasks$.entities[editingId!]?.timeGoal?.get?.() ?? 0
+      : task$.timeGoal.get() ?? 0;
+    time$.hours.set(Math.floor(goalSeconds / 3600));
+    time$.minutes.set(Math.floor((goalSeconds % 3600) / 60));
+  }, [editingId]);
 
   return (
     <View style={styles.flex1}>
@@ -64,22 +76,46 @@ const TimeGoalSelectSheet = () => {
       }}/>
 
       {/* Tap outside to dismiss */}
-      <Pressable onPress={() => {navigation.goBack();}} style={styles.background} />
+      <Pressable
+        onPress={() => {
+          if (isEditing) {
+            editTaskSheet$.taskId.set(null);
+          }
+          navigation.goBack();
+        }}
+        style={styles.background}
+      />
 
       {/* Sheet container (dynamic height preserved) */}
       <View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 } ]}>
         {/* Header: Back / Title / Done */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.button}
+            onPress={() => {
+              if (isEditing) {
+                editTaskSheet$.taskId.set(null);
+              }
+              navigation.goBack();
+            }}
+          >
             <Text>Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Select Goal</Text>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => {
-              task$.timeGoal.set(time$.hours.get() * 3600 + time$.minutes.get() * 60)
-              console.log("The time has been sent: ", time$.hours.get(), time$.minutes.get(), task$.timeGoal.get())
-              navigation.goBack()
+            onPress={async () => {
+              const totalSeconds = time$.hours.get() * 3600 + time$.minutes.get() * 60;
+              if (isEditing) {
+                const id = editingId!;
+                tasks$.entities[id].timeGoal.set(totalSeconds);
+                await updateEvent({ id, timeGoal: totalSeconds });
+                editTaskSheet$.taskId.set(null);
+              } else {
+                task$.timeGoal.set(totalSeconds);
+              }
+              console.log("The time has been sent: ", time$.hours.get(), time$.minutes.get(), totalSeconds);
+              navigation.goBack();
             }}
           >
             <Text>Done</Text>

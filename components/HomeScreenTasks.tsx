@@ -207,21 +207,36 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
 
 const SectionHeader = ({
   category,
-  ids,
+  dateKey,
 }: {
   category: number;
-  ids: number[];
+  dateKey: string;
 }) => {
   return (
     <Memo>
       {() => {
-        let spent = 0, goal = 0;
-        for (const id of ids) {
-          const n = tasks$.entities[id];
-          if (!n) continue;
-          spent += n.timeSpent.get() ?? 0;  // tracked read
-          goal  += n.timeGoal.get()  ?? 0;  // tracked read
-        }
+        uiTick$.get(); // force recompute on timer heartbeat
+        const running = activeTimer$.get();
+        const idsForDay = tasks$.lists.byDate[dateKey]?.get?.() ?? [];
+        const { spent, goal } = idsForDay.reduce(
+          (acc, id) => {
+            const node = tasks$.entities[id]?.get?.();
+            if (!node) return acc;
+            if ((node.category ?? 0) !== category) return acc;
+            const baseSpent = node.timeSpent ?? 0;
+            const goalVal = node.timeGoal ?? 0;
+            // Quick tasks (no goal) do not contribute
+            if (!goalVal || goalVal <= 0) return acc;
+            const liveSpent =
+              running?.taskId === id
+                ? running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000))
+                : baseSpent;
+            acc.spent += liveSpent;
+            acc.goal += goalVal;
+            return acc;
+          },
+          { spent: 0, goal: 0 }
+        );
         const percent = goal > 0 ? Math.round((spent / goal) * 100) : 0;
         const catNode = Category$[category];
         const color = catNode?.color?.get?.() ?? colorTheme$.colors.primary.get();
@@ -252,7 +267,7 @@ const SectionHeader = ({
   )
 };
 
-const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
+const TaskRow = ({ id, showDivider, onPressDetails }: { id: number; showDivider: boolean; onPressDetails?: (id: number) => void }) => {
   const confirmStop = (onStop: () => void) => {
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
@@ -314,6 +329,7 @@ const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
         const title = node.title.get()?.trim() || "Untitled";
         const timeSpent = node.timeSpent.get() ?? 0;
         const timeGoal = node.timeGoal.get() ?? 0;
+        const isQuick = !timeGoal || timeGoal <= 0;
         const percent = timeGoal > 0 ? timeSpent / timeGoal : 0;
         const date = node.date?.get?.();
 
@@ -353,27 +369,37 @@ const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
             <TouchableOpacity onPress={handlePress} style={taskListStyles.iconButton}>
               <FontAwesome5 name={isCurrent ? 'pause' : 'play'} size={18} color={iconColor} />
             </TouchableOpacity>
-            <View style={{ flex: 1 }}>
-              <Text style={taskListStyles.rowTitle}>{title}</Text>
-              {date && (
-                <Text style={taskListStyles.rowSub}>{moment(date).format("MMMM D, YYYY")}</Text>
-              )}
-            </View>
-            <View style={taskListStyles.rowRight}>
-                    {/* <Text style={taskListStyles.taskTime}>
-                      {task.time} <Text style={styles.taskGoal}>/ {task.goal}</Text>
-                    </Text> */}
-              <Text style={taskListStyles.rowTime}>
-                {fmt(timeSpent)}<Text style={taskListStyles.taskGoal}>{timeGoal ? ` / ${fmt(timeGoal)}` : ""}</Text>
-              </Text>
-              <HorizontalProgressBarPercentage
-                width={110}
-                height={28}
-                percentage={percent}
-                color={iconColor}
-                trackColor={colorTheme$.colors.surface1.get()}
-              />
-            </View>
+            <TouchableOpacity
+              style={{ flex: 1 }}
+              activeOpacity={0.85}
+              onPress={() => onPressDetails?.(id)}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={taskListStyles.rowTitle}>{title}</Text>
+                  {date && (
+                    <Text style={taskListStyles.rowSub}>{moment(date).format("MMMM D, YYYY")}</Text>
+                  )}
+                </View>
+                <View style={taskListStyles.rowRight}>
+                  <Text style={taskListStyles.rowTime}>
+                    {fmt(timeSpent)}
+                    <Text style={taskListStyles.taskGoal}>
+                      {timeGoal ? ` / ${fmt(timeGoal)}` : " / No goal"}
+                    </Text>
+                  </Text>
+                  {!isQuick && (
+                    <HorizontalProgressBarPercentage
+                      width={110}
+                      height={28}
+                      percentage={percent}
+                      color={iconColor}
+                      trackColor={colorTheme$.colors.surface1.get()}
+                    />
+                  )}
+                </View>
+              </View>
+            </TouchableOpacity>
           </View>
         );
       }}
@@ -384,7 +410,7 @@ const TaskRow = ({ id, showDivider }: { id: number; showDivider: boolean }) => {
 // TODO — Implement Tomorrow task views as well...
 // TODO — Implement OVERDUE task views as well
 
-export const TodayTaskView = () => {
+export const TodayTaskView = ({ onPressItem }: { onPressItem?: (id: number) => void }) => {
   const key = moment().format("YYYY-MM-DD");
   return (
     <Memo>
@@ -397,19 +423,28 @@ export const TodayTaskView = () => {
           (acc[cat] ??= []).push(id);
           return acc;
         }, {} as Record<number, number[]>);
-        const entries = Object.entries(grouped).sort(([a], [b]) => +a - +b);
+        const entries = Object.entries(grouped)
+          .map(([cat, list]) => {
+            const quick = (list as number[]).filter((id) => (tasks$.entities[id]?.get?.()?.timeGoal ?? 0) <= 0);
+            const normal = (list as number[]).filter((id) => (tasks$.entities[id]?.get?.()?.timeGoal ?? 0) > 0);
+            return [cat, [...quick, ...normal]] as [string, number[]];
+          })
+          .sort(([a], [b]) => +a - +b);
 
         return (
           <ScrollView contentContainerStyle={taskListStyles.container} scrollEnabled={false}>
             {entries.length ? (
               entries.map(([catKey, ids]) => (
                 <View key={catKey} style={taskListStyles.sectionCard}>
-                  <SectionHeader category={+catKey} ids={ids as number[]} />
+                  <SectionHeader category={+catKey} dateKey={key} />
                   <View style={taskListStyles.categoryTaskList}>
                     {(ids as number[]).map((id, idx, arr) => (
-                      <TaskRow key={id} id={id} showDivider={idx !== arr.length - 1} />
-                    ))}
-                  </View>
+                    <React.Fragment key={id}>
+                        <TaskRow id={id} showDivider={false} onPressDetails={onPressItem} />
+                        {idx !== arr.length - 1 && <View style={taskListStyles.sectionDivider} />}
+                    </React.Fragment>
+                  ))}
+                </View>
                 </View>
               ))
             ) : (
@@ -562,7 +597,7 @@ const taskListStyles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: "800",
+    fontWeight: "700",
     flexShrink: 1,
     marginRight: 8,
   },
@@ -579,6 +614,7 @@ const taskListStyles = StyleSheet.create({
   categoryTaskList: {
     borderRadius: 12,
     overflow: 'hidden',
+    backgroundColor: "#f7f7fb",
   },
   row: {
     flexDirection: "row",
@@ -586,6 +622,11 @@ const taskListStyles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 6,
     backgroundColor: "#f7f7fb",
+  },
+  sectionDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: "rgba(0,0,0,0.08)",
+    marginHorizontal: 6,
   },
   bullet: {
     width: 10,

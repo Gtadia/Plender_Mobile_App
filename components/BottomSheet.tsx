@@ -61,6 +61,7 @@ const BottomSheet = ({
   }, [openObservable]);
 
   const gesture = Gesture.Pan()
+    .minDistance(10)
     .onStart(() => {
       context.value = { y: translateY.value };
     })
@@ -175,7 +176,7 @@ const styles = StyleSheet.create({
   container: {
     height: 0,
     width: "100%",
-    backgroundColor: "",
+    backgroundColor: "rgba(0,0,0,0.25)",
     position: "absolute",
     bottom: 0,
     zIndex: 1000,

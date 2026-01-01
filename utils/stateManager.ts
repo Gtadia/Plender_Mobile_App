@@ -36,6 +36,11 @@ export const ViewTask$ = computed(() => {
 });
 export const ViewTaskID$ = observable<number>(-1);   // if negative, no task
 
+// Bottom sheet edit target (used by time goal/category selectors)
+export const editTaskSheet$ = observable<{ taskId: number | null }>({
+  taskId: null,
+});
+
 // TODO — Make a cache that just stores today's events + 100 most recently visisted events (not due today)
 export interface TaskType {
   tasks: eventsType[],
