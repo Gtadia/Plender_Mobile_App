@@ -20,7 +20,7 @@ import { Stack, useNavigation } from 'expo-router'
 import { task$ } from './create'
 import { Memo } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
-import { editTaskSheet$, tasks$ } from '@/utils/stateManager';
+import { timeGoalEdit$, tasks$ } from '@/utils/stateManager';
 import { updateEvent } from '@/utils/database';
 // import Picker from '@/components/TimeCarousel/Picker';
 // import { Picker } from 'react-native-wheel-pick';
@@ -55,7 +55,7 @@ const hours = new Array(24).fill(0).map((_, index) => (index));
 const TimeGoalSelectSheet = () => {
   const navigation = useNavigation();
   let { width, height } = Dimensions.get("window");
-  const editingId = editTaskSheet$.taskId.get();
+  const editingId = timeGoalEdit$.taskId.get();
   const isEditing = editingId !== null && editingId !== undefined;
 
   useEffect(() => {
@@ -79,7 +79,7 @@ const TimeGoalSelectSheet = () => {
       <Pressable
         onPress={() => {
           if (isEditing) {
-            editTaskSheet$.taskId.set(null);
+            timeGoalEdit$.taskId.set(null);
           }
           navigation.goBack();
         }}
@@ -94,7 +94,7 @@ const TimeGoalSelectSheet = () => {
             style={styles.button}
             onPress={() => {
               if (isEditing) {
-                editTaskSheet$.taskId.set(null);
+                timeGoalEdit$.taskId.set(null);
               }
               navigation.goBack();
             }}
@@ -110,7 +110,7 @@ const TimeGoalSelectSheet = () => {
                 const id = editingId!;
                 tasks$.entities[id].timeGoal.set(totalSeconds);
                 await updateEvent({ id, timeGoal: totalSeconds });
-                editTaskSheet$.taskId.set(null);
+                timeGoalEdit$.taskId.set(null);
               } else {
                 task$.timeGoal.set(totalSeconds);
               }

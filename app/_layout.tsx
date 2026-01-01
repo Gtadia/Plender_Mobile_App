@@ -50,6 +50,11 @@ export default function TabLayout() {
           presentation: "transparentModal",
           animation: "fade",
         }}/>
+        <Stack.Screen name="taskDetailsSheet" options={{
+          headerShown: false,
+          presentation: "transparentModal",
+          animation: "fade",
+        }}/>
       </Stack>
 
       {/* Toast Menu */}

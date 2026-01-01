@@ -36,8 +36,13 @@ export const ViewTask$ = computed(() => {
 });
 export const ViewTaskID$ = observable<number>(-1);   // if negative, no task
 
-// Bottom sheet edit target (used by time goal/category selectors)
-export const editTaskSheet$ = observable<{ taskId: number | null }>({
+// Task details modal target
+export const taskDetailsSheet$ = observable<{ taskId: number | null }>({
+  taskId: null,
+});
+
+// Time goal editor target (reused by timeGoalSelectSheet)
+export const timeGoalEdit$ = observable<{ taskId: number | null }>({
   taskId: null,
 });
 
