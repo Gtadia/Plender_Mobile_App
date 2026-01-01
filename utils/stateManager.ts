@@ -1,4 +1,5 @@
-import { computed, observable } from "@legendapp/state";
+import { computed, observable, observe } from "@legendapp/state";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fonts } from "@/constants/types";
 import { colorTheme } from "@/constants/Colors";
 import type { Theme } from "@/node_modules/@react-navigation/native/src/types";
@@ -21,6 +22,61 @@ const nextId =
     : Math.max(...Object.keys(Category$.get()).map(Number)) + 1;
 
 export const CategoryIDCount$ = observable<number>(nextId);
+
+const CATEGORY_STORAGE_KEY = "categoriesStore";
+let categoriesHydrated = false;
+let categoriesReady = false;
+let categoriesPromise: Promise<void> | null = null;
+
+async function hydrateCategoriesInternal() {
+  try {
+    const raw = await AsyncStorage.getItem(CATEGORY_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as {
+        categories?: Record<number, categoryItem>;
+        nextId?: number;
+      };
+      if (parsed.categories && Object.keys(parsed.categories).length) {
+        Category$.set(parsed.categories);
+      }
+      if (parsed.nextId !== undefined) {
+        CategoryIDCount$.set(parsed.nextId);
+      } else {
+        const keys = Object.keys(Category$.get()).map(Number);
+        CategoryIDCount$.set(keys.length ? Math.max(...keys) + 1 : 0);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load categories store", err);
+  } finally {
+    categoriesHydrated = true;
+    categoriesReady = true;
+    const snapshot = {
+      categories: Category$.get(),
+      nextId: CategoryIDCount$.get(),
+    };
+    AsyncStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(snapshot)).catch((err) => {
+      console.warn("Failed to persist categories store", err);
+    });
+  }
+}
+
+export async function ensureCategoriesHydrated() {
+  if (categoriesHydrated) return;
+  categoriesPromise ??= hydrateCategoriesInternal();
+  await categoriesPromise;
+}
+
+observe(() => {
+  if (!categoriesReady) return;
+  const payload = JSON.stringify({
+    categories: Category$.get(),
+    nextId: CategoryIDCount$.get(),
+  });
+  AsyncStorage.setItem(CATEGORY_STORAGE_KEY, payload).catch((err) => {
+    console.warn("Failed to persist categories store", err);
+  });
+});
 
 // Event selected to be viewed
 export const ViewTask$ = computed(() => {

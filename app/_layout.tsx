@@ -5,7 +5,7 @@ import { clearEvents, eventsType, getEventsForDate, initializeDB } from '@/utils
 import { useBackNavOverride } from '@/utils/useBackNavOverride';
 import { Toast } from '@/components/animation-toast/components';
 import { toastShow$ } from '@/components/animation-toast/toastStore';
-import { loadDay, tasks$ } from '@/utils/stateManager';
+import { ensureCategoriesHydrated, loadDay, tasks$ } from '@/utils/stateManager';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import dayjs from 'dayjs';
@@ -26,6 +26,7 @@ export default function TabLayout() {
 
   // Load Today's Event's
   console.log("Initialize DB cache")
+  ensureCategoriesHydrated().catch((err) => console.warn("Failed to hydrate categories", err));
   // getEventsForDate(new Date()).then((events) => {
   //   Today$.set(events);
   // })

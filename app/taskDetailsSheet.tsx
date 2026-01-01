@@ -59,6 +59,10 @@ export default function TaskDetailsSheet() {
 
 const TaskDetailsContent = () => {
   const lastGoalRef = useRef<number>(3600);
+  const saveTimers = useRef<{
+    title?: ReturnType<typeof setTimeout>;
+    description?: ReturnType<typeof setTimeout>;
+  }>({});
   const local$ = useObservable({ editing: false, taskId: null as number | null });
   const categoryPopup$ = useObservable(false);
   const router = useRouter();
@@ -108,6 +112,20 @@ const TaskDetailsContent = () => {
         const isEditing = local$.editing.get();
         const categories = Category$.get();
 
+        const scheduleSave = (field: "title" | "description", value: string) => {
+          const timers = saveTimers.current;
+          if (timers[field]) {
+            clearTimeout(timers[field]);
+          }
+          timers[field] = setTimeout(() => {
+            if (field === "title") {
+              void updateEvent({ id, title: value });
+            } else {
+              void updateEvent({ id, description: value });
+            }
+          }, 400);
+        };
+
         return (
           <View style={{ flex: 1 }}>
             <View style={sheetStyles.card}>
@@ -121,17 +139,21 @@ const TaskDetailsContent = () => {
               >
                   <View style={sheetStyles.header}>
                     {isEditing ? (
-                      <TextInput
-                        style={[sheetStyles.title, sheetStyles.titleInput]}
-                        value={titleValue}
-                        onChangeText={(text) => {
-                          tasks$.entities[id].title.set(text);
-                        }}
-                        onEndEditing={(e) => {
-                          const next = e.nativeEvent.text.trim();
-                          tasks$.entities[id].title.set(next);
-                          void updateEvent({ id, title: next });
-                        }}
+                    <TextInput
+                      style={[sheetStyles.title, sheetStyles.titleInput]}
+                      value={titleValue}
+                      onChangeText={(text) => {
+                        tasks$.entities[id].title.set(text);
+                        scheduleSave("title", text.trim());
+                      }}
+                      onEndEditing={(e) => {
+                        const next = e.nativeEvent.text.trim();
+                        tasks$.entities[id].title.set(next);
+                        if (saveTimers.current.title) {
+                          clearTimeout(saveTimers.current.title);
+                        }
+                        void updateEvent({ id, title: next });
+                      }}
                         placeholder="Task title"
                         placeholderTextColor={colorTheme$.colors.subtext0.get()}
                       />
@@ -230,16 +252,20 @@ const TaskDetailsContent = () => {
                 <View style={sheetStyles.descriptionCard}>
                     <Text style={sheetStyles.descriptionTitle}>Description</Text>
                     {isEditing ? (
-                      <TextInput
-                        style={sheetStyles.descriptionInput}
-                        value={descriptionValue}
-                        onChangeText={(text) => {
-                          tasks$.entities[id].description.set(text);
-                        }}
-                        onEndEditing={(e) => {
-                          void updateEvent({ id, description: e.nativeEvent.text });
-                        }}
-                        placeholder="Add a description"
+                    <TextInput
+                      style={sheetStyles.descriptionInput}
+                      value={descriptionValue}
+                      onChangeText={(text) => {
+                        tasks$.entities[id].description.set(text);
+                        scheduleSave("description", text);
+                      }}
+                      onEndEditing={(e) => {
+                        if (saveTimers.current.description) {
+                          clearTimeout(saveTimers.current.description);
+                        }
+                        void updateEvent({ id, description: e.nativeEvent.text });
+                      }}
+                      placeholder="Add a description"
                         placeholderTextColor={colorTheme$.colors.subtext0.get()}
                         multiline
                       />
