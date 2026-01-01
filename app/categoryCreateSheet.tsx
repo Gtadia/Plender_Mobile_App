@@ -21,14 +21,21 @@
 //   - Minimum height for container is 500px, max height ~6/8 screen
 // -------------------------------------------------------------
 
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import ColorPicker, { Panel3 } from 'reanimated-color-picker';
 import { task$ } from './create';
 import { Stack, useNavigation } from 'expo-router';
 import { Memo, useObservable } from '@legendapp/state/react';
 import { $TextInput } from '@legendapp/state/react-native';
-import { Category$, CategoryIDCount$ } from '@/utils/stateManager';
+import { updateEvent } from '@/utils/database';
+import {
+  Category$,
+  CategoryIDCount$,
+  ensureCategoriesHydrated,
+  taskDetailsSheet$,
+  tasks$,
+} from '@/utils/stateManager';
 
 export default function CategoryCreateSheet() {
   const navigation = useNavigation();
@@ -36,11 +43,13 @@ export default function CategoryCreateSheet() {
   const newCategory$ = useObservable({
     label: '',
     color: '#FF0000',
-    id: Number(CategoryIDCount$.get())
-  })
+  });
   // read once for initial color (don’t subscribe the picker)
   const initialHex = useRef(newCategory$.color.get()).current;
   // local live preview while dragging (no global re-render storm)
+  useEffect(() => {
+    void ensureCategoriesHydrated();
+  }, []);
 
   return (
     <View style={{ flex: 1 }}>
@@ -58,26 +67,38 @@ export default function CategoryCreateSheet() {
           <Text style={styles.title}>Select Date</Text>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => {
-              const id = CategoryIDCount$.get();
-              const cat = newCategory$.get(); // { label, color, id }
+            onPress={async () => {
+              await ensureCategoriesHydrated();
+              const cat = newCategory$.get(); // { label, color }
 
               // (optional) basic validation
-              if (!cat.label.trim()) {
+              const label = cat.label.trim();
+              if (!label) {
                 console.warn("Category name required");
                 return;
               }
 
+              let id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+              while (Object.prototype.hasOwnProperty.call(Category$.get(), id)) {
+                id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+              }
+
               // 1) Save to global categories (Record<number, {label,color}>)
               Category$.assign({
-                [id]: { label: cat.label, color: cat.color },
+                [id]: { label, color: cat.color },
               });
 
-              // 2) Assign to current task (your task shape seems to include id/label/color)
-              task$.category.set({ id, label: cat.label, color: cat.color });
+              // 2) Assign to current task
+              const activeTaskId = taskDetailsSheet$.taskId.get();
+              if (activeTaskId != null) {
+                tasks$.entities[activeTaskId].category.set(id);
+                await updateEvent({ id: activeTaskId, category: id });
+              } else {
+                task$.category.set(id);
+              }
 
               // 3) Increment the ID counter for the next category
-              CategoryIDCount$.set(id + 1);
+              CategoryIDCount$.set(Math.max(CategoryIDCount$.get(), id + 1));
 
               // close
               (navigation as any).goBack?.();

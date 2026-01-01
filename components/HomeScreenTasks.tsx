@@ -11,10 +11,11 @@ import {
 } from "react-native";
 import { Text } from "@/components/Themed";
 import {
-  Category$,
   CurrentTaskID$,
   tasks$,
   colorTheme$,
+  getCategoryGroupId,
+  getCategoryMeta,
 } from "@/utils/stateManager";
 import { colorTheme } from "@/constants/Colors";
 import moment from "moment";
@@ -156,7 +157,8 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
           : spent;
       const percent = goal > 0 ? Math.min(liveSpent / goal, 1) : 0;
       const catId = node.category?.get?.() ?? 0;
-      const color = (Category$[catId]?.color?.get?.()) || colorTheme$.colors.primary.get();
+      const categoryMeta = getCategoryMeta(catId);
+      const color = categoryMeta.color || colorTheme$.colors.primary.get();
       const progressWidth = Math.min(
         Dimensions.get("window").width - 140,
         360,
@@ -222,7 +224,8 @@ const SectionHeader = ({
           (acc, id) => {
             const node = tasks$.entities[id]?.get?.();
             if (!node) return acc;
-            if ((node.category ?? 0) !== category) return acc;
+            const groupId = getCategoryGroupId(node.category ?? 0);
+            if (groupId !== category) return acc;
             const baseSpent = node.timeSpent ?? 0;
             const goalVal = node.timeGoal ?? 0;
             // Quick tasks (no goal) do not contribute
@@ -238,9 +241,9 @@ const SectionHeader = ({
           { spent: 0, goal: 0 }
         );
         const percent = goal > 0 ? Math.round((spent / goal) * 100) : 0;
-        const catNode = Category$[category];
-        const color = catNode?.color?.get?.() ?? colorTheme$.colors.primary.get();
-        const label = catNode?.label?.get?.() ?? "General";
+        const categoryMeta = getCategoryMeta(category);
+        const color = categoryMeta.color || colorTheme$.colors.primary.get();
+        const label = categoryMeta.label;
 
         return (
           <View style={taskListStyles.sectionHeader}>
@@ -419,8 +422,8 @@ export const TodayTaskView = ({ onPressItem }: { onPressItem?: (id: number) => v
         const grouped = ids.reduce((acc, id) => {
           const task = tasks$.entities[id]?.get?.();
           if (!task) return acc;
-          const cat = task.category ?? 0;
-          (acc[cat] ??= []).push(id);
+          const groupId = getCategoryGroupId(task.category ?? 0);
+          (acc[groupId] ??= []).push(id);
           return acc;
         }, {} as Record<number, number[]>);
         const entries = Object.entries(grouped)

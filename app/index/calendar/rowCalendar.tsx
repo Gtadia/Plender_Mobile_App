@@ -28,7 +28,7 @@ import { uiTick$ } from '@/utils/timerService';
 import { getNow } from '@/utils/timeOverride';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
 import { colorTheme } from '@/constants/Colors';
-import { loadDay, Category$, tasks$ } from '@/utils/stateManager';
+import { getCategoryGroupId, getCategoryMeta, loadDay, tasks$ } from '@/utils/stateManager';
 import { ensureDirtyTasksHydrated, flushDirtyTasksToDB, getDirtySnapshot } from '@/utils/dirtyTaskStore';
 
 const { width } = Dimensions.get('window');
@@ -350,7 +350,7 @@ export default function FlatListSwiperExample() {
     (date: Moment): CategoryBlock[] => {
       const tasksForDay = getTasksForDate(date);
       const totalsByCategory = tasksForDay.reduce((acc, t) => {
-        const cat = t.category ?? 0;
+        const cat = getCategoryGroupId(t.category ?? 0);
         if (!acc[cat]) acc[cat] = { spent: 0, goal: 0, completed: 0, tasks: [] as typeof tasksForDay };
         const spent = t.timeSpent ?? 0;
         const goal = Math.max(t.timeGoal ?? 0, 0);
@@ -363,9 +363,9 @@ export default function FlatListSwiperExample() {
       }, {} as Record<number, { spent: number; goal: number; completed: number; tasks: typeof tasksForDay }>);
 
       return Object.entries(totalsByCategory).map(([catId, data]) => {
-        const node = (Category$ as any)[Number(catId)];
-        const label = node?.label?.get?.() ?? `Category ${catId}`;
-        const accent = node?.color?.get?.() ?? palette.peach;
+        const categoryMeta = getCategoryMeta(Number(catId));
+        const label = categoryMeta.label;
+        const accent = categoryMeta.color ?? palette.peach;
         const completionPercent = data.goal > 0 ? Math.round((data.completed / data.goal) * 100) : (data.completed > 0 ? 100 : 0);
         return {
           title: label,

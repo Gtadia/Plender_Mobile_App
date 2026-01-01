@@ -25,6 +25,7 @@ import HorizontalProgressBar from "@/components/custom_ui/HorizontalProgressBar"
 import {
   Category$,
   colorTheme$,
+  getCategoryMeta,
   taskDetailsSheet$,
   timeGoalEdit$,
   tasks$,
@@ -88,8 +89,8 @@ const TaskDetailsContent = () => {
         if (goal > 0) lastGoalRef.current = goal;
         const dateValue = node.date?.get?.();
         const dateLabel = dateValue ? moment(dateValue).format("MMMM D, YYYY") : "";
-        const cat = Category$[categoryValue];
-        const catColor = cat?.color?.get?.() ?? colorTheme$.colors.accent.get();
+        const categoryMeta = getCategoryMeta(categoryValue);
+        const catColor = categoryMeta.color ?? colorTheme$.colors.accent.get();
         const spentBase = node.timeSpent.get() ?? 0;
         const liveSpent =
           running?.taskId === id
@@ -183,13 +184,13 @@ const TaskDetailsContent = () => {
                         }}
                       >
                         <Text style={[sheetStyles.categoryLabel, { color: catColor }]} numberOfLines={1}>
-                          {cat?.label?.get?.() ?? "General"}
+                          {categoryMeta.label}
                         </Text>
                       </TouchableOpacity>
                     ) : (
                       <View style={sheetStyles.categoryRow}>
                         <Text style={[sheetStyles.categoryLabel, { color: catColor }]} numberOfLines={1}>
-                          {cat?.label?.get?.() ?? "General"}
+                          {categoryMeta.label}
                         </Text>
                       </View>
                     )}

@@ -12,8 +12,20 @@ interface categoryItem {
   color: string;
 }
 
+const DEFAULT_CATEGORY_META: categoryItem = {
+  label: "General",
+  color: colorTheme.catppuccin.latte.peach,
+};
+const NO_CATEGORY_META: categoryItem = {
+  label: "No Category",
+  color: colorTheme.catppuccin.latte.overlay1,
+};
+
+export const DEFAULT_CATEGORY_ID = 0;
+export const NO_CATEGORY_ID = -1;
+
 export const Category$ = observable<Record<number, categoryItem>>({
-  0: { label: "General", color: colorTheme.catppuccin.latte.peach },
+  [DEFAULT_CATEGORY_ID]: DEFAULT_CATEGORY_META,
 });
 // max numeric key + 1 (handles empty object)
 const nextId =
@@ -28,6 +40,40 @@ let categoriesHydrated = false;
 let categoriesReady = false;
 let categoriesPromise: Promise<void> | null = null;
 
+const ensureDefaultCategory = () => {
+  const categories = Category$.get();
+  if (!Object.prototype.hasOwnProperty.call(categories, DEFAULT_CATEGORY_ID)) {
+    Category$.assign({
+      [DEFAULT_CATEGORY_ID]: { ...DEFAULT_CATEGORY_META },
+    });
+  }
+};
+
+export const getCategoryGroupId = (id?: number | null) => {
+  const resolved = id ?? DEFAULT_CATEGORY_ID;
+  const categories = Category$.get();
+  if (Object.prototype.hasOwnProperty.call(categories, resolved)) {
+    return resolved;
+  }
+  if (resolved === DEFAULT_CATEGORY_ID) {
+    return DEFAULT_CATEGORY_ID;
+  }
+  return NO_CATEGORY_ID;
+};
+
+export const getCategoryMeta = (id?: number | null): categoryItem => {
+  const resolved = id ?? DEFAULT_CATEGORY_ID;
+  const categories = Category$.get();
+  const entry = categories[resolved];
+  if (entry) {
+    return entry;
+  }
+  if (resolved === DEFAULT_CATEGORY_ID) {
+    return DEFAULT_CATEGORY_META;
+  }
+  return NO_CATEGORY_META;
+};
+
 async function hydrateCategoriesInternal() {
   try {
     const raw = await AsyncStorage.getItem(CATEGORY_STORAGE_KEY);
@@ -39,6 +85,7 @@ async function hydrateCategoriesInternal() {
       if (parsed.categories && Object.keys(parsed.categories).length) {
         Category$.set(parsed.categories);
       }
+      ensureDefaultCategory();
       if (parsed.nextId !== undefined) {
         CategoryIDCount$.set(parsed.nextId);
       } else {
@@ -49,6 +96,7 @@ async function hydrateCategoriesInternal() {
   } catch (err) {
     console.warn("Failed to load categories store", err);
   } finally {
+    ensureDefaultCategory();
     categoriesHydrated = true;
     categoriesReady = true;
     const snapshot = {
@@ -68,11 +116,11 @@ export async function ensureCategoriesHydrated() {
 }
 
 observe(() => {
-  if (!categoriesReady) return;
   const payload = JSON.stringify({
     categories: Category$.get(),
     nextId: CategoryIDCount$.get(),
   });
+  if (!categoriesReady) return;
   AsyncStorage.setItem(CATEGORY_STORAGE_KEY, payload).catch((err) => {
     console.warn("Failed to persist categories store", err);
   });
