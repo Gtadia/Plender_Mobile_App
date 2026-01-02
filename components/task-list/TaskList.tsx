@@ -16,6 +16,7 @@ import HorizontalProgressBarPercentage from "@/components/custom_ui/HorizontalPr
 import { fmt } from "@/helpers/fmt";
 import { listTheme } from "@/constants/listTheme";
 import { activeTimer$ } from "@/utils/activeTimerStore";
+import { getDirtyEntry } from "@/utils/dirtyTaskStore";
 import {
   CurrentTaskID$,
   colorTheme$,
@@ -24,6 +25,7 @@ import {
   tasks$,
 } from "@/utils/stateManager";
 import { startTaskTimer, stopTaskTimer, uiTick$ } from "@/utils/timerService";
+import { getNow } from "@/utils/timeOverride";
 
 type TaskListVariant = "home" | "calendar";
 
@@ -122,13 +124,23 @@ const confirmSwap = (onStart: () => void, onStop: () => void) => {
   ]);
 };
 
-const TaskListSectionHeader = ({ category, dateKey }: { category: number; dateKey: string }) => {
+const TaskListSectionHeader = ({
+  category,
+  dateKey,
+  variant,
+}: {
+  category: number;
+  dateKey: string;
+  variant: TaskListVariant;
+}) => {
   return (
     <Memo>
       {() => {
         uiTick$.get();
         const running = activeTimer$.get();
         const idsForDay = tasks$.lists.byDate[dateKey]?.get?.() ?? [];
+        const todayKey = moment(getNow()).format("YYYY-MM-DD");
+        const isToday = dateKey === todayKey;
         const { spent, goal } = idsForDay.reduce(
           (acc, id) => {
             const node = tasks$.entities[id]?.get?.();
@@ -138,11 +150,26 @@ const TaskListSectionHeader = ({ category, dateKey }: { category: number; dateKe
             const baseSpent = node.timeSpent ?? 0;
             const goalVal = node.timeGoal ?? 0;
             if (!goalVal || goalVal <= 0) return acc;
-            const liveSpent =
-              running?.taskId === id
-                ? running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000))
-                : baseSpent;
-            acc.spent += liveSpent;
+            let spentValue = baseSpent;
+            if (variant === "calendar") {
+              const dirtyEntry = getDirtyEntry(id);
+              const dayOverride = dirtyEntry?.byDate?.[dateKey];
+              if (dayOverride !== undefined) {
+                spentValue = dayOverride;
+              } else if (isToday && running?.taskId === id) {
+                spentValue =
+                  running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000));
+              } else if (node.date) {
+                const nodeDateKey = moment(node.date).format("YYYY-MM-DD");
+                if (nodeDateKey !== dateKey) {
+                  spentValue = 0;
+                }
+              }
+            } else if (running?.taskId === id) {
+              spentValue =
+                running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000));
+            }
+            acc.spent += spentValue;
             acc.goal += goalVal;
             return acc;
           },
@@ -176,11 +203,13 @@ const TaskListItem = ({
   showDivider,
   variant,
   onPressItem,
+  dateKey,
 }: {
   id: number;
   showDivider: boolean;
   variant: TaskListVariant;
   onPressItem?: (id: number) => void;
+  dateKey: string;
 }) => {
   const showControls = variant === "home";
   return (
@@ -198,12 +227,28 @@ const TaskListItem = ({
         const timeGoal = node.timeGoal.get() ?? 0;
         const isQuick = !timeGoal || timeGoal <= 0;
         const running = activeTimer$.get();
-        const liveSpent =
-          running?.taskId === id
-            ? running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000))
-            : timeSpent;
+        const todayKey = moment(getNow()).format("YYYY-MM-DD");
+        const isToday = dateKey === todayKey;
+        const dirtyEntry = getDirtyEntry(id);
+        const dayOverride = dirtyEntry?.byDate?.[dateKey];
+        const nodeDate = node.date?.get?.();
+        const nodeDateKey = nodeDate ? moment(nodeDate).format("YYYY-MM-DD") : null;
+        let liveSpent = timeSpent;
+        if (variant === "calendar") {
+          if (dayOverride !== undefined) {
+            liveSpent = dayOverride;
+          } else if (isToday && running?.taskId === id) {
+            liveSpent =
+              running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000));
+          } else if (nodeDateKey && nodeDateKey !== dateKey) {
+            liveSpent = 0;
+          }
+        } else if (running?.taskId === id) {
+          liveSpent =
+            running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000));
+        }
         const percent = timeGoal > 0 ? Math.min(liveSpent / timeGoal, 1) : 0;
-        const date = node.date?.get?.();
+        const date = variant === "calendar" ? moment(dateKey).toDate() : node.date?.get?.();
 
         const handlePress = () => {
           if (!showControls) return;
@@ -326,7 +371,7 @@ export const TaskList = ({
           <View style={[styles.container, containerStyle]}>
             {entries.map(([catKey, listIds]) => (
               <View key={catKey} style={styles.sectionCard}>
-                <TaskListSectionHeader category={+catKey} dateKey={dateKey} />
+                <TaskListSectionHeader category={+catKey} dateKey={dateKey} variant={variant} />
                 <View style={styles.categoryTaskList}>
                   {(listIds as number[]).map((taskId, idx, arr) => (
                     <TaskListItem
@@ -335,6 +380,7 @@ export const TaskList = ({
                       variant={variant}
                       showDivider={idx !== arr.length - 1}
                       onPressItem={onPressItem}
+                      dateKey={dateKey}
                     />
                   ))}
                 </View>

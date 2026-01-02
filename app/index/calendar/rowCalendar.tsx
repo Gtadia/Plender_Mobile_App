@@ -61,6 +61,7 @@ export default function FlatListSwiperExample() {
   const weekScrollRef = useRef<ScrollView>(null);
   const dayListRef = useRef<FlatList<Moment>>(null);
   const followTodayRef = useRef(true);
+  const todayKeyRef = useRef(moment(getNow()).format('YYYY-MM-DD'));
 
   const [selectedDate, setSelectedDate] = useState(moment(getNow()));
   const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(moment(getNow())));
@@ -129,6 +130,22 @@ export default function FlatListSwiperExample() {
     },
     [setDataVersion],
   );
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextKey = moment(getNow()).format('YYYY-MM-DD');
+      if (nextKey === todayKeyRef.current) return;
+      todayKeyRef.current = nextKey;
+      if (!followTodayRef.current) return;
+      const next = moment(getNow()).startOf('day');
+      selectedDate$.set(next);
+      setSelectedDate(next);
+      setPanes(generatePaneSet(next));
+      followTodayRef.current = true;
+      void ensureDateCached(next);
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [ensureDateCached]);
 
   // Only prefetch current week's days; debounce to avoid hammering JS thread
   useEffect(() => {
@@ -277,14 +294,14 @@ export default function FlatListSwiperExample() {
     (date: Moment) => {
       const tasksForDay = getTasksForDate(date);
       const taskCount = tasksForDay.length;
-      const fullDaySeconds = 24 * 3600;
-      const timeSpent = tasksForDay.reduce((sum, t) => sum + (t.timeSpent ?? 0), 0);
-      const timeGoal = tasksForDay.reduce((sum, t) => sum + (t.timeGoal ?? 0), 0);
+      const goalTasks = tasksForDay.filter((t) => (t.timeGoal ?? 0) > 0);
+      const timeSpent = goalTasks.reduce((sum, t) => sum + (t.timeSpent ?? 0), 0);
+      const timeGoal = goalTasks.reduce((sum, t) => sum + (t.timeGoal ?? 0), 0);
 
       return {
         taskCount,
-        spentRatio: Math.min(timeSpent / fullDaySeconds, 1),
-        goalRatio: Math.min(timeGoal / fullDaySeconds, 1),
+        spentRatio: timeGoal > 0 ? Math.min(timeSpent / timeGoal, 1) : 0,
+        hasGoal: timeGoal > 0,
       };
     },
     [getTasksForDate],
@@ -298,9 +315,9 @@ export default function FlatListSwiperExample() {
           <View style={styles.itemRow}>
             {weekDays.map((day) => {
               const isActive = day.isSame(selectedDate, 'day');
-              const { taskCount, spentRatio } = getDayProgress(day);
+              const { taskCount, spentRatio, hasGoal } = getDayProgress(day);
               const inactiveGoalColor = `${palette.peach}66`;
-              const hasTasks = taskCount > 0;
+              const hasTasks = hasGoal;
               const goalColor = isActive ? palette.peach : inactiveGoalColor;
               const trackColor = hasTasks ? goalColor : palette.surface1;
               const segments = [];
@@ -333,6 +350,7 @@ export default function FlatListSwiperExample() {
   );
 
   const insets = useSafeAreaInsets();
+  const tabBarPadding = StyleSheet.flatten(globalTheme.tabBarAvoidingPadding).height ?? 0;
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -366,8 +384,7 @@ export default function FlatListSwiperExample() {
       <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.title]}>Calendar</Text>
       </View>
-      <SafeAreaView style={{ flex: 1 }}>
-        <SafeAreaView style={{ flex: 1 }}>
+      {/* <SafeAreaView style={{ }}> */}
           <View style={styles.calContainer}>
             <ScrollView
               ref={weekScrollRef}
@@ -379,7 +396,8 @@ export default function FlatListSwiperExample() {
               scrollEnabled={!isSnapping}
               onMomentumScrollEnd={handleWeekSwipe}
               scrollEventThrottle={16}
-              contentOffset={{ x: width * CENTER_INDEX, y: 0 }}
+              style={{ minHeight: 100, maxHeight: 100 }}
+              // contentOffset={{ x: width * CENTER_INDEX, y: 0 }}
             >
               {panes.map((pane) => (
                 <View key={pane.key} style={{ width }}>
@@ -406,7 +424,7 @@ export default function FlatListSwiperExample() {
               renderItem={({ item }) => {
                 const dateKey = item.format('YYYY-MM-DD');
                 return (
-                  <View style={{ width, paddingHorizontal: 16, paddingVertical: 24 }}>
+                  <View style={styles.dayPane}>
                     <TouchableOpacity
                       onPress={() => {
                         router.push('/calendar/bottomSheet');
@@ -421,28 +439,26 @@ export default function FlatListSwiperExample() {
                     </TouchableOpacity>
                     <ScrollView
                       style={styles.placeholder}
+                      contentContainerStyle={{ paddingBottom: tabBarPadding + 12, flexGrow: 1 }}
                       bounces
                       overScrollMode="always"
                       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
                     >
                       <TaskList
+                        key={dateKey}
                         dateKey={dateKey}
                         variant="calendar"
                         emptyText="No tasks for this day"
                         emptyContainerStyle={[styles.placeholderInset, { alignItems: 'center', justifyContent: 'center' }]}
                         containerStyle={{ padding: 0 }}
                       />
-
-                      {/* Padding Bottom */}
-                      <View style={globalTheme.tabBarAvoidingPadding} />
                     </ScrollView>
                   </View>
                 );
               }}
             />
           </View>
-        </SafeAreaView>
-      </SafeAreaView>
+      {/* </SafeAreaView> */}
     </ScreenView>
   );
 }
@@ -463,7 +479,7 @@ const styles = StyleSheet.create({
       marginLeft: 0,
       fontWeight: 'bold',
     },
-  calContainer: { flex: 1, paddingVertical: 24 },
+  calContainer: { paddingTop: 16, paddingBottom: 0 },
   header: { paddingHorizontal: 16 },
   // title: {
   //   fontSize: 32,
@@ -514,11 +530,17 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#000',
-    marginBottom: 12,
+    marginBottom: 8,
+  },
+  dayPane: {
+    width,
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 0,
   },
   placeholder: {
-    flexGrow: 1,
-    height: 400,
+    flex: 1,
     backgroundColor: 'transparent',
   },
   placeholderInset: {
