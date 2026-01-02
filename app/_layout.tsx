@@ -56,6 +56,11 @@ export default function TabLayout() {
           presentation: "transparentModal",
           animation: "fade",
         }}/>
+        <Stack.Screen name="calendarDateSheet" options={{
+          headerShown: false,
+          presentation: "transparentModal",
+          animation: "fade",
+        }}/>
       </Stack>
 
       {/* Toast Menu */}

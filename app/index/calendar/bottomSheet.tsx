@@ -1,79 +1,140 @@
-import { Button, Dimensions, Pressable, StyleSheet, Text, View } from 'react-native'
-import React, { useState } from 'react'
-import { useNavigation } from 'expo-router'
-import { BlurView } from 'expo-blur';
+import { Dimensions, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useCallback } from 'react';
+import { useNavigation } from 'expo-router';
 import DateTimePicker, { useDefaultStyles } from 'react-native-ui-datepicker';
 import moment, { Moment } from 'moment';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { selectedDate$ } from './rowCalendar';
+import { Memo } from '@legendapp/state/react';
+import { observable } from '@legendapp/state';
+import { colorTheme } from '@/constants/Colors';
+import { useFocusEffect } from '@react-navigation/native';
+import { Text } from '@/components/Themed';
+
+const pickerDate$ = observable<Moment>(selectedDate$.get());
+
+const palette = colorTheme.catppuccin.latte;
 
 const bottomSheet = () => {
   const navigation = useNavigation();
-  const [date, setDate] = useState<Moment>(selectedDate$.get());
-  let { height } = Dimensions.get("window");
+  const insets = useSafeAreaInsets();
+  const { height } = Dimensions.get('window');
+
+  useFocusEffect(
+    useCallback(() => {
+      pickerDate$.set(selectedDate$.get());
+      return () => {};
+    }, [])
+  );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.overlay}>
       <Pressable onPress={() => navigation.goBack()} style={styles.background} />
-      <BlurView
-        experimentalBlurMethod='dimezisBlurView'    // for android
-        intensity={90}
-        tint='light'
-        style={[styles.blurView, {height: height * 5 / 8 }]}
-      >
-        <Text>Select Date</Text>
-{/* <Memo>
-          {() => */}
-          <View style={{ maxWidth: 350, paddingHorizontal: 15, borderWidth: 1, alignSelf: 'center'}}>
-            <DateTimePicker
-              mode="single"
-              // date={date$.get()}
-              // onChange={(event) => {date$.set(event.date)}}
-              date={date}
-              onChange={(event) => {setDate(moment(event.date))}}
-              // style={{  }}
-              styles={{
-                ...useDefaultStyles,
-                today: { borderColor: 'black', borderRadius: 1000, borderWidth: 1, backgroundColor: 'transparent'},
-                selected: { backgroundColor: 'black', borderRadius: 1000 },
-                selected_label: { color: 'white' },  // selected date's text color
-                // header: { borderRadius: 1000,  backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'space-evenly', alignItems: 'center', flexDirection: 'row' },
-                month_selector: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
-                year_selector: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
-                button_prev: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
-                button_next: { borderRadius: 1000, backgroundColor: 'red', padding: 10, },
-              }}
-            />
-
-            <Button title="Select Date" onPress={() => {
-              console.log("Selected Date: ", date?.toLocaleString());
-              selectedDate$.set(date);
-              navigation.goBack();
-            }} />
-          </View>
-          {/* }
-        </Memo> */}
-      </BlurView>
+      <View style={[styles.sheet, { maxHeight: height * 0.72, paddingBottom: Math.max(24, insets.bottom + 12) }]}>
+        <View style={styles.handle} />
+        <Text style={styles.sheetTitle}>Select Date</Text>
+        <Memo>
+          {() => {
+            const date = pickerDate$.get();
+            return (
+              <View style={styles.pickerWrapper}>
+                <DateTimePicker
+                  mode="single"
+                  date={date}
+                  onChange={(event) => {
+                    if (!event.date) return;
+                    pickerDate$.set(moment(event.date));
+                  }}
+                  styles={{
+                    ...useDefaultStyles,
+                    today: {
+                      borderColor: palette.text,
+                      borderRadius: 1000,
+                      borderWidth: 1,
+                      backgroundColor: 'transparent',
+                    },
+                    selected: { backgroundColor: palette.text, borderRadius: 1000 },
+                    selected_label: { color: palette.base },
+                    month_selector: { backgroundColor: palette.surface1, borderRadius: 10 },
+                    year_selector: { backgroundColor: palette.surface1, borderRadius: 10 },
+                    button_prev: { backgroundColor: palette.surface1, borderRadius: 10 },
+                    button_next: { backgroundColor: palette.surface1, borderRadius: 10 },
+                  }}
+                />
+              </View>
+            );
+          }}
+        </Memo>
+        <TouchableOpacity
+          style={styles.confirmButton}
+          onPress={() => {
+            const next = pickerDate$.get();
+            selectedDate$.set(next);
+            navigation.goBack();
+          }}
+        >
+          <Text style={styles.confirmText}>Select Date</Text>
+        </TouchableOpacity>
+      </View>
     </View>
-  )
+  );
 }
 
 export default bottomSheet
 
 const styles = StyleSheet.create({
-  background: {
-    backgroundColor: 'transparent',
+  overlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
   },
-  blurView: {
-    // height: 'auto',
-    minHeight: 300,
-    width: '100%',
+  background: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  sheet: {
     position: 'absolute',
     bottom: 0,
-    zIndex: 1000,
+    width: '100%',
+    backgroundColor: palette.base,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -8 },
     elevation: 10,
-    // borderTopLeftRadius: 30,
-    // borderTopRightRadius: 30,
-  }
-})
+  },
+  handle: {
+    width: 48,
+    height: 5,
+    borderRadius: 999,
+    backgroundColor: palette.surface1,
+    alignSelf: 'center',
+    marginBottom: 8,
+  },
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: palette.text,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  pickerWrapper: {
+    alignSelf: 'center',
+    backgroundColor: palette.base,
+  },
+  confirmButton: {
+    marginTop: 12,
+    backgroundColor: palette.text,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  confirmText: {
+    color: palette.base,
+    fontWeight: '700',
+    fontSize: 16,
+  },
+});

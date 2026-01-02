@@ -35,6 +35,7 @@ import { TaskList } from '@/components/task-list/TaskList';
 const { width } = Dimensions.get('window');
 const PANES = 5;
 const CENTER_INDEX = Math.floor(PANES / 2);
+const WEEK_ROW_HEIGHT = 120;
 
 export const selectedDate$ = observable(moment(getNow()));
 
@@ -350,7 +351,7 @@ export default function FlatListSwiperExample() {
   );
 
   const insets = useSafeAreaInsets();
-  const tabBarPadding = StyleSheet.flatten(globalTheme.tabBarAvoidingPadding).height ?? 0;
+  const tabBarHeight = 60 + insets.bottom;
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -361,6 +362,15 @@ export default function FlatListSwiperExample() {
       setRefreshing(false);
     }
   }, [selectedDate]);
+
+  const handleJumpToday = useCallback(() => {
+    const today = moment(getNow()).startOf('day');
+    selectedDate$.set(today);
+    setSelectedDate(today);
+    setPanes(generatePaneSet(today));
+    followTodayRef.current = true;
+    void ensureDateCached(today);
+  }, [ensureDateCached]);
 
   useFocusEffect(
     useCallback(() => {
@@ -383,80 +393,91 @@ export default function FlatListSwiperExample() {
     <ScreenView style={styles.container}>
       <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
         <Text style={[styles.title]}>Calendar</Text>
+        <TouchableOpacity style={styles.todayButton} onPress={handleJumpToday}>
+          <Text style={styles.todayButtonText}>Today</Text>
+        </TouchableOpacity>
       </View>
       {/* <SafeAreaView style={{ }}> */}
           <View style={styles.calContainer}>
-            <ScrollView
-              ref={weekScrollRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              decelerationRate="fast"
-              bounces={false}
-              scrollEnabled={!isSnapping}
-              onMomentumScrollEnd={handleWeekSwipe}
-              scrollEventThrottle={16}
-              style={{ minHeight: 100, maxHeight: 100 }}
-              // contentOffset={{ x: width * CENTER_INDEX, y: 0 }}
-            >
-              {panes.map((pane) => (
-                <View key={pane.key} style={{ width }}>
-                  {renderWeek(pane)}
-                </View>
-              ))}
-            </ScrollView>
+            <View style={styles.weekRowWrapper}>
+              <ScrollView
+                ref={weekScrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                decelerationRate="fast"
+                bounces={false}
+                scrollEnabled={!isSnapping}
+                onMomentumScrollEnd={handleWeekSwipe}
+                scrollEventThrottle={16}
+                contentContainerStyle={styles.weekRowContent}
+              >
+                {panes.map((pane) => (
+                  <View key={pane.key} style={{ width }}>
+                    {renderWeek(pane)}
+                  </View>
+                ))}
+              </ScrollView>
+            </View>
 
-            <FlatList
-              ref={dayListRef}
-              data={days}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              initialScrollIndex={1}
-              getItemLayout={(_, index) => ({
-                length: width,
-                offset: width * index,
-                index,
-              })}
-              onMomentumScrollEnd={handleDaySwipe}
-              scrollEnabled={!isDaySnapping}
-              keyExtractor={(item, index) => `day-${index}`}
-              renderItem={({ item }) => {
-                const dateKey = item.format('YYYY-MM-DD');
-                return (
-                  <View style={styles.dayPane}>
+            <View style={styles.dayListWrapper}>
+              <FlatList
+                ref={dayListRef}
+                data={days}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                initialScrollIndex={1}
+                getItemLayout={(_, index) => ({
+                  length: width,
+                  offset: width * index,
+                  index,
+                })}
+                onMomentumScrollEnd={handleDaySwipe}
+                scrollEnabled={!isDaySnapping}
+                style={styles.dayList}
+                contentContainerStyle={styles.dayListContent}
+                keyExtractor={(item, index) => `day-${index}`}
+                renderItem={({ item }) => {
+                  const dateKey = item.format('YYYY-MM-DD');
+                  return (
+                    <View style={styles.dayPane}>
                     <TouchableOpacity
                       onPress={() => {
-                        router.push('/calendar/bottomSheet');
+                        router.push('/calendarDateSheet');
                       }}
                     >
-                      <View style={{ flexDirection: 'row', alignContent: 'center' }}>
-                        <Text style={styles.subtitle}>
+                      <View style={styles.dateHeaderRow}>
+                        <Text style={styles.dateHeaderText}>
                           {item.toDate().toLocaleDateString('en-US', { dateStyle: 'full' })}
                         </Text>
-                        <MaterialIcons name="edit" size={20} color="#000" style={{ paddingLeft: 5 }} />
+                        <MaterialIcons name="edit" size={18} color={palette.subtext1} />
                       </View>
                     </TouchableOpacity>
-                    <ScrollView
-                      style={styles.placeholder}
-                      contentContainerStyle={{ paddingBottom: tabBarPadding + 12, flexGrow: 1 }}
-                      bounces
-                      overScrollMode="always"
-                      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-                    >
-                      <TaskList
-                        key={dateKey}
-                        dateKey={dateKey}
-                        variant="calendar"
-                        emptyText="No tasks for this day"
-                        emptyContainerStyle={[styles.placeholderInset, { alignItems: 'center', justifyContent: 'center' }]}
-                        containerStyle={{ padding: 0 }}
-                      />
-                    </ScrollView>
-                  </View>
-                );
-              }}
-            />
+                      <ScrollView
+                        style={styles.placeholder}
+                        contentContainerStyle={{ paddingBottom: tabBarHeight + 12, flexGrow: 1 }}
+                        bounces
+                        overScrollMode="always"
+                        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+                      >
+                        <TaskList
+                          key={dateKey}
+                          dateKey={dateKey}
+                          variant="calendar"
+                          emptyText="No tasks for this day"
+                          emptyContainerStyle={[
+                            styles.placeholderInset,
+                            { alignItems: 'center', justifyContent: 'center' },
+                          ]}
+                          containerStyle={{ padding: 0 }}
+                        />
+                      </ScrollView>
+                    </View>
+                  );
+                }}
+              />
+            </View>
           </View>
       {/* </SafeAreaView> */}
     </ScreenView>
@@ -471,15 +492,46 @@ const styles = StyleSheet.create({
     },
     titleContainer: {
       width: '100%',
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: horizontalPadding,
     },
     title: {
-      left: horizontalPadding,
       color: '#000',
       fontSize: 28,
-      marginLeft: 0,
       fontWeight: 'bold',
     },
-  calContainer: { paddingTop: 16, paddingBottom: 0 },
+    todayButton: {
+      paddingHorizontal: 14,
+      paddingVertical: 6,
+      borderRadius: 999,
+      backgroundColor: 'rgba(254,100,11,0.14)',
+      borderWidth: 1,
+      borderColor: 'rgba(254,100,11,0.28)',
+    },
+    todayButtonText: {
+      color: palette.peach,
+      fontSize: 14,
+      fontWeight: '700',
+    },
+  calContainer: { flex: 1, width: '100%', paddingTop: 8, paddingBottom: 0 },
+  weekRowWrapper: {
+    height: WEEK_ROW_HEIGHT,
+    justifyContent: 'center',
+  },
+  weekRowContent: {
+    paddingVertical: 6,
+  },
+  dayListWrapper: {
+    flex: 1,
+  },
+  dayList: {
+    flex: 1,
+  },
+  dayListContent: {
+    height: '100%',
+  },
   header: { paddingHorizontal: 16 },
   // title: {
   //   fontSize: 32,
@@ -526,17 +578,22 @@ const styles = StyleSheet.create({
     color: '#000',
     marginTop: 7,
   },
-  subtitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000',
+  dateHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     marginBottom: 8,
+  },
+  dateHeaderText: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: palette.text,
   },
   dayPane: {
     width,
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 8,
+    paddingTop: 6,
     paddingBottom: 0,
   },
   placeholder: {

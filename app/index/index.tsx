@@ -3,11 +3,12 @@ import { Text, ScreenView } from "@/components/Themed";
 import { globalTheme, horizontalPadding } from "@/constants/globalThemeVar";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { taskDetailsSheet$, loadDay } from "@/utils/stateManager";
-import { useObservable } from "@legendapp/state/react";
+import { Memo, useObservable } from "@legendapp/state/react";
 import { CurrentTaskView, TodayTaskView } from "@/components/HomeScreenTasks";
 import { useCallback } from "react";
 import { flushDirtyTasksToDB } from "@/utils/dirtyTaskStore";
 import { useRouter } from "expo-router";
+import { getNow } from "@/utils/timeOverride";
 
 // TODO — for drag down to reload
 
@@ -60,8 +61,18 @@ export default function TabOneScreen() {
           }}
         />
 
-        <View style={[styles.titleContainer, { marginBottom: 15 }]}>
-          <Text style={[styles.title, styles.secondaryTitle]}>Today</Text>
+        <View style={[styles.titleContainer, styles.todayHeader]}>
+          <Text style={[styles.title, styles.secondaryTitle, styles.titleReset]}>Today</Text>
+          <Memo>
+            {() => {
+              const todayLabel = getNow().toLocaleDateString("en-US", { dateStyle: "medium" });
+              return (
+                <Text fontColor="subtext1" style={styles.todayDate}>
+                  {todayLabel}
+                </Text>
+              );
+            }}
+          </Memo>
         </View>
         <TodayTaskView
           onPressItem={(id) => {
@@ -87,6 +98,20 @@ const styles = StyleSheet.create({
     color: "#000",
     marginLeft: 0,
     fontWeight: "bold",
+  },
+  titleReset: {
+    left: 0,
+  },
+  todayHeader: {
+    flexDirection: "row",
+    alignItems: "baseline",
+    gap: 8,
+    paddingHorizontal: horizontalPadding,
+    marginBottom: 0,
+  },
+  todayDate: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   separator: {
     marginVertical: 30,
