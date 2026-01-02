@@ -1,6 +1,9 @@
 import React, { useRef } from "react";
 import {
+  ActionSheetIOS,
+  Alert,
   Dimensions,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -18,18 +21,20 @@ import AntDesign from "@expo/vector-icons/AntDesign";
 
 import { Text } from "@/components/Themed";
 import { fmt } from "@/helpers/fmt";
-import { uiTick$ } from "@/utils/timerService";
+import { stopTaskTimer, uiTick$ } from "@/utils/timerService";
 import { activeTimer$ } from "@/utils/activeTimerStore";
-import { updateEvent } from "@/utils/database";
+import { deleteEvent, updateEvent } from "@/utils/database";
 import HorizontalProgressBar from "@/components/custom_ui/HorizontalProgressBar";
 import {
   Category$,
+  CurrentTaskID$,
   colorTheme$,
   getCategoryMeta,
   taskDetailsSheet$,
   timeGoalEdit$,
   tasks$,
 } from "@/utils/stateManager";
+import { clearDirtyTask } from "@/utils/dirtyTaskStore";
 
 export default function TaskDetailsSheet() {
   const navigation = useNavigation();
@@ -127,6 +132,53 @@ const TaskDetailsContent = () => {
           }, 400);
         };
 
+        const removeTaskFromCache = (taskId: number) => {
+          tasks$.entities[taskId]?.delete?.();
+          const lists = tasks$.lists.byDate.get();
+          Object.keys(lists).forEach((key) => {
+            const list = lists[key] ?? [];
+            if (!list.includes(taskId)) return;
+            tasks$.lists.byDate[key].set(list.filter((entry) => entry !== taskId));
+          });
+        };
+
+        const handleDelete = async () => {
+          const running = activeTimer$.get();
+          if (running?.taskId === id) {
+            await stopTaskTimer();
+          }
+          if (CurrentTaskID$.get() === id) {
+            CurrentTaskID$.set(-1);
+          }
+          await deleteEvent(id);
+          clearDirtyTask(id);
+          removeTaskFromCache(id);
+          taskDetailsSheet$.taskId.set(null);
+          router.back();
+        };
+
+        const confirmDelete = () => {
+          if (Platform.OS === "ios") {
+            ActionSheetIOS.showActionSheetWithOptions(
+              {
+                title: "Delete Task",
+                message: "Do you want to delete this task?",
+                options: ["Delete Task", "Cancel"],
+                destructiveButtonIndex: 0,
+                cancelButtonIndex: 1,
+              },
+              (buttonIndex) => {
+                if (buttonIndex === 0) void handleDelete();
+              }
+            );
+            return;
+          }
+          Alert.alert("Delete Task", "Do you want to delete this task?", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Delete Task", style: "destructive", onPress: () => void handleDelete() },
+          ]);
+        };
+
         return (
           <View style={{ flex: 1 }}>
             <View style={sheetStyles.card}>
@@ -163,19 +215,28 @@ const TaskDetailsContent = () => {
                         {titleValue || "Untitled Task"}
                       </Text>
                     )}
-                    <TouchableOpacity
-                      onPress={() => {
-                        const next = !isEditing;
-                        local$.editing.set(next);
-                        if (!next) {
-                          categoryPopup$.set(false);
-                        }
-                      }}
-                      hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                      style={sheetStyles.editButton}
-                    >
-                      <FontAwesome5 name="edit" size={18} color={catColor} />
-                    </TouchableOpacity>
+                    <View style={sheetStyles.headerActions}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          const next = !isEditing;
+                          local$.editing.set(next);
+                          if (!next) {
+                            categoryPopup$.set(false);
+                          }
+                        }}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        style={sheetStyles.iconButton}
+                      >
+                        <FontAwesome5 name="edit" size={18} color={catColor} />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={confirmDelete}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                        style={sheetStyles.iconButton}
+                      >
+                        <FontAwesome5 name="trash" size={18} color={colorTheme$.colors.secondary.get()} />
+                      </TouchableOpacity>
+                    </View>
                     {isEditing ? (
                       <TouchableOpacity
                         style={sheetStyles.categoryRow}
@@ -375,10 +436,14 @@ const sheetStyles = StyleSheet.create({
     marginBottom: 10,
     position: "relative",
   },
-  editButton: {
+  headerActions: {
     position: "absolute",
     right: 0,
     top: 0,
+    flexDirection: "row",
+    gap: 6,
+  },
+  iconButton: {
     padding: 6,
   },
   title: {
