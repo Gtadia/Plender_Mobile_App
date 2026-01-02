@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import moment, { Moment } from 'moment';
-import VerticalProgressBar from '@/components/custom_ui/VerticalProgressBar';
+import StackedProgressRing from '@/components/StackedProgressRing';
 import { initializeDB } from '@/utils/database';
 import { observable } from '@legendapp/state';
 import { useRouter } from 'expo-router';
@@ -43,7 +43,6 @@ type WeekPane = {
   start: Moment;
 };
 
-type ProgressSegment = { percentage: number; color: string };
 
 const buildPane = (start: Moment, offsetWeeks: number): WeekPane => {
   const paneStart = start.clone().add(offsetWeeks, 'week').startOf('week');
@@ -61,6 +60,7 @@ const palette = colorTheme.catppuccin.latte;
 export default function FlatListSwiperExample() {
   const weekScrollRef = useRef<ScrollView>(null);
   const dayListRef = useRef<FlatList<Moment>>(null);
+  const followTodayRef = useRef(true);
 
   const [selectedDate, setSelectedDate] = useState(moment(getNow()));
   const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(moment(getNow())));
@@ -74,10 +74,12 @@ export default function FlatListSwiperExample() {
     const unsubscribe = selectedDate$.onChange(({ value }) => {
       setSelectedDate(value.clone());
       setPanes(generatePaneSet(value));
+      followTodayRef.current = value.isSame(moment(getNow()), 'day');
     });
     const initial = selectedDate$.get().clone();
     setSelectedDate(initial);
     setPanes(generatePaneSet(initial));
+    followTodayRef.current = initial.isSame(moment(getNow()), 'day');
     return () => {
       if (typeof unsubscribe === 'function') {
         unsubscribe();
@@ -170,14 +172,15 @@ export default function FlatListSwiperExample() {
   useFocusEffect(
     useCallback(() => {
       const now = moment(getNow()).startOf('day');
-      if (!now.isSame(selectedDate, 'day')) {
+      const current = selectedDate$.get().clone();
+      if (followTodayRef.current && !now.isSame(current, 'day')) {
         selectedDate$.set(now);
         setSelectedDate(now);
         setPanes(generatePaneSet(now));
         ensureDateCached(now);
       }
       return () => {};
-    }, [selectedDate, ensureDateCached])
+    }, [ensureDateCached])
   );
 
   const finalizeSnap = useCallback(() => {
@@ -197,6 +200,7 @@ export default function FlatListSwiperExample() {
           const nextDate = prev.clone().add(direction, 'week');
           setPanes(generatePaneSet(nextDate));
           selectedDate$.set(nextDate);
+          followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
           return nextDate;
         });
         finalizeSnap();
@@ -216,6 +220,7 @@ export default function FlatListSwiperExample() {
         setSelectedDate(nextDate);
         setPanes(generatePaneSet(nextDate));
         selectedDate$.set(nextDate);
+        followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
         setIsSnapping(true);
         finalizeSnap();
       }
@@ -234,6 +239,7 @@ export default function FlatListSwiperExample() {
       setSelectedDate(normalized);
       setPanes(generatePaneSet(normalized));
       selectedDate$.set(normalized);
+      followTodayRef.current = normalized.isSame(moment(getNow()), 'day');
       setIsSnapping(true);
       finalizeSnap();
     },
@@ -267,36 +273,21 @@ export default function FlatListSwiperExample() {
     [ensureDateCached, dataVersion],
   );
 
-  const buildProgressSegments = useCallback(
-    (date: Moment): ProgressSegment[] => {
+  const getDayProgress = useCallback(
+    (date: Moment) => {
       const tasksForDay = getTasksForDate(date);
+      const taskCount = tasksForDay.length;
       const fullDaySeconds = 24 * 3600;
       const timeSpent = tasksForDay.reduce((sum, t) => sum + (t.timeSpent ?? 0), 0);
       const timeGoal = tasksForDay.reduce((sum, t) => sum + (t.timeGoal ?? 0), 0);
 
-      const spentRatio = Math.min(timeSpent / fullDaySeconds, 1);
-      const goalRatio = Math.min(timeGoal / fullDaySeconds, 1);
-      const active = date.isSame(selectedDate, 'day');
-
-      const colors = {
-        spent: palette.green,
-        goal: active ? palette.peach : palette.overlay0,
+      return {
+        taskCount,
+        spentRatio: Math.min(timeSpent / fullDaySeconds, 1),
+        goalRatio: Math.min(timeGoal / fullDaySeconds, 1),
       };
-
-      if (goalRatio === 0 && spentRatio === 0) {
-        return [{ percentage: 0.35, color: active ? palette.overlay1 : palette.overlay0 }];
-      }
-
-      if (spentRatio >= goalRatio) {
-        return [{ percentage: Math.max(spentRatio, goalRatio), color: colors.spent }];
-      }
-
-      return [
-        { percentage: spentRatio, color: colors.spent },
-        { percentage: Math.max(goalRatio - spentRatio, 0), color: colors.goal },
-      ];
     },
-    [getTasksForDate, selectedDate],
+    [getTasksForDate],
   );
 
   const renderWeek = useCallback(
@@ -307,15 +298,27 @@ export default function FlatListSwiperExample() {
           <View style={styles.itemRow}>
             {weekDays.map((day) => {
               const isActive = day.isSame(selectedDate, 'day');
-              const progbar = buildProgressSegments(day);
+              const { taskCount, spentRatio } = getDayProgress(day);
+              const inactiveGoalColor = `${palette.peach}66`;
+              const hasTasks = taskCount > 0;
+              const goalColor = isActive ? palette.peach : inactiveGoalColor;
+              const trackColor = hasTasks ? goalColor : palette.surface1;
+              const segments = [];
+              if (taskCount > 0 && spentRatio > 0) {
+                segments.push({ value: spentRatio, color: palette.green });
+              }
+              const taskLabel = taskCount > 99 ? "99+" : `${taskCount}`;
               return (
                 <TouchableWithoutFeedback key={day.toISOString()} onPress={() => handleSelectWeekDay(day)}>
                   <View style={[styles.item, !isActive && styles.itemInactive]}>
                     <Text style={[styles.itemWeekday]}>{day.format('ddd')}</Text>
-                    <VerticalProgressBar
-                      height={125}
-                      width={30}
-                      progbar={progbar}
+                    <StackedProgressRing
+                      size={46}
+                      strokeWidth={7}
+                      trackColor={trackColor}
+                      segments={segments}
+                      centerLabel={taskLabel}
+                      centerLabelStyle={{ color: isActive ? palette.text : palette.subtext1 }}
                     />
                     <Text style={styles.itemDate}>{day.date()}</Text>
                   </View>
@@ -326,7 +329,7 @@ export default function FlatListSwiperExample() {
         </View>
       );
     },
-    [buildProgressSegments, handleSelectWeekDay, selectedDate],
+    [getDayProgress, handleSelectWeekDay, selectedDate],
   );
 
   const insets = useSafeAreaInsets();
@@ -474,11 +477,10 @@ const styles = StyleSheet.create({
     alignItems: 'center'
   },
   itemRow: {
-    maxWidth: 350,
-    width: '90%',
+    width: '100%',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingHorizontal: 12,
+    paddingHorizontal: horizontalPadding,
   },
   item: {
     // TODO: add regular item styles
