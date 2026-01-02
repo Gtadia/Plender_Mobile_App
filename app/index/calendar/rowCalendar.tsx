@@ -17,7 +17,7 @@ import {
 import { MaterialIcons } from '@expo/vector-icons';
 import moment, { Moment } from 'moment';
 import VerticalProgressBar from '@/components/custom_ui/VerticalProgressBar';
-import { createEvent, initializeDB } from '@/utils/database';
+import { initializeDB } from '@/utils/database';
 import { observable } from '@legendapp/state';
 import { useRouter } from 'expo-router';
 import { ScreenView } from '@/components/Themed';
@@ -28,8 +28,9 @@ import { uiTick$ } from '@/utils/timerService';
 import { getNow } from '@/utils/timeOverride';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
 import { colorTheme } from '@/constants/Colors';
-import { getCategoryGroupId, getCategoryMeta, loadDay, tasks$ } from '@/utils/stateManager';
+import { loadDay, tasks$ } from '@/utils/stateManager';
 import { ensureDirtyTasksHydrated, flushDirtyTasksToDB, getDirtySnapshot } from '@/utils/dirtyTaskStore';
+import { TaskList } from '@/components/task-list/TaskList';
 
 const { width } = Dimensions.get('window');
 const PANES = 5;
@@ -43,8 +44,6 @@ type WeekPane = {
 };
 
 type ProgressSegment = { percentage: number; color: string };
-type TaskRow = { title: string; date: string; time: string; goal: string; percent: string };
-type CategoryBlock = { title: string; accent: string; percent: string; total: string; tasks: TaskRow[] };
 
 const buildPane = (start: Moment, offsetWeeks: number): WeekPane => {
   const paneStart = start.clone().add(offsetWeeks, 'week').startOf('week');
@@ -58,52 +57,6 @@ const generatePaneSet = (center: Moment): WeekPane[] => {
 
 const palette = colorTheme.catppuccin.latte;
 
-const secondsToHms = (value: number) => {
-  const total = Math.max(0, Math.floor(value));
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-};
-
-const TaskRowItem = ({ task, showDivider }: { task: TaskRow; showDivider: boolean }) => (
-  <View style={styles.taskRowWrapper}>
-    <View style={styles.taskRow}>
-      <View>
-        <Text style={styles.taskTitle}>{task.title}</Text>
-        <Text style={styles.taskDate}>{task.date}</Text>
-      </View>
-      <View style={{ alignItems: 'flex-end' }}>
-        <Text style={styles.taskTime}>
-          {task.time} <Text style={styles.taskGoal}>/ {task.goal}</Text>
-        </Text>
-        <Text style={styles.taskPercent}>{task.percent}</Text>
-      </View>
-    </View>
-    {showDivider && <View style={styles.taskDivider} />}
-  </View>
-);
-
-const CategoryCard = ({ block }: { block: CategoryBlock }) => (
-  <View style={styles.card}>
-    <View style={styles.cardHeader}>
-      <Text style={[styles.cardTitle, { color: block.accent }]}>{block.title}</Text>
-      <Text style={styles.cardPercent}>({block.percent})</Text>
-      <View style={styles.cardSpacer} />
-      <Text style={styles.cardTotal}>{block.total}</Text>
-    </View>
-    {/* <View style={styles.divider} /> */}
-    <View style={styles.taskListContainer}>
-      {block.tasks.map((task, idx) => (
-        <TaskRowItem
-          key={`${block.title}-${idx}`}
-          task={task}
-          showDivider={idx !== block.tasks.length - 1}
-        />
-      ))}
-    </View>
-  </View>
-);
 
 export default function FlatListSwiperExample() {
   const weekScrollRef = useRef<ScrollView>(null);
@@ -346,51 +299,6 @@ export default function FlatListSwiperExample() {
     [getTasksForDate, selectedDate],
   );
 
-  const buildCategoryBlocks = useCallback(
-    (date: Moment): CategoryBlock[] => {
-      const tasksForDay = getTasksForDate(date);
-      const totalsByCategory = tasksForDay.reduce((acc, t) => {
-        const cat = getCategoryGroupId(t.category ?? 0);
-        if (!acc[cat]) acc[cat] = { spent: 0, goal: 0, completed: 0, tasks: [] as typeof tasksForDay };
-        const spent = t.timeSpent ?? 0;
-        const goal = Math.max(t.timeGoal ?? 0, 0);
-        const completed = goal > 0 ? Math.min(spent, goal) : spent;
-        acc[cat].spent += spent;
-        acc[cat].goal += goal;
-        acc[cat].completed += completed;
-        acc[cat].tasks.push(t);
-        return acc;
-      }, {} as Record<number, { spent: number; goal: number; completed: number; tasks: typeof tasksForDay }>);
-
-      return Object.entries(totalsByCategory).map(([catId, data]) => {
-        const categoryMeta = getCategoryMeta(Number(catId));
-        const label = categoryMeta.label;
-        const accent = categoryMeta.color ?? palette.peach;
-        const completionPercent = data.goal > 0 ? Math.round((data.completed / data.goal) * 100) : (data.completed > 0 ? 100 : 0);
-        return {
-          title: label,
-          accent,
-          percent: `${Math.min(completionPercent, 100)}%`,
-          total: secondsToHms(data.spent),
-          tasks: data.tasks.map((task) => {
-            const spentSeconds = Math.max(task.timeSpent ?? 0, 0);
-            const goalSeconds = Math.max(task.timeGoal ?? 0, 0);
-            const completedSeconds = goalSeconds > 0 ? Math.min(spentSeconds, goalSeconds) : spentSeconds;
-            const percent = goalSeconds > 0 ? Math.round((completedSeconds / goalSeconds) * 100) : (spentSeconds > 0 ? 100 : 0);
-            return {
-              title: task.title,
-              date: date.format('MMMM D, YYYY'),
-              time: secondsToHms(spentSeconds),
-              goal: secondsToHms(goalSeconds),
-              percent: `${Math.min(percent, 100)}%`,
-            };
-          }),
-        };
-      });
-    },
-    [getTasksForDate],
-  );
-
   const renderWeek = useCallback(
     (pane: WeekPane) => {
       const weekDays = Array.from({ length: 7 }).map((_, idx) => pane.start.clone().add(idx, 'day'));
@@ -493,7 +401,7 @@ export default function FlatListSwiperExample() {
               scrollEnabled={!isDaySnapping}
               keyExtractor={(item, index) => `day-${index}`}
               renderItem={({ item }) => {
-                const blocks = buildCategoryBlocks(item);
+                const dateKey = item.format('YYYY-MM-DD');
                 return (
                   <View style={{ width, paddingHorizontal: 16, paddingVertical: 24 }}>
                     <TouchableOpacity
@@ -514,20 +422,16 @@ export default function FlatListSwiperExample() {
                       overScrollMode="always"
                       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
                     >
-                      {blocks.length === 0 ? (
-                        <View style={[styles.placeholderInset, { alignItems: 'center', justifyContent: 'center' }]}>
-                          <Text style={styles.emptyStateText}>No tasks for this day</Text>
-                        </View>
-                      ) : (
-                        <View style={{ gap: 16 }}>
-                          {blocks.map((block) => (
-                            <CategoryCard key={`${item.format('YYYY-MM-DD')}-${block.title}`} block={block} />
-                          ))}
+                      <TaskList
+                        dateKey={dateKey}
+                        variant="calendar"
+                        emptyText="No tasks for this day"
+                        emptyContainerStyle={[styles.placeholderInset, { alignItems: 'center', justifyContent: 'center' }]}
+                        containerStyle={{ padding: 0 }}
+                      />
 
-                          {/* Padding Bottom */}
-                          <View style={globalTheme.tabBarAvoidingPadding} />
-                        </View>
-                      )}
+                      {/* Padding Bottom */}
+                      <View style={globalTheme.tabBarAvoidingPadding} />
                     </ScrollView>
                   </View>
                 );

@@ -1,7 +1,6 @@
 import {
   StyleSheet,
   View,
-  ScrollView,
   TouchableOpacity,
   ActionSheetIOS,
   Alert,
@@ -14,7 +13,6 @@ import {
   CurrentTaskID$,
   tasks$,
   colorTheme$,
-  getCategoryGroupId,
   getCategoryMeta,
 } from "@/utils/stateManager";
 import { colorTheme } from "@/constants/Colors";
@@ -24,11 +22,12 @@ import { Memo } from "@legendapp/state/react";
 import { FontAwesome5 } from "@expo/vector-icons";
 import HorizontalProgressBarPercentage from "./custom_ui/HorizontalProgressBarPercentage";
 import { fmt } from "@/helpers/fmt";
-import { initTimerService, startTaskTimer, stopTaskTimer, syncRunningTimer, uiTick$ } from "@/utils/timerService";
+import { initTimerService, stopTaskTimer, syncRunningTimer, uiTick$ } from "@/utils/timerService";
 import React, { useEffect, useCallback, useState } from "react";
 import { activeTimer$ } from "@/utils/activeTimerStore";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
+import { TaskList } from "@/components/task-list/TaskList";
 
 export const homePageInfo$ = observable({
   reload: false,
@@ -207,259 +206,9 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
   );
 };
 
-const SectionHeader = ({
-  category,
-  dateKey,
-}: {
-  category: number;
-  dateKey: string;
-}) => {
-  return (
-    <Memo>
-      {() => {
-        uiTick$.get(); // force recompute on timer heartbeat
-        const running = activeTimer$.get();
-        const idsForDay = tasks$.lists.byDate[dateKey]?.get?.() ?? [];
-        const { spent, goal } = idsForDay.reduce(
-          (acc, id) => {
-            const node = tasks$.entities[id]?.get?.();
-            if (!node) return acc;
-            const groupId = getCategoryGroupId(node.category ?? 0);
-            if (groupId !== category) return acc;
-            const baseSpent = node.timeSpent ?? 0;
-            const goalVal = node.timeGoal ?? 0;
-            // Quick tasks (no goal) do not contribute
-            if (!goalVal || goalVal <= 0) return acc;
-            const liveSpent =
-              running?.taskId === id
-                ? running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000))
-                : baseSpent;
-            acc.spent += liveSpent;
-            acc.goal += goalVal;
-            return acc;
-          },
-          { spent: 0, goal: 0 }
-        );
-        const percent = goal > 0 ? Math.round((spent / goal) * 100) : 0;
-        const categoryMeta = getCategoryMeta(category);
-        const color = categoryMeta.color || colorTheme$.colors.primary.get();
-        const label = categoryMeta.label;
-
-        return (
-          <View style={taskListStyles.sectionHeader}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Text
-                style={[
-                  taskListStyles.sectionTitle,
-                  { color },
-                ]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {label}
-              </Text>
-              <Text style={taskListStyles.sectionPercent}> ({percent}%)</Text>
-            </View>
-            <Text style={taskListStyles.sectionTotals}>
-              {fmt(spent)}{goal ? ` / ${fmt(goal)}` : ""}
-            </Text>
-          </View>
-        );
-      }}
-    </Memo>
-  )
-};
-
-const TaskRow = ({ id, showDivider, onPressDetails }: { id: number; showDivider: boolean; onPressDetails?: (id: number) => void }) => {
-  const confirmStop = (onStop: () => void) => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: 'Pause Menu',
-          message: 'Do you want to stop this task?',
-          options: ['Stop Task', 'Cancel'],
-          destructiveButtonIndex: 0,
-          cancelButtonIndex: 1,
-        },
-        (index) => {
-          if (index === 0) onStop();
-        },
-      );
-    } else {
-      Alert.alert('Pause Menu', 'Do you want to stop this task?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Stop Task', style: 'destructive', onPress: onStop },
-      ]);
-    }
-  };
-
-  const confirmSwap = (onStart: () => void, onStop: () => void) => {
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        {
-          title: 'Start New Task?',
-          message: 'Another task is running.',
-          options: ['Start New Task', 'Stop Current Task', 'Cancel'],
-          destructiveButtonIndex: 1,
-          cancelButtonIndex: 2,
-        },
-        (index) => {
-          if (index === 0) {
-            onStart();
-          } else if (index === 1) {
-            onStop();
-          }
-        },
-      );
-    } else {
-      Alert.alert('Start New Task?', 'Another task is running.', [
-        { text: 'Start New Task', onPress: onStart },
-        { text: 'Stop Current Task', style: 'destructive', onPress: onStop },
-        { text: 'Cancel', style: 'cancel' },
-      ]);
-    }
-  };
-
-  return (
-    <Memo>
-      {() => {
-        const node = tasks$.entities[id];
-        if (!node) return null;
-
-        const currentId = CurrentTaskID$.get();
-        const isCurrent = currentId === id;
-
-        const title = node.title.get()?.trim() || "Untitled";
-        const timeSpent = node.timeSpent.get() ?? 0;
-        const timeGoal = node.timeGoal.get() ?? 0;
-        const isQuick = !timeGoal || timeGoal <= 0;
-        const percent = timeGoal > 0 ? timeSpent / timeGoal : 0;
-        const date = node.date?.get?.();
-
-        const startTask = () => {
-          void startTaskTimer(id);
-        };
-        const stopTask = () => {
-          stopCurrentWithSplitPrompt();
-        };
-
-        const handlePress = () => {
-          if (isCurrent) {
-            confirmStop(stopTask);
-            return;
-          }
-          if (currentId !== -1) {
-            confirmSwap(startTask, stopTask);
-            return;
-          }
-          startTask();
-        };
-
-        const iconColor = isCurrent ? '#ef4444' : '#16a34a';
-        const dividerColor = colorTheme$.colors.surface0.get();
-
-        return (
-          <View
-            style={[
-              taskListStyles.row,
-              {
-                borderBottomColor: dividerColor,
-                borderBottomWidth: showDivider ? StyleSheet.hairlineWidth : 0,
-                borderRadius: 0,
-              },
-            ]}
-          >
-            <TouchableOpacity onPress={handlePress} style={taskListStyles.iconButton}>
-              <FontAwesome5 name={isCurrent ? 'pause' : 'play'} size={18} color={iconColor} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={{ flex: 1 }}
-              activeOpacity={0.85}
-              onPress={() => onPressDetails?.(id)}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={taskListStyles.rowTitle}>{title}</Text>
-                  {date && (
-                    <Text style={taskListStyles.rowSub}>{moment(date).format("MMMM D, YYYY")}</Text>
-                  )}
-                </View>
-                <View style={taskListStyles.rowRight}>
-                  <Text style={taskListStyles.rowTime}>
-                    {fmt(timeSpent)}
-                    <Text style={taskListStyles.taskGoal}>
-                      {timeGoal ? ` / ${fmt(timeGoal)}` : " / No goal"}
-                    </Text>
-                  </Text>
-                  {!isQuick && (
-                    <HorizontalProgressBarPercentage
-                      width={110}
-                      height={28}
-                      percentage={percent}
-                      color={iconColor}
-                      trackColor={colorTheme$.colors.surface1.get()}
-                    />
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
-          </View>
-        );
-      }}
-    </Memo>
-  );
-};
-
-// TODO — Implement Tomorrow task views as well...
-// TODO — Implement OVERDUE task views as well
-
 export const TodayTaskView = ({ onPressItem }: { onPressItem?: (id: number) => void }) => {
   const key = moment().format("YYYY-MM-DD");
-  return (
-    <Memo>
-      {() => {
-        const ids = tasks$.lists.byDate[key]?.get?.() ?? [];
-        const grouped = ids.reduce((acc, id) => {
-          const task = tasks$.entities[id]?.get?.();
-          if (!task) return acc;
-          const groupId = getCategoryGroupId(task.category ?? 0);
-          (acc[groupId] ??= []).push(id);
-          return acc;
-        }, {} as Record<number, number[]>);
-        const entries = Object.entries(grouped)
-          .map(([cat, list]) => {
-            const quick = (list as number[]).filter((id) => (tasks$.entities[id]?.get?.()?.timeGoal ?? 0) <= 0);
-            const normal = (list as number[]).filter((id) => (tasks$.entities[id]?.get?.()?.timeGoal ?? 0) > 0);
-            return [cat, [...quick, ...normal]] as [string, number[]];
-          })
-          .sort(([a], [b]) => +a - +b);
-
-        return (
-          <ScrollView contentContainerStyle={taskListStyles.container} scrollEnabled={false}>
-            {entries.length ? (
-              entries.map(([catKey, ids]) => (
-                <View key={catKey} style={taskListStyles.sectionCard}>
-                  <SectionHeader category={+catKey} dateKey={key} />
-                  <View style={taskListStyles.categoryTaskList}>
-                    {(ids as number[]).map((id, idx, arr) => (
-                    <React.Fragment key={id}>
-                        <TaskRow id={id} showDivider={false} onPressDetails={onPressItem} />
-                        {idx !== arr.length - 1 && <View style={taskListStyles.sectionDivider} />}
-                    </React.Fragment>
-                  ))}
-                </View>
-                </View>
-              ))
-            ) : (
-              <View style={taskListStyles.emptyView}>
-                <Text style={taskListStyles.emptyText}>No tasks for today!</Text>
-              </View>
-            )}
-          </ScrollView>
-        );
-      }}
-    </Memo>
-  );
+  return <TaskList dateKey={key} variant="home" onPressItem={onPressItem} emptyText="No tasks for today!" />;
 };
 
 const taskStyles = StyleSheet.create({
@@ -559,130 +308,5 @@ const taskStyles = StyleSheet.create({
   progressWrapper: {
     marginTop: 20,
     alignItems: "center",
-  },
-});
-
-// ---- styles (tweak to match your UI) ----
-const taskListStyles = StyleSheet.create({
-  container: {
-    padding: 12,
-    gap: 16,
-  },
-  section: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-    marginBottom: 18,
-  },
-  sectionCard: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    shadowOpacity: 0.08,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-    marginBottom: 18,
-    gap: 0,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    flexShrink: 1,
-    marginRight: 8,
-  },
-  sectionPercent: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: colorTheme$.colors.subtext1.get(),
-  },
-  sectionTotals: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: colorTheme$.colors.subtext1.get(),
-  },
-  categoryTaskList: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    backgroundColor: "#f7f7fb",
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    paddingHorizontal: 6,
-    backgroundColor: "#f7f7fb",
-  },
-  sectionDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(0,0,0,0.08)",
-    marginHorizontal: 6,
-  },
-  bullet: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: "#2ecc71",
-    marginRight: 10,
-  },
-  rowTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  rowSub: {
-    fontSize: 13,
-    color: colorTheme$.colors.subtext0.get(),
-    marginTop: 2,
-  },
-  rowTime: {
-    textAlign: "right",
-    fontSize: 15,
-    fontWeight: '700',
-    // color: colorTheme$.nativeTheme.colors.primary.get(),
-    color: "#111",
-  },
-  taskGoal: {
-    fontSize: 14,
-    color: colorTheme$.colors.subtext0.get(),
-    fontWeight: '600',
-  },
-  rowPercent: {
-    fontSize: 12,
-    color: "#7A7A7A",
-    marginTop: 2,
-  },
-  iconButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    marginRight: 12,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowRight: {
-    alignItems: "flex-end",
-    gap: 4,
-  },
-  emptyView: {
-    paddingVertical: 40,
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: 16,
-    color: colorTheme$.colors.subtext0.get(),
   },
 });
