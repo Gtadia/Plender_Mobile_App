@@ -7,15 +7,8 @@ import { AntDesign } from "@expo/vector-icons";
 import { settings$, themeTokens$ } from "@/utils/stateManager";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { horizontalPadding } from "@/constants/globalThemeVar";
-
-const withOpacity = (hex: string, opacity: number) => {
-  const normalized = hex.replace("#", "");
-  const bigint = parseInt(normalized, 16);
-  const r = (bigint >> 16) & 255;
-  const g = (bigint >> 8) & 255;
-  const b = bigint & 255;
-  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
-};
+import { getListTheme } from "@/constants/listTheme";
+import { SettingsCard } from "@/components/SettingsCard";
 
 const fallbackTimezones = [
   "UTC",
@@ -48,13 +41,8 @@ const SettingsTimezoneSelect = observer(() => {
   const router = useRouter();
   const selected = settings$.general.timezone.get();
   const { palette, colors, isDark } = themeTokens$.get();
-  const subtext0 = palette.subtext0;
-  const surface0 = palette.surface0;
-  const surface2 = palette.surface2;
-  const cardTint = isDark
-    ? withOpacity(surface2, 0.4)
-    : withOpacity(surface0, 0.6);
-  const dividerColor = withOpacity(subtext0, 0.18);
+  const listTheme = getListTheme(palette, isDark);
+  const dividerColor = listTheme.colors.divider;
   const accent = colors.accent;
   const timezones = resolveTimezones();
 
@@ -62,7 +50,7 @@ const SettingsTimezoneSelect = observer(() => {
     <ScreenView style={styles.container}>
       <ScreenHeader title="Timezone" size="secondary" onBack={() => router.back()} />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={[styles.card, { backgroundColor: cardTint, borderColor: dividerColor }]}>
+        <SettingsCard style={styles.card}>
           {timezones.map((tz, index) => {
             const isSelected = tz === selected;
             return (
@@ -84,7 +72,7 @@ const SettingsTimezoneSelect = observer(() => {
               </Pressable>
             );
           })}
-        </View>
+        </SettingsCard>
       </ScrollView>
     </ScreenView>
   );
@@ -103,7 +91,6 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderWidth: 1,
   },
   row: {
     flexDirection: "row",

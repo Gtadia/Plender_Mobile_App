@@ -8,6 +8,8 @@ import { settings$, themeTokens$ } from '@/utils/stateManager';
 import { themeOptions } from '@/constants/themes';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
+import { getListTheme } from '@/constants/listTheme';
+import { SettingsCard } from '@/components/SettingsCard';
 
 const withOpacity = (hex: string, opacity: number) => {
   const normalized = hex.replace('#', '');
@@ -35,12 +37,8 @@ const SettingsScreen = observer(() => {
 
   const subtext0 = colors.subtext0;
   const subtext1 = colors.subtext1;
-  const surface0 = colors.surface0;
-  const surface2 = palette.surface2;
-  const cardTint = isDark
-    ? withOpacity(surface2, 0.4)
-    : withOpacity(surface0, 0.6);
-  const dividerColor = withOpacity(subtext0, 0.18);
+  const listTheme = getListTheme(palette, isDark);
+  const dividerColor = listTheme.colors.divider;
   const systemTimezone = resolveSystemTimezone();
   const timezoneMode = settings$.general.timezoneMode.get();
   const isAutoTimezone = timezoneMode === 'auto';
@@ -61,7 +59,7 @@ const SettingsScreen = observer(() => {
           <Text style={styles.sectionTitle} fontColor="strong">
             General
           </Text>
-          <View style={[styles.card, { backgroundColor: cardTint, borderColor: dividerColor }]}>
+          <SettingsCard style={styles.card}>
             <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Date &amp; Time</Text>
             <View style={styles.row}>
               <View style={styles.rowLeft}>
@@ -112,9 +110,9 @@ const SettingsScreen = observer(() => {
                 <AntDesign name="right" size={14} color={subtext0} />
               </View>
             </Pressable>
-          </View>
+          </SettingsCard>
 
-          <View style={[styles.card, { backgroundColor: cardTint, borderColor: dividerColor }]}>
+          <SettingsCard style={styles.card}>
             <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Tasks</Text>
             <View style={styles.row}>
               <View style={styles.rowLeft}>
@@ -130,14 +128,14 @@ const SettingsScreen = observer(() => {
                 thumbColor={settings$.general.allowQuickTasks.get() ? accent : palette.surface0}
               />
             </View>
-          </View>
+          </SettingsCard>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle} fontColor="strong">
             Personalization
           </Text>
-          <View style={[styles.card, { backgroundColor: cardTint, borderColor: dividerColor }]}>
+          <SettingsCard style={styles.card}>
             <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Theme</Text>
             <Pressable style={styles.row} onPress={() => router.push('/settingsThemeSelect')}>
               <View style={styles.rowLeft}>
@@ -166,14 +164,14 @@ const SettingsScreen = observer(() => {
                 <AntDesign name="right" size={14} color={subtext0} />
               </View>
             </Pressable>
-          </View>
+          </SettingsCard>
         </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle} fontColor="strong">
             Productivity
           </Text>
-          <View style={[styles.card, { backgroundColor: cardTint, borderColor: dividerColor }]}>
+          <SettingsCard style={styles.card}>
             <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Notifications</Text>
             <View style={styles.row}>
               <View style={styles.rowLeft}>
@@ -189,7 +187,7 @@ const SettingsScreen = observer(() => {
                 thumbColor={settings$.productivity.notificationsEnabled.get() ? accent : palette.surface0}
               />
             </View>
-          </View>
+          </SettingsCard>
         </View>
 
         <View style={globalTheme.tabBarAvoidingPadding} />
@@ -219,7 +217,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 12,
     gap: 6,
-    borderWidth: 1,
   },
   subsectionTitle: {
     fontSize: 13,

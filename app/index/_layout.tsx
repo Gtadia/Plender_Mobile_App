@@ -24,7 +24,8 @@ export default observer(function TabLayout() {
   // const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { colors } = themeTokens$.get();
+  const accent = themeTokens$.colors.accent.get();
+  const textStrong = themeTokens$.colors.textStrong.get();
 
   return (
     <GestureHandlerRootView>
@@ -41,12 +42,12 @@ export default observer(function TabLayout() {
       </Tabs>
 
       <TouchableOpacity
-        style={[styles.touchable, { bottom: insets.bottom + 60 + 5, backgroundColor: colors.primary }]}
+        style={[styles.touchable, { bottom: insets.bottom + 60 + 5, backgroundColor: accent }]}
         onPress={() => {
           router.push("/create");
         }}
       >
-        <AntDesign name="plus" size={26} color="white" />
+        <AntDesign name="plus" size={26} color={textStrong} />
       </TouchableOpacity>
     </GestureHandlerRootView>
   );

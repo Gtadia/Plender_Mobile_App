@@ -1,11 +1,13 @@
 import React from 'react';
 import { Stack } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { clearEvents, eventsType, getEventsForDate, initializeDB } from '@/utils/database';
 import { useBackNavOverride } from '@/utils/useBackNavOverride';
 import { Toast } from '@/components/animation-toast/components';
 import { toastShow$ } from '@/components/animation-toast/toastStore';
-import { ensureCategoriesHydrated, ensureSettingsHydrated, ensureStylingHydrated, loadDay, tasks$ } from '@/utils/stateManager';
+import { ensureCategoriesHydrated, ensureSettingsHydrated, ensureStylingHydrated, loadDay, tasks$, themeTokens$ } from '@/utils/stateManager';
+import { observer } from '@legendapp/state/react';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import dayjs from 'dayjs';
@@ -13,7 +15,7 @@ import moment from 'moment';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-export default function TabLayout() {
+const RootLayout = observer(() => {
   // intialize sqlite database
   // clearEvents();
   initializeDB();
@@ -33,8 +35,11 @@ export default function TabLayout() {
   });
   loadDay(new Date());
 
+  const isDark = themeTokens$.isDark.get();
+
   return (
     <GestureHandlerRootView>
+      <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
         screenOptions={({ route }) => ({
           headerShown: false,
@@ -80,4 +85,6 @@ export default function TabLayout() {
       { toastShow$.whereToDisplay.get() == 0 && <Toast />}
     </GestureHandlerRootView>
   );
-}
+});
+
+export default RootLayout;
