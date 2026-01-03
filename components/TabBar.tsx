@@ -5,8 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { observer } from '@legendapp/state/react';
 import { BlurView } from 'expo-blur';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import { colorTheme$, styling$ } from '@/utils/stateManager';
+import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
+import { styling$, themeTokens$ } from '@/utils/stateManager';
 import { AntDesign } from '@expo/vector-icons';
 
 const itemSize = 20;
@@ -36,13 +36,34 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
       : computedIndex;
 
   const blurEnabled = styling$.tabBarBlurEnabled.get();
-  const primaryColor = colorTheme$.colors.accent.get();
-  const textColor = colorTheme$.colors.text.get();
-  const surface = colorTheme$.colors.surface1.get();
-  const isDark = colorTheme$.nativeTheme.dark.get();
+  const { colors, palette, isDark } = themeTokens$.get();
+  const primaryColor = colors.accent;
+  const textColor = colors.text;
+  const surface = colors.surface1;
   const baseBackdrop = isDark ? "rgba(255,255,255,0.12)" : "rgba(0,0,0,0.06)";
   const barBackground = blurEnabled ? baseBackdrop : withOpacity(surface, isDark ? 0.9 : 0.96);
-  const barBorder = isDark ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.12)";
+  const barBorder = withOpacity(palette.overlay0, isDark ? 0.35 : 0.2);
+  const highlightBase = isDark ? palette.text : palette.base;
+  const shadowBase = isDark ? palette.crust : palette.overlay1;
+  const highlightCorner = withOpacity(highlightBase, isDark ? 0.28 : 0.45);
+  const highlightFade = withOpacity(highlightBase, isDark ? 0.12 : 0.2);
+  const shadowCorner = withOpacity(shadowBase, isDark ? 0.5 : 0.3);
+  const shadowFade = withOpacity(shadowBase, isDark ? 0.22 : 0.14);
+  const tlCorner = isDark ? highlightCorner : shadowCorner;
+  const tlFade = isDark ? highlightFade : shadowFade;
+  const trCorner = isDark ? shadowCorner : highlightCorner;
+  const trFade = isDark ? shadowFade : highlightFade;
+  const blCorner = isDark ? shadowCorner : highlightCorner;
+  const blFade = isDark ? shadowFade : highlightFade;
+  const brCorner = isDark ? highlightCorner : shadowCorner;
+  const brFade = isDark ? highlightFade : shadowFade;
+  const baseStroke = 0.9;
+  const glowStroke = 1.2;
+  const borderInset = glowStroke / 2;
+  const borderWidth = Math.max(0, tabWidth - borderInset * 2);
+  const borderHeight = Math.max(0, barHeight - borderInset * 2);
+  const cornerRadius = barHeight / 2 - borderInset;
+  const glowRadius = cornerRadius * 1.35;
 
   const icons = {
     index: (props: any) => <AntDesign name="home" size={itemSize} {...props} />,
@@ -77,40 +98,14 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
           bottom: insets.bottom,
           left: (windowWidth - tabWidth) / 2,
           width: tabWidth,
+          borderColor: surface,
         },
       ]}
     >
       {blurEnabled ? (
-        <BlurView tint="light" intensity={35} style={StyleSheet.absoluteFill} />
+        <BlurView tint={isDark ? "dark" : "light"} intensity={35} style={StyleSheet.absoluteFill} />
       ) : null}
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: barBackground }]} />
-      <Svg
-        pointerEvents="none"
-        width={tabWidth}
-        height={barHeight}
-        style={StyleSheet.absoluteFill}
-        viewBox={`0 0 ${tabWidth} ${barHeight}`}
-      >
-        <Defs>
-          <LinearGradient id="tabBorder" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={barBorder} />
-            <Stop offset="0.52" stopColor={isDark ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.6)"} />
-            <Stop offset="0.91" stopColor={barBorder} />
-            <Stop offset="1" stopColor={isDark ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.45)"} />
-          </LinearGradient>
-        </Defs>
-        <Rect
-          x="0.5"
-          y="0.5"
-          width={Math.max(0, tabWidth - 1)}
-          height={Math.max(0, barHeight - 1)}
-          rx={barHeight / 2}
-          ry={barHeight / 2}
-          fill="transparent"
-          stroke="url(#tabBorder)"
-          strokeWidth={1}
-        />
-      </Svg>
       <Animated.View
         pointerEvents="none"
         style={[
@@ -172,7 +167,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignSelf: 'center',
     alignItems: 'center',
-    // borderWidth: 1,
+    borderWidth: 1,
     borderRadius: 999,
     height: barHeight,
     paddingHorizontal: 6,

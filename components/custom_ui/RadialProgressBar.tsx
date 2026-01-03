@@ -1,4 +1,4 @@
-import { colorTheme$ } from "@/utils/stateManager";
+import { themeTokens$ } from "@/utils/stateManager";
 import { observer } from "@legendapp/state/react";
 import { Canvas, Path, Skia } from "@shopify/react-native-skia";
 import { Dimensions, View, Text } from "react-native";
@@ -18,6 +18,7 @@ type Props = {
 
 const RadialProgressBar = observer(
   ({ dayPercent, categorySegments, currentPercent = 0, currentColor, showCurrentRing, centerPercentLabel, centerPrimary, centerSecondary }: Props) => {
+    const { colors, palette } = themeTokens$.get();
     const windowWidth = Dimensions.get('window').width;
 
     const strokeWidth = 30;
@@ -54,26 +55,26 @@ const RadialProgressBar = observer(
           }}
         >
           <Canvas style={{ flex: 1 }}>
-            <Path
-              path={path}
-              strokeWidth={strokeWidth}
-              style={"stroke"}
-              color={colorTheme$.colorTheme.surface1.get()}
-              strokeJoin={"round"}
-              strokeCap={"round"}
-              start={0}
-              end={1}
-            />
-            <Path
-              path={path}
-              strokeWidth={strokeWidth}
-              style={"stroke"}
-              color={colorTheme$.colors.accent.get()}
-              strokeJoin={"round"}
-              strokeCap={"round"}
-              start={0}
-              end={Math.min(dayPercent, 1)}
-            />
+              <Path
+                path={path}
+                strokeWidth={strokeWidth}
+                style={"stroke"}
+                color={palette.surface1}
+                strokeJoin={"round"}
+                strokeCap={"round"}
+                start={0}
+                end={1}
+              />
+              <Path
+                path={path}
+                strokeWidth={strokeWidth}
+                style={"stroke"}
+                color={colors.accent}
+                strokeJoin={"round"}
+                strokeCap={"round"}
+                start={0}
+                end={Math.min(dayPercent, 1)}
+              />
             {categorySegments.map((segment, idx) => {
               const segValue = Math.min(segment.value, 1);
               if (segValue <= 0) return null;
@@ -111,7 +112,7 @@ const RadialProgressBar = observer(
                 path={outerPath}
                 strokeWidth={strokeWidth2}
                 style={"stroke"}
-                color={colorTheme$.colorTheme.surface1.get()}
+                color={palette.surface1}
                 strokeJoin={"round"}
                 strokeCap={"round"}
                 start={0}
@@ -121,7 +122,7 @@ const RadialProgressBar = observer(
                 path={outerPath}
                 strokeWidth={strokeWidth2}
                 style={"stroke"}
-                color={currentColor ?? colorTheme$.colors.secondary.get()}
+                color={currentColor ?? colors.secondary}
                 strokeJoin={"round"}
                 strokeCap={"round"}
                 start={0}
@@ -154,7 +155,7 @@ export default RadialProgressBar;
 
 
 // DO NOT TOUCH THE COMMENTED CODE BELOW! DO NOT DELETE IT!
-// import { colorTheme$ } from "@/utils/stateManager";
+// import { themeTokens$ } from "@/utils/stateManager";
 // import { observer } from "@legendapp/state/react";
 // import { Canvas, Path, Skia } from "@shopify/react-native-skia";
 // import { Dimensions, View, Text } from "react-native";
@@ -215,7 +216,7 @@ export default RadialProgressBar;
 //               path={path}
 //               strokeWidth={strokeWidth}
 //               style={"stroke"}
-//               color={colorTheme$.colorTheme.surface1.get()}
+//               color={themeTokens$.get().palette.surface1}
 //               strokeJoin={"round"}
 //               strokeCap={"round"}
 //               start={0}
@@ -225,7 +226,7 @@ export default RadialProgressBar;
 //               path={path}
 //               strokeWidth={strokeWidth}
 //               style={"stroke"}
-//               color={colorTheme$.colors.accent.get()}
+//               color={themeTokens$.get().colors.accent}
 //               strokeJoin={"round"}
 //               strokeCap={"round"}
 //               start={0}
@@ -248,7 +249,7 @@ export default RadialProgressBar;
 //               path={outerPath}
 //               strokeWidth={strokeWidth2}
 //               style={"stroke"}
-//               color={colorTheme$.colors.subtext0.get()}
+//               color={themeTokens$.get().colors.subtext0}
 //               strokeJoin={"round"}
 //               strokeCap={"round"}
 //               start={0}
@@ -259,7 +260,7 @@ export default RadialProgressBar;
 //               path={outerPath}
 //               strokeWidth={strokeWidth2}
 //               style={"stroke"}
-//               color={colorTheme$.colors.secondary.get()}
+//               color={themeTokens$.get().colors.secondary}
 //               strokeJoin={"round"}
 //               strokeCap={"round"}
 //               start={0}

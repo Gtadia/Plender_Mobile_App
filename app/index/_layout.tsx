@@ -6,10 +6,11 @@ import { TouchableOpacity, View, StyleSheet, Keyboard } from 'react-native';
 // import { useColorScheme } from '@/components/useColorScheme';
 // import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 import { AntDesign, Ionicons } from '@expo/vector-icons';
-import { colorTheme$ } from '@/utils/stateManager';
+import { themeTokens$ } from '@/utils/stateManager';
 import TabBar from '@/components/TabBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { observer } from '@legendapp/state/react';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
 function TabBarIcon(props: {
@@ -19,10 +20,11 @@ function TabBarIcon(props: {
   return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
 }
 
-export default function TabLayout() {
+export default observer(function TabLayout() {
   // const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors } = themeTokens$.get();
 
   return (
     <GestureHandlerRootView>
@@ -39,7 +41,7 @@ export default function TabLayout() {
       </Tabs>
 
       <TouchableOpacity
-        style={[styles.touchable, { bottom: insets.bottom + 60 + 5}]}
+        style={[styles.touchable, { bottom: insets.bottom + 60 + 5, backgroundColor: colors.primary }]}
         onPress={() => {
           router.push("/create");
         }}
@@ -48,7 +50,7 @@ export default function TabLayout() {
       </TouchableOpacity>
     </GestureHandlerRootView>
   );
-}
+})
 
 const styles = StyleSheet.create({
   touchable: {
@@ -56,7 +58,6 @@ const styles = StyleSheet.create({
         right: 18,
         alignSelf: 'center',
         zIndex: 2,
-        backgroundColor: colorTheme$.colors.primary.get(),
         width: 60,
         height: 60,
         borderRadius: 32,

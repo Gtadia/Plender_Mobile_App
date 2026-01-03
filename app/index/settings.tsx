@@ -4,11 +4,10 @@ import { Text, ScreenView } from '@/components/Themed';
 import { observer } from '@legendapp/state/react';
 import { AntDesign } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { colorTheme$ } from '@/utils/stateManager';
-import { settings$ } from '@/utils/stateManager';
-import { getThemeTokens, themeOptions } from '@/constants/themes';
+import { settings$, themeTokens$ } from '@/utils/stateManager';
+import { themeOptions } from '@/constants/themes';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { horizontalPadding } from '@/constants/globalThemeVar';
+import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
 
 const withOpacity = (hex: string, opacity: number) => {
   const normalized = hex.replace('#', '');
@@ -30,15 +29,15 @@ const resolveSystemTimezone = () => {
 const SettingsScreen = observer(() => {
   const router = useRouter();
   const themeKey = settings$.personalization.theme.get();
-  const accentKey = settings$.personalization.accent.get();
-  const { palette, accent } = getThemeTokens(themeKey, accentKey);
+  const { palette, colors, isDark } = themeTokens$.get();
+  const accent = colors.accent;
   const themeLabel = themeOptions.find((option) => option.key === themeKey)?.label ?? "Light";
 
-  const subtext0 = colorTheme$.colors.subtext0.get();
-  const subtext1 = colorTheme$.colors.subtext1.get();
-  const surface0 = colorTheme$.colors.surface0.get();
+  const subtext0 = colors.subtext0;
+  const subtext1 = colors.subtext1;
+  const surface0 = colors.surface0;
   const surface2 = palette.surface2;
-  const cardTint = colorTheme$.nativeTheme.dark.get()
+  const cardTint = isDark
     ? withOpacity(surface2, 0.4)
     : withOpacity(surface0, 0.6);
   const dividerColor = withOpacity(subtext0, 0.18);
@@ -113,8 +112,9 @@ const SettingsScreen = observer(() => {
                 <AntDesign name="right" size={14} color={subtext0} />
               </View>
             </Pressable>
+          </View>
 
-            <View style={[styles.groupDivider, { backgroundColor: dividerColor }]} />
+          <View style={[styles.card, { backgroundColor: cardTint, borderColor: dividerColor }]}>
             <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Tasks</Text>
             <View style={styles.row}>
               <View style={styles.rowLeft}>
@@ -191,6 +191,8 @@ const SettingsScreen = observer(() => {
             </View>
           </View>
         </View>
+
+        <View style={globalTheme.tabBarAvoidingPadding} />
       </ScrollView>
     </ScreenView>
   );

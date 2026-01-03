@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { Stack, useNavigation, useRouter } from "expo-router";
-import { Memo, Show, useObservable } from "@legendapp/state/react";
+import { Memo, Show, observer, useObservable } from "@legendapp/state/react";
 import moment from "moment";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import AntDesign from "@expo/vector-icons/AntDesign";
@@ -28,11 +28,11 @@ import HorizontalProgressBar from "@/components/custom_ui/HorizontalProgressBar"
 import {
   Category$,
   CurrentTaskID$,
-  colorTheme$,
   getCategoryMeta,
   taskDetailsSheet$,
   timeGoalEdit$,
   tasks$,
+  themeTokens$,
 } from "@/utils/stateManager";
 import { clearDirtyTask } from "@/utils/dirtyTaskStore";
 
@@ -63,7 +63,7 @@ export default function TaskDetailsSheet() {
   );
 }
 
-const TaskDetailsContent = () => {
+const TaskDetailsContent = observer(() => {
   const lastGoalRef = useRef<number>(3600);
   const saveTimers = useRef<{
     title?: ReturnType<typeof setTimeout>;
@@ -74,6 +74,8 @@ const TaskDetailsContent = () => {
   const router = useRouter();
   const screenWidth = Dimensions.get("window").width;
   const barWidth = screenWidth - 60;
+  const { colors } = themeTokens$.get();
+  const sheetStyles = createSheetStyles(colors);
 
   return (
     <Memo>
@@ -95,7 +97,7 @@ const TaskDetailsContent = () => {
         const dateValue = node.date?.get?.();
         const dateLabel = dateValue ? moment(dateValue).format("MMMM D, YYYY") : "";
         const categoryMeta = getCategoryMeta(categoryValue);
-        const catColor = categoryMeta.color ?? colorTheme$.colors.accent.get();
+        const catColor = categoryMeta.color ?? colors.accent;
         const spentBase = node.timeSpent.get() ?? 0;
         const liveSpent =
           running?.taskId === id
@@ -208,7 +210,7 @@ const TaskDetailsContent = () => {
                         void updateEvent({ id, title: next });
                       }}
                         placeholder="Task title"
-                        placeholderTextColor={colorTheme$.colors.subtext0.get()}
+                        placeholderTextColor={colors.subtext0}
                       />
                     ) : (
                       <Text style={sheetStyles.title} numberOfLines={2}>
@@ -234,7 +236,7 @@ const TaskDetailsContent = () => {
                         hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                         style={sheetStyles.iconButton}
                       >
-                        <FontAwesome5 name="trash" size={18} color={colorTheme$.colors.secondary.get()} />
+                        <FontAwesome5 name="trash" size={18} color={colors.secondary} />
                       </TouchableOpacity>
                     </View>
                     {isEditing ? (
@@ -292,7 +294,7 @@ const TaskDetailsContent = () => {
                         <Text
                           style={[
                             sheetStyles.metricValue,
-                            { color: isQuick ? colorTheme$.colors.subtext0.get() : "#111" },
+                            { color: isQuick ? colors.subtext0 : colors.textStrong },
                           ]}
                         >
                           {goal ? fmt(goal) : "No goal"}
@@ -328,7 +330,7 @@ const TaskDetailsContent = () => {
                         void updateEvent({ id, description: e.nativeEvent.text });
                       }}
                       placeholder="Add a description"
-                        placeholderTextColor={colorTheme$.colors.subtext0.get()}
+                        placeholderTextColor={colors.subtext0}
                         multiline
                       />
                     ) : (
@@ -378,8 +380,8 @@ const TaskDetailsContent = () => {
                           router.push("/categoryCreateSheet");
                         }}
                       >
-                        <AntDesign name="addfile" size={16} color={colorTheme$.colors.subtext0.get()} />
-                        <Text style={[sheetStyles.categoryPopupLabel, { marginLeft: 6, color: colorTheme$.colors.subtext0.get() }]}>
+                        <AntDesign name="addfile" size={16} color={colors.subtext0} />
+                        <Text style={[sheetStyles.categoryPopupLabel, { marginLeft: 6, color: colors.subtext0 }]}>
                           Add Category
                         </Text>
                       </TouchableOpacity>
@@ -393,7 +395,7 @@ const TaskDetailsContent = () => {
       }}
     </Memo>
   );
-};
+});
 
 const styles = StyleSheet.create({
   overlay: {
@@ -414,7 +416,9 @@ const styles = StyleSheet.create({
   },
 });
 
-const sheetStyles = StyleSheet.create({
+type ThemeTokens = ReturnType<typeof themeTokens$.get>;
+
+const createSheetStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
   scroll: {
     flex: 1,
   },
@@ -424,7 +428,7 @@ const sheetStyles = StyleSheet.create({
     paddingBottom: 40,
   },
   card: {
-    backgroundColor: colorTheme$.colors.background.get(),
+    backgroundColor: colors.background,
     flex: 1,
     overflow: "hidden",
     borderTopLeftRadius: 24,
@@ -450,11 +454,11 @@ const sheetStyles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "800",
     textAlign: "center",
-    color: "#111",
+    color: colors.textStrong,
   },
   titleInput: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#d1d5db",
+    borderBottomColor: colors.surface0,
     paddingBottom: 6,
     minWidth: "80%",
   },
@@ -469,7 +473,7 @@ const sheetStyles = StyleSheet.create({
     fontWeight: "700",
   },
   date: {
-    color: colorTheme$.colors.subtext0.get(),
+    color: colors.subtext0,
     fontWeight: "600",
   },
   switchRow: {
@@ -480,22 +484,22 @@ const sheetStyles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginBottom: 12,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surface0,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colorTheme$.colors.surface0.get(),
+    borderColor: colors.surface1,
   },
   switchLabel: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#111",
+    color: colors.textStrong,
   },
   metricRow: {
     flexDirection: "row",
     borderRadius: 12,
     overflow: "hidden",
-    backgroundColor: "#fff",
+    backgroundColor: colors.surface0,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colorTheme$.colors.surface0.get(),
+    borderColor: colors.surface1,
     marginBottom: 12,
   },
   metricCell: {
@@ -507,12 +511,12 @@ const sheetStyles = StyleSheet.create({
   },
   metricLabel: {
     fontWeight: "700",
-    color: "#4b5563",
+    color: colors.subtext1,
   },
   metricValue: {
     fontSize: 18,
     fontWeight: "800",
-    color: "#111827",
+    color: colors.textStrong,
   },
   goalButton: {
     flexDirection: "row",
@@ -525,7 +529,7 @@ const sheetStyles = StyleSheet.create({
   },
   dividerVertical: {
     width: StyleSheet.hairlineWidth,
-    backgroundColor: colorTheme$.colors.surface0.get(),
+    backgroundColor: colors.surface1,
   },
   progressBlock: {
     paddingVertical: 14,
@@ -539,36 +543,36 @@ const sheetStyles = StyleSheet.create({
   },
   progressLabel: {
     fontWeight: "700",
-    color: "#111",
+    color: colors.textStrong,
   },
   progressValue: {
     fontWeight: "800",
-    color: "#111",
+    color: colors.textStrong,
   },
   descriptionCard: {
     borderRadius: 14,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginTop: 4,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surface0,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colorTheme$.colors.surface0.get(),
+    borderColor: colors.surface1,
   },
   descriptionTitle: {
     textAlign: "center",
     fontWeight: "800",
-    color: "#111",
+    color: colors.textStrong,
     marginBottom: 6,
   },
   descriptionBody: {
     textAlign: "center",
-    color: "#4b5563",
+    color: colors.subtext1,
     lineHeight: 20,
   },
   descriptionInput: {
     minHeight: 70,
     textAlign: "center",
-    color: "#4b5563",
+    color: colors.subtext1,
     lineHeight: 20,
   },
   popupOverlay: {
@@ -581,7 +585,7 @@ const sheetStyles = StyleSheet.create({
     width: 260,
     maxHeight: 320,
     borderRadius: 12,
-    backgroundColor: "#fff",
+    backgroundColor: colors.surface0,
     paddingHorizontal: 18,
     paddingVertical: 10,
     shadowColor: "#000",
@@ -600,7 +604,7 @@ const sheetStyles = StyleSheet.create({
   },
   categoryPopupLabel: {
     fontSize: 16,
-    color: "#111",
+    color: colors.text,
   },
   categoryPopupCreate: {
     marginTop: 6,

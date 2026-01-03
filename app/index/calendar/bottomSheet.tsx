@@ -5,20 +5,22 @@ import DateTimePicker, { useDefaultStyles } from 'react-native-ui-datepicker';
 import moment, { Moment } from 'moment';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { selectedDate$ } from './rowCalendar';
-import { Memo } from '@legendapp/state/react';
+import { Memo, observer } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
-import { colorTheme } from '@/constants/Colors';
 import { useFocusEffect } from '@react-navigation/native';
 import { Text } from '@/components/Themed';
+import { themeTokens$ } from '@/utils/stateManager';
 
 const pickerDate$ = observable<Moment>(selectedDate$.get());
 
-const palette = colorTheme.catppuccin.latte;
+type ThemeTokens = ReturnType<typeof themeTokens$.get>;
 
-const bottomSheet = () => {
+const bottomSheet = observer(() => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { height } = Dimensions.get('window');
+  const { palette } = themeTokens$.get();
+  const styles = createStyles({ palette });
 
   useFocusEffect(
     useCallback(() => {
@@ -78,11 +80,11 @@ const bottomSheet = () => {
       </View>
     </View>
   );
-}
+})
 
 export default bottomSheet
 
-const styles = StyleSheet.create({
+const createStyles = ({ palette }: { palette: ThemeTokens["palette"] }) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.45)',

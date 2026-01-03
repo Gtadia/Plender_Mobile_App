@@ -27,10 +27,11 @@ import { activeTimer$ } from '@/utils/activeTimerStore';
 import { uiTick$ } from '@/utils/timerService';
 import { getNow } from '@/utils/timeOverride';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
-import { colorTheme } from '@/constants/Colors';
 import { loadDay, tasks$ } from '@/utils/stateManager';
 import { ensureDirtyTasksHydrated, flushDirtyTasksToDB, getDirtySnapshot } from '@/utils/dirtyTaskStore';
 import { TaskList } from '@/components/task-list/TaskList';
+import { observer } from '@legendapp/state/react';
+import { themeTokens$ } from '@/utils/stateManager';
 
 const { width } = Dimensions.get('window');
 const PANES = 5;
@@ -44,6 +45,16 @@ type WeekPane = {
   start: Moment;
 };
 
+const withOpacity = (hex: string, opacity: number) => {
+  const normalized = hex.replace("#", "");
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
+
+type ThemeTokens = ReturnType<typeof themeTokens$.get>;
 
 const buildPane = (start: Moment, offsetWeeks: number): WeekPane => {
   const paneStart = start.clone().add(offsetWeeks, 'week').startOf('week');
@@ -55,14 +66,15 @@ const generatePaneSet = (center: Moment): WeekPane[] => {
   return Array.from({ length: PANES }).map((_, idx) => buildPane(base, idx));
 };
 
-const palette = colorTheme.catppuccin.latte;
-
-
-export default function FlatListSwiperExample() {
+export default observer(function FlatListSwiperExample() {
   const weekScrollRef = useRef<ScrollView>(null);
   const dayListRef = useRef<FlatList<Moment>>(null);
   const followTodayRef = useRef(true);
   const todayKeyRef = useRef(moment(getNow()).format('YYYY-MM-DD'));
+  const { palette, colors } = themeTokens$.get();
+  const accentSoft = withOpacity(colors.accent, 0.14);
+  const accentBorder = withOpacity(colors.accent, 0.28);
+  const styles = createStyles({ palette, colors, accentSoft, accentBorder });
 
   const [selectedDate, setSelectedDate] = useState(moment(getNow()));
   const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(moment(getNow())));
@@ -317,9 +329,9 @@ export default function FlatListSwiperExample() {
             {weekDays.map((day) => {
               const isActive = day.isSame(selectedDate, 'day');
               const { taskCount, spentRatio, hasGoal } = getDayProgress(day);
-              const inactiveGoalColor = `${palette.peach}66`;
+              const inactiveGoalColor = withOpacity(colors.accent, 0.4);
               const hasTasks = hasGoal;
-              const goalColor = isActive ? palette.peach : inactiveGoalColor;
+              const goalColor = isActive ? colors.accent : inactiveGoalColor;
               const trackColor = hasTasks ? goalColor : palette.surface1;
               const segments = [];
               if (taskCount > 0 && spentRatio > 0) {
@@ -336,7 +348,7 @@ export default function FlatListSwiperExample() {
                       trackColor={trackColor}
                       segments={segments}
                       centerLabel={taskLabel}
-                      centerLabelStyle={{ color: isActive ? palette.text : palette.subtext1 }}
+                      centerLabelStyle={{ color: isActive ? colors.text : colors.subtext1 }}
                     />
                     <Text style={styles.itemDate}>{day.date()}</Text>
                   </View>
@@ -451,7 +463,7 @@ export default function FlatListSwiperExample() {
                         <Text style={styles.dateHeaderText}>
                           {item.toDate().toLocaleDateString('en-US', { dateStyle: 'full' })}
                         </Text>
-                        <MaterialIcons name="edit" size={18} color={palette.subtext1} />
+                        <MaterialIcons name="edit" size={18} color={colors.subtext1} />
                       </View>
                     </TouchableOpacity>
                       <ScrollView
@@ -482,9 +494,19 @@ export default function FlatListSwiperExample() {
       {/* </SafeAreaView> */}
     </ScreenView>
   );
-}
+});
 
-const styles = StyleSheet.create({
+const createStyles = ({
+  palette,
+  colors,
+  accentSoft,
+  accentBorder,
+}: {
+  palette: ThemeTokens["palette"];
+  colors: ThemeTokens["colors"];
+  accentSoft: string;
+  accentBorder: string;
+}) => StyleSheet.create({
   container: {
       flex: 1,
       alignItems: 'center',
@@ -498,7 +520,7 @@ const styles = StyleSheet.create({
       paddingHorizontal: horizontalPadding,
     },
     title: {
-      color: '#000',
+      color: colors.textStrong,
       fontSize: 28,
       fontWeight: 'bold',
     },
@@ -506,12 +528,12 @@ const styles = StyleSheet.create({
       paddingHorizontal: 14,
       paddingVertical: 6,
       borderRadius: 999,
-      backgroundColor: 'rgba(254,100,11,0.14)',
+      backgroundColor: accentSoft,
       borderWidth: 1,
-      borderColor: 'rgba(254,100,11,0.28)',
+      borderColor: accentBorder,
     },
     todayButtonText: {
-      color: palette.peach,
+      color: colors.accent,
       fontSize: 14,
       fontWeight: '700',
     },
@@ -569,13 +591,13 @@ const styles = StyleSheet.create({
   itemWeekday: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#000',
+    color: colors.subtext1,
     marginBottom: 5,
   },
   itemDate: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#000',
+    color: colors.text,
     marginTop: 7,
   },
   dateHeaderRow: {
@@ -587,7 +609,7 @@ const styles = StyleSheet.create({
   dateHeaderText: {
     fontSize: 22,
     fontWeight: '700',
-    color: palette.text,
+    color: colors.text,
   },
   dayPane: {
     width,
@@ -603,18 +625,18 @@ const styles = StyleSheet.create({
   placeholderInset: {
     flex: 1,
     borderWidth: 4,
-    borderColor: '#e5e7eb',
+    borderColor: colors.surface0,
     borderStyle: 'dashed',
     borderRadius: 9,
   },
   emptyStateText: {
     fontSize: 15,
-    color: '#6b6d78',
+    color: colors.subtext1,
   },
   card: {
     width: '100%',
     borderRadius: 18,
-    backgroundColor: '#fff',
+    backgroundColor: palette.surface1,
     padding: 14,
     shadowColor: '#000',
     shadowOpacity: 0.06,
@@ -632,7 +654,7 @@ const styles = StyleSheet.create({
   cardPercent: {
     fontSize: 16,
     marginLeft: 6,
-    color: '#6b6d78',
+    color: colors.subtext1,
     fontWeight: '600',
   },
   cardSpacer: {
@@ -641,18 +663,18 @@ const styles = StyleSheet.create({
   cardTotal: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#6b6d78',
+    color: colors.subtext1,
   },
   divider: {
     marginTop: 10,
     marginBottom: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: withOpacity(colors.subtext1, 0.1),
   },
   taskListContainer: {
     marginTop: 8,
     borderRadius: 14,
-    backgroundColor: '#f5f4fb',
+    backgroundColor: palette.surface0,
     overflow: 'hidden',
   },
   taskRowWrapper: {
@@ -672,32 +694,32 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111',
+    color: colors.textStrong,
   },
   taskDate: {
     fontSize: 13,
-    color: '#6b6d78',
+    color: colors.subtext1,
     marginTop: 2,
   },
   taskTime: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#111',
+    color: colors.textStrong,
   },
   taskGoal: {
     fontSize: 14,
-    color: '#888ca0',
+    color: colors.subtext0,
     fontWeight: '600',
   },
   taskPercent: {
     fontSize: 13,
-    color: '#6b6d78',
+    color: colors.subtext1,
     marginTop: 2,
     fontWeight: '600',
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.12)',
+    borderBottomColor: withOpacity(colors.subtext1, 0.12),
   },
   footer: {
     marginTop: 'auto',

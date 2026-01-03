@@ -12,10 +12,9 @@ import { Text } from "@/components/Themed";
 import {
   CurrentTaskID$,
   tasks$,
-  colorTheme$,
   getCategoryMeta,
+  themeTokens$,
 } from "@/utils/stateManager";
-import { colorTheme } from "@/constants/Colors";
 import moment from "moment";
 import { observable } from "@legendapp/state";
 import { Memo } from "@legendapp/state/react";
@@ -113,6 +112,7 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
       {() => {
       // consume tick to force re-render when timerService heartbeat updates
       void nowTick;
+      const { colors, palette } = themeTokens$.get();
       const currentId = CurrentTaskID$.get();
       if (currentId === -1) {
         return (
@@ -120,11 +120,13 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
             style={[
               taskStyles.container,
               taskStyles.noTaskContainer,
-              { backgroundColor: colorTheme$.colors.surface0.get() },
+              { backgroundColor: colors.surface0 },
             ]}
           >
-            <Text style={taskStyles.noTaskTitle}>No tasks currently running</Text>
-            <Text style={taskStyles.noTaskSubtitle}>
+            <Text style={[taskStyles.noTaskTitle, { color: colors.subtext1 }]}>
+              No tasks currently running
+            </Text>
+            <Text style={[taskStyles.noTaskSubtitle, { color: colors.subtext0 }]}>
               Start a task to begin tracking time.
             </Text>
           </View>
@@ -138,10 +140,12 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
             style={[
               taskStyles.container,
               taskStyles.noTaskContainer,
-              { backgroundColor: colorTheme$.colors.surface0.get() },
+              { backgroundColor: colors.surface0 },
             ]}
           >
-            <Text style={taskStyles.noTaskTitle}>No tasks currently running</Text>
+            <Text style={[taskStyles.noTaskTitle, { color: colors.subtext1 }]}>
+              No tasks currently running
+            </Text>
           </View>
         );
       }
@@ -157,7 +161,7 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
       const percent = goal > 0 ? Math.min(liveSpent / goal, 1) : 0;
       const catId = node.category?.get?.() ?? 0;
       const categoryMeta = getCategoryMeta(catId);
-      const color = categoryMeta.color || colorTheme$.colors.primary.get();
+      const color = categoryMeta.color || colors.primary;
       const progressWidth = Math.min(
         Dimensions.get("window").width - 140,
         360,
@@ -193,7 +197,7 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
             <HorizontalProgressBarPercentage
               width={progressWidth}
               percentage={percent}
-              color={colorTheme$.colorTheme.get().green}
+              color={palette.green}
               trackColor="rgba(255,255,255,0.35)"
               textColor="#fff"
             />
@@ -255,7 +259,7 @@ const taskStyles = StyleSheet.create({
     fontSize: 28,
     fontWeight: 700,
     textAlign: "center",
-    color: colorTheme.catppuccin.latte.crust
+    color: "#fff",
   },
   taskTimeGoal: {
     fontSize: 24,
@@ -278,12 +282,10 @@ const taskStyles = StyleSheet.create({
   noTaskTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: colorTheme$.colors.subtext1.get(),
     textAlign: "center",
   },
   noTaskSubtitle: {
     fontSize: 14,
-    color: colorTheme$.colors.subtext0.get(),
     marginTop: 8,
     textAlign: "center",
   },

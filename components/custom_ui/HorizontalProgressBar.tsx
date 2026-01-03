@@ -2,7 +2,7 @@ import { View } from 'react-native'
 import React from 'react'
 import { observer } from '@legendapp/state/react'
 import { Canvas, Path, Skia } from '@shopify/react-native-skia'
-import { colorTheme$ } from '@/utils/stateManager'
+import { themeTokens$ } from '@/utils/stateManager'
 
 // TODO — Parameters => width
 interface param {
@@ -13,6 +13,7 @@ interface param {
 
 const HorizontalProgressBar = observer(
   ({ width, percentage, color }: param) => {
+    const { colors } = themeTokens$.get();
     // const path = Skia.Path.Make();
     const strokeWidth = 15;
 
@@ -33,7 +34,7 @@ const HorizontalProgressBar = observer(
             path={path}
             strokeWidth={strokeWidth}
             style={"stroke"}
-            color={colorTheme$.colors.subtext1.get()}
+            color={colors.subtext1}
             strokeJoin={"round"}
             strokeCap={"round"}
             start={0}

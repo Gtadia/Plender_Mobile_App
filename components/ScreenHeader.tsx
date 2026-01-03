@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { AntDesign } from "@expo/vector-icons";
 import { Text } from "@/components/Themed";
-import { colorTheme$ } from "@/utils/stateManager";
+import { themeTokens$ } from "@/utils/stateManager";
+import { observer } from "@legendapp/state/react";
 import { horizontalPadding } from "@/constants/globalThemeVar";
 
 type HeaderSize = "primary" | "secondary";
@@ -14,9 +15,10 @@ type ScreenHeaderProps = {
   size?: HeaderSize;
 };
 
-export const ScreenHeader = ({ title, onBack, size = "primary" }: ScreenHeaderProps) => {
+export const ScreenHeader = observer(({ title, onBack, size = "primary" }: ScreenHeaderProps) => {
   const insets = useSafeAreaInsets();
-  const iconColor = colorTheme$.colors.subtext0.get();
+  const { colors } = themeTokens$.get();
+  const iconColor = colors.subtext0;
   return (
     <View
       style={[
@@ -37,7 +39,7 @@ export const ScreenHeader = ({ title, onBack, size = "primary" }: ScreenHeaderPr
       </Text>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   container: {

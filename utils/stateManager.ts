@@ -1,9 +1,7 @@
 import { computed, observable, observe } from "@legendapp/state";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fonts } from "@/constants/types";
 import { colorTheme } from "@/constants/Colors";
 import { AccentKey, ThemeKey, getThemeTokens } from "@/constants/themes";
-import type { Theme } from "@/node_modules/@react-navigation/native/src/types";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -247,41 +245,37 @@ export const Tags$ = observable({
 
 export const selectedDate$ = observable(dayjs());
 
-export const colorTheme$ = observable({
-  colorTheme: colorTheme.catppuccin.latte, // default theme
-  nativeTheme: {
-    dark: false,
+const buildThemeTokens = (themeKey: ThemeKey, accentKey: AccentKey) => {
+  const { palette, accent, textStrong, theme } = getThemeTokens(themeKey, accentKey);
+  return {
+    palette,
     colors: {
-      primary: "rgb(10, 132, 255)",
-      // TODO — Change this so that it changes when 'colorTheme' changes
-      background: colorTheme.catppuccin.latte.surface1, // NOTE — this is the background color of the app (the main content covers this area however)
-      card: colorTheme.catppuccin.latte.surface1, // pop up menu?
-      text: colorTheme.catppuccin.latte.text,
-      border: colorTheme.catppuccin.latte.overlay0,
-      notification: "rgb(255, 69, 58)",
+      primary: palette.yellow,
+      secondary: palette.red,
+      accent,
+      background: palette.base,
+      surface0: palette.surface0,
+      surface1: palette.surface1,
+      subtext0: palette.subtext0,
+      subtext1: palette.subtext1,
+      text: palette.text,
+      textStrong,
     },
-    fonts,
-  },
-  tabBar: {
-    iconColor: colorTheme.catppuccin.latte.text,
-  },
-  colors: {
-    primary: colorTheme.catppuccin.latte.yellow,
-    secondary: colorTheme.catppuccin.latte.red,
-    accent: colorTheme.catppuccin.latte.green,
+    nativeColors: {
+      primary: palette.blue,
+      background: palette.base,
+      card: palette.surface1,
+      text: palette.text,
+      border: palette.overlay0,
+      notification: palette.red,
+    },
+    isDark: theme.isDark,
+  };
+};
 
-    background: colorTheme.catppuccin.latte.base, // light/dark
+const defaultTokens = buildThemeTokens("light", "peach");
 
-    surface0: colorTheme.catppuccin.latte.surface0, // for something...
-    surface1: colorTheme.catppuccin.latte.surface1, // bottom tab bar (aka, secondary background)
-
-    subtext0: colorTheme.catppuccin.latte.subtext0,
-    subtext1: colorTheme.catppuccin.latte.subtext1,
-    text: colorTheme.catppuccin.latte.text,
-    textStrong: "#000000",
-    // Add more colors as needed
-  },
-});
+export const themeTokens$ = observable(defaultTokens);
 
 export const styling$ = observable({
   mainContentRadius: 0, // 55 is the radius of iphone 14 pro max corners
@@ -390,31 +384,7 @@ const applyTimezoneFromSettings = () => {
 const applyThemeFromSettings = () => {
   const themeKey = settings$.personalization.theme.get();
   const accentKey = settings$.personalization.accent.get();
-  const { palette, accent, textStrong, theme } = getThemeTokens(themeKey, accentKey);
-
-  colorTheme$.colorTheme.set(palette);
-  colorTheme$.nativeTheme.dark.set(theme.isDark);
-  colorTheme$.nativeTheme.colors.assign({
-    primary: palette.blue,
-    background: palette.base,
-    card: palette.surface1,
-    text: palette.text,
-    border: palette.overlay0,
-    notification: palette.red,
-  });
-  colorTheme$.tabBar.iconColor.set(palette.text);
-  colorTheme$.colors.assign({
-    primary: palette.yellow,
-    secondary: palette.red,
-    accent,
-    background: palette.base,
-    surface0: palette.surface0,
-    surface1: palette.surface1,
-    subtext0: palette.subtext0,
-    subtext1: palette.subtext1,
-    text: palette.text,
-    textStrong,
-  });
+  themeTokens$.assign(buildThemeTokens(themeKey, accentKey));
 };
 
 const SETTINGS_STORAGE_KEY = "settingsStore";

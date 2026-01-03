@@ -2,7 +2,7 @@ import React from "react";
 import { View, Text } from "react-native";
 import { observer } from "@legendapp/state/react";
 import { Canvas, RoundedRect, Rect, Mask, Circle } from "@shopify/react-native-skia";
-import { colorTheme$ } from "@/utils/stateManager";
+import { themeTokens$ } from "@/utils/stateManager";
 
 type Props = {
   width: number;        // px
@@ -21,9 +21,11 @@ const HorizontalProgressBar = observer(
     percentage,
     color,
     height = 40,
-    trackColor = colorTheme$.colors.subtext1.get(),
+    trackColor,
     textColor = "#fff",
   }: Props) => {
+    const { colors } = themeTokens$.get();
+    const resolvedTrack = trackColor ?? colors.subtext1;
     const pct = clamp01(percentage);
     const r = height / 2;
 
@@ -52,7 +54,7 @@ const HorizontalProgressBar = observer(
             width={trackW}
             height={trackH}
             r={r}
-            color={trackColor}
+            color={resolvedTrack}
             antiAlias
           />
 

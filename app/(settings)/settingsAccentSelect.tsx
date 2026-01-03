@@ -4,8 +4,8 @@ import { Text, ScreenView } from "@/components/Themed";
 import { observer } from "@legendapp/state/react";
 import { useRouter } from "expo-router";
 import { AntDesign } from "@expo/vector-icons";
-import { colorTheme$, settings$ } from "@/utils/stateManager";
-import { accentKeys, getThemeTokens } from "@/constants/themes";
+import { settings$, themeTokens$ } from "@/utils/stateManager";
+import { accentKeys } from "@/constants/themes";
 import { ScreenHeader } from "@/components/ScreenHeader";
 import { horizontalPadding } from "@/constants/globalThemeVar";
 
@@ -25,17 +25,16 @@ const humanize = (value: string) =>
 
 const SettingsAccentSelect = observer(() => {
   const router = useRouter();
-  const themeKey = settings$.personalization.theme.get();
   const accentKey = settings$.personalization.accent.get();
-  const { palette } = getThemeTokens(themeKey, accentKey);
-  const subtext0 = colorTheme$.colors.subtext0.get();
-  const surface0 = colorTheme$.colors.surface0.get();
-  const surface2 = colorTheme$.colors.surface2.get();
-  const cardTint = colorTheme$.nativeTheme.dark.get()
+  const { palette, colors, isDark } = themeTokens$.get();
+  const subtext0 = palette.subtext0;
+  const surface0 = palette.surface0;
+  const surface2 = palette.surface2;
+  const cardTint = isDark
     ? withOpacity(surface2, 0.4)
     : withOpacity(surface0, 0.6);
   const dividerColor = withOpacity(subtext0, 0.18);
-  const highlight = colorTheme$.colors.accent.get();
+  const highlight = colors.accent;
 
   return (
     <ScreenView style={styles.container}>

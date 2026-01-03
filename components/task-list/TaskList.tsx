@@ -19,10 +19,10 @@ import { activeTimer$ } from "@/utils/activeTimerStore";
 import { getDirtyEntry } from "@/utils/dirtyTaskStore";
 import {
   CurrentTaskID$,
-  colorTheme$,
   getCategoryGroupId,
   getCategoryMeta,
   tasks$,
+  themeTokens$,
 } from "@/utils/stateManager";
 import { startTaskTimer, stopTaskTimer, uiTick$ } from "@/utils/timerService";
 import { getNow } from "@/utils/timeOverride";
@@ -301,7 +301,7 @@ const TaskListItem = ({
                     height={28}
                     percentage={percent}
                     color={iconColor}
-                    trackColor={colorTheme$.colors.surface1.get()}
+                    trackColor={themeTokens$.get().colors.surface1}
                   />
                 )
               ) : (
@@ -344,11 +344,12 @@ export const TaskList = observer(({
   emptyContainerStyle,
   emptyText,
 }: TaskListProps) => {
-  const themePalette = colorTheme$.colorTheme.get();
+  const { palette, isDark } = themeTokens$.get();
+  const themePalette = palette;
   const themeKey = themePalette.theme ?? "default";
   const listTheme = getListTheme(
     themePalette,
-    colorTheme$.nativeTheme.dark.get()
+    isDark
   );
   const styles = createStyles(listTheme);
   return (

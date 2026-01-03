@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Dimensions, StyleSheet, View, ScrollView } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colorTheme$, tasks$, Category$, CurrentTaskID$ } from '@/utils/stateManager';
+import { tasks$, Category$, CurrentTaskID$, themeTokens$ } from '@/utils/stateManager';
 import RadialProgressBar from '@/components/custom_ui/RadialProgressBar';
 import HorizontalProgressBar from '@/components/custom_ui/HorizontalProgressBar';
 import { horizontalPadding } from '@/constants/globalThemeVar';
@@ -22,6 +22,8 @@ const FULL_DAY_SECONDS = 24 * 3600;
 
 const PieChartScreen = observer(() => {
   const insets = useSafeAreaInsets();
+  const { colors } = themeTokens$.get();
+  const styles = createStyles(colors);
   const todayRef = useRef(moment().startOf('day'));
   const today = todayRef.current;
   const dateKey = today.format('YYYY-MM-DD');
@@ -46,7 +48,7 @@ const PieChartScreen = observer(() => {
       totalsByCat[catId] = {
         id: catId,
         label: node?.label?.get?.() ?? `Category ${catId}`,
-        color: node?.color?.get?.() ?? colorTheme$.colors.subtext0.get(),
+        color: node?.color?.get?.() ?? colors.subtext0,
         spent: 0,
         goal: 0,
       };
@@ -63,14 +65,14 @@ const PieChartScreen = observer(() => {
     totalSpent - (top1?.spent ?? 0) - (top2?.spent ?? 0),
     0,
   );
-  const othersColor = colorTheme$.colors.subtext0.get();
+  const othersColor = colors.subtext0;
   const primaryBars = [
     top1
       ? { label: top1.label, color: top1.color, value: top1.spent / FULL_DAY_SECONDS }
-      : { label: 'Top Category', color: colorTheme$.colors.primary.get(), value: 0 },
+      : { label: 'Top Category', color: colors.primary, value: 0 },
     top2
       ? { label: top2.label, color: top2.color, value: top2.spent / FULL_DAY_SECONDS }
-      : { label: 'Second', color: colorTheme$.colors.secondary.get(), value: 0 },
+      : { label: 'Second', color: colors.secondary, value: 0 },
     { label: 'Others', color: othersColor, value: othersSpent / FULL_DAY_SECONDS },
   ];
   const categorySegments = [
@@ -85,7 +87,7 @@ const PieChartScreen = observer(() => {
   const runningCatColor =
     runningTask && (Category$ as any)[runningTask.category]?.color?.get?.()
       ? (Category$ as any)[runningTask.category].color.get()
-      : colorTheme$.colors.secondary.get();
+      : colors.secondary;
   const runningGoal = runningTask?.timeGoal ?? 0;
   const runningSpent = runningTask?.timeSpent ?? 0;
 
@@ -121,7 +123,7 @@ const PieChartScreen = observer(() => {
           centerSecondary={runningTask ? formatSeconds(runningGoal) : today.format('A')}
         />
 
-        <HorizontalProgressRow bars={primaryBars} />
+        <HorizontalProgressRow bars={primaryBars} styles={styles} />
 
         <View style={styles.listHeader}>
           <Text style={[styles.listHeaderText]}>Task</Text>
@@ -148,7 +150,13 @@ const PieChartScreen = observer(() => {
   );
 });
 
-function HorizontalProgressRow({ bars }: { bars: { label: string; color: string; value: number }[] }) {
+function HorizontalProgressRow({
+  bars,
+  styles,
+}: {
+  bars: { label: string; color: string; value: number }[];
+  styles: ReturnType<typeof createStyles>;
+}) {
   const windowWidth = Dimensions.get('window').width;
   const MAX_WIDTH = 500;
   const padding = 20;
@@ -180,7 +188,9 @@ const formatSeconds = (value: number) => {
   return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 };
 
-const styles = StyleSheet.create({
+type ThemeTokens = ReturnType<typeof themeTokens$.get>;
+
+const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
@@ -191,7 +201,7 @@ const styles = StyleSheet.create({
   },
   title: {
     left: horizontalPadding,
-    color: '#000',
+    color: colors.textStrong,
     fontSize: 28,
     marginLeft: 0,
     fontWeight: 'bold',
@@ -199,7 +209,7 @@ const styles = StyleSheet.create({
   taskTitle: {
     paddingTop: 15,
     fontSize: 20,
-    color: colorTheme$.nativeTheme.colors.text.get(),
+    color: colors.textStrong,
     fontWeight: '700',
     alignContent: 'flex-end',
   },
@@ -212,12 +222,12 @@ const styles = StyleSheet.create({
   progressLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#000',
+    color: colors.subtext1,
   },
   progressPercent: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6b6d78',
+    color: colors.subtext1,
     marginBottom: 4,
   },
   listHeader: {
@@ -230,7 +240,7 @@ const styles = StyleSheet.create({
   listHeaderText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#000',
+    color: colors.subtext1,
   },
   listRow: {
     flexDirection: 'row',
@@ -246,14 +256,14 @@ const styles = StyleSheet.create({
   },
   listRowLabel: {
     fontSize: 14,
-    color: '#000',
+    color: colors.text,
     flexShrink: 1,
   },
   listRowValue: {
     width: 80,
     textAlign: 'right',
     fontSize: 13,
-    color: '#000',
+    color: colors.text,
   },
   dot: {
     width: 10,

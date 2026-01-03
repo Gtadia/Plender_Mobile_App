@@ -2,7 +2,7 @@ import { View } from 'react-native'
 import React from 'react'
 import { observer } from '@legendapp/state/react'
 import { Canvas, Path, Skia } from '@shopify/react-native-skia'
-import { colorTheme$ } from '@/utils/stateManager'
+import { themeTokens$ } from '@/utils/stateManager'
 
 interface ProgressSegment {
   percentage: number;
@@ -20,6 +20,7 @@ interface param {
 
 const VerticalProgressBar = observer(
   ({ height, width = 15, progbar }: param) => {
+    const { colors } = themeTokens$.get();
     // const path = Skia.Path.Make();
     const strokeWidth = width;
 
@@ -39,7 +40,7 @@ const VerticalProgressBar = observer(
             path={path}
             strokeWidth={strokeWidth}
             style={"stroke"}
-            color={colorTheme$.colors.subtext1.get()}
+            color={colors.subtext1}
             strokeJoin={"round"}
             strokeCap={"round"}
             start={0}

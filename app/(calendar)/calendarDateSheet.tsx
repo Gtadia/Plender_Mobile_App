@@ -4,23 +4,37 @@ import { useNavigation } from "expo-router";
 import DateTimePicker, { useDefaultStyles } from "react-native-ui-datepicker";
 import moment, { Moment } from "moment";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Memo } from "@legendapp/state/react";
+import { Memo, observer } from "@legendapp/state/react";
 import { observable } from "@legendapp/state";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { useFocusEffect } from "@react-navigation/native";
 import { Text } from "@/components/Themed";
-import { colorTheme } from "@/constants/Colors";
 import { selectedDate$ } from "@/app/index/calendar/rowCalendar";
 import { getNow } from "@/utils/timeOverride";
+import { themeTokens$ } from "@/utils/stateManager";
 
 const pickerDate$ = observable<Moment>(selectedDate$.get());
-const palette = colorTheme.catppuccin.latte;
 
-const CalendarDateSheet = () => {
+const withOpacity = (hex: string, opacity: number) => {
+  const normalized = hex.replace("#", "");
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
+
+type ThemeTokens = ReturnType<typeof themeTokens$.get>;
+
+const CalendarDateSheet = observer(() => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
+  const { palette, colors } = themeTokens$.get();
+  const accentSoft = withOpacity(colors.accent, 0.14);
+  const accentBorder = withOpacity(colors.accent, 0.28);
+  const styles = createStyles({ palette, colors, accentSoft, accentBorder });
 
   useFocusEffect(
     useCallback(() => {
@@ -123,8 +137,8 @@ const CalendarDateSheet = () => {
                       width: 34,
                       height: 34,
                       borderRadius: 17,
-                      backgroundColor: "rgba(254,100,11,0.16)",
-                      borderColor: "rgba(254,100,11,0.3)",
+                      backgroundColor: withOpacity(colors.accent, 0.16),
+                      borderColor: withOpacity(colors.accent, 0.3),
                       borderWidth: 1,
                       alignItems: "center",
                       justifyContent: "center",
@@ -133,14 +147,14 @@ const CalendarDateSheet = () => {
                       width: 34,
                       height: 34,
                       borderRadius: 17,
-                      backgroundColor: "rgba(254,100,11,0.16)",
-                      borderColor: "rgba(254,100,11,0.3)",
+                      backgroundColor: withOpacity(colors.accent, 0.16),
+                      borderColor: withOpacity(colors.accent, 0.3),
                       borderWidth: 1,
                       alignItems: "center",
                       justifyContent: "center",
                     },
-                    button_prev_image: { tintColor: palette.peach },
-                    button_next_image: { tintColor: palette.peach },
+                    button_prev_image: { tintColor: colors.accent },
+                    button_next_image: { tintColor: colors.accent },
                     weekdays: { marginBottom: 4 },
                     weekday_label: {
                       fontWeight: "700",
@@ -152,13 +166,13 @@ const CalendarDateSheet = () => {
                     outside_label: { color: palette.surface2 },
                     disabled_label: { color: palette.surface2 },
                     today: {
-                      borderColor: palette.peach,
+                      borderColor: colors.accent,
                       borderRadius: 12,
                       borderWidth: 1,
                       backgroundColor: "transparent",
                     },
-                    today_label: { color: palette.peach, fontWeight: "700" },
-                    selected: { backgroundColor: palette.peach, borderRadius: 12 },
+                    today_label: { color: colors.accent, fontWeight: "700" },
+                    selected: { backgroundColor: colors.accent, borderRadius: 12 },
                     selected_label: { color: palette.base, fontWeight: "700" },
                   }}
                 />
@@ -183,11 +197,22 @@ const CalendarDateSheet = () => {
       </Animated.View>
     </View>
   );
-};
+});
 
 export default CalendarDateSheet;
 
-const styles = StyleSheet.create({
+const createStyles = ({
+  palette,
+  colors,
+  accentSoft,
+  accentBorder,
+}: {
+  palette: ThemeTokens["palette"];
+  colors: ThemeTokens["colors"];
+  accentSoft: string;
+  accentBorder: string;
+}) =>
+  StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -255,12 +280,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
     paddingHorizontal: 12,
-    backgroundColor: "rgba(254,100,11,0.14)",
+    backgroundColor: accentSoft,
     borderWidth: 1,
-    borderColor: "rgba(254,100,11,0.28)",
+    borderColor: accentBorder,
   },
   todayButtonText: {
-    color: palette.peach,
+    color: colors.accent,
     fontSize: 16,
     fontWeight: "700",
   },

@@ -3,7 +3,7 @@
  * https://docs.expo.io/guides/color-schemes/
  */
 
-import { colorTheme$, styling$ } from '@/utils/stateManager';
+import { styling$, themeTokens$ } from '@/utils/stateManager';
 import { Text as DefaultText, View as DefaultView } from 'react-native';
 import { observer } from '@legendapp/state/react';
 
@@ -25,27 +25,28 @@ export type ViewProps = ThemeProps & DefaultView['props'];
 
 export const Text = observer((props: TextProps) => {
   const { style, fontColor, fontSize, ...otherProps } = props;
+  const { colors } = themeTokens$.get();
   const extraStyle = {
-    color: fontColor || colorTheme$.colors.text.get(),
+    color: fontColor || colors.text,
     fontSize: 16
   };
 
   // font color logic
   switch (fontColor) {
     case 'subtext0': {
-      extraStyle.color = colorTheme$.colors.subtext0.get();
+      extraStyle.color = colors.subtext0;
       break;
     }
     case 'subtext1': {
-      extraStyle.color = colorTheme$.colors.subtext1.get();
+      extraStyle.color = colors.subtext1;
       break;
     }
     case 'strong': {
-      extraStyle.color = colorTheme$.colors.textStrong.get();
+      extraStyle.color = colors.textStrong;
       break;
     }
     default: {
-      extraStyle.color = colorTheme$.colors.text.get();
+      extraStyle.color = colors.text;
       break;
     }
   }
@@ -67,9 +68,10 @@ export const Text = observer((props: TextProps) => {
 
 export const ScreenView = observer((props: ViewProps) => {
   const { style, radius, ...otherProps } = props;
+  const { colors } = themeTokens$.get();
 
   const screenTheme = {
-    backgroundColor: colorTheme$.colors.background.get(),
+    backgroundColor: colors.background,
     borderRadius: radius || styling$.mainContentRadius.get(),
   }
 

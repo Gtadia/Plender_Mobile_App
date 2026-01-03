@@ -1,12 +1,20 @@
 import { View, Text, StyleSheet } from 'react-native'
 import React from 'react'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { colorTheme$ } from '@/utils/stateManager';
+import { themeTokens$ } from '@/utils/stateManager';
 import {Dimensions} from 'react-native';
 import { horizontalPadding } from '@/constants/globalThemeVar';
+import { observer } from '@legendapp/state/react';
 
-const TaskList = () => {
+const TaskList = observer(() => {
     const insets = useSafeAreaInsets();
+    const { colors } = themeTokens$.get();
+    const subtitleColor = colors.subtext0;
+    const itemColor = colors.text;
+    const styles = React.useMemo(
+      () => createStyles({ subtitleColor, itemColor }),
+      [subtitleColor, itemColor]
+    );
   
     // TODO — This is temporary, remove later
     const items = [
@@ -33,7 +41,7 @@ const TaskList = () => {
       {/* Task List */}
       {items.map((item) => (
         <View key={item.id} style={{ marginBottom: 9}}>
-          <ListItem />
+          <ListItem styles={styles} />
           {/* <Text style={styles.taskTitle}>{item.title}</Text> */}
         </View>
       ))}
@@ -42,9 +50,9 @@ const TaskList = () => {
       <View style={{ height: insets.bottom + 130}} />
     </View>
   )
-}
+})
 
-const ListItem = () => {
+const ListItem = ({ styles }: { styles: ReturnType<typeof createStyles> }) => {
 
   return (
     <View style={ styles.listItems }>
@@ -56,7 +64,7 @@ const ListItem = () => {
   )
 }
 
-const styles = StyleSheet.create({
+const createStyles = ({ subtitleColor, itemColor }: { subtitleColor: string; itemColor: string }) => StyleSheet.create({
   listSubtitleContainer: {
     flexDirection: 'row',
     width: Dimensions.get('window').width - horizontalPadding * 2,
@@ -66,7 +74,7 @@ const styles = StyleSheet.create({
   listSubtitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: colorTheme$.colors.subtext0.get(),
+    color: subtitleColor,
   },
   subtitle1: {
     flex: 1,
@@ -93,7 +101,7 @@ const styles = StyleSheet.create({
   itemTitle: {
     fontSize: 15,
     fontWeight: 'bold',
-    color: colorTheme$.nativeTheme.colors.text.get(),
+    color: itemColor,
   }
 
 })
