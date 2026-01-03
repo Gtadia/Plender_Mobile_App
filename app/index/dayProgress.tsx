@@ -95,7 +95,7 @@ const PieChartScreen = observer(() => {
   return (
     <ScreenView style={styles.container}>
       <View style={[styles.titleContainer, { paddingTop: insets.top }]}>
-        <Text style={[styles.title]}>Pie Chart</Text>
+        <Text style={[styles.title]}>Day Progress</Text>
       </View>
 
       <ScrollView

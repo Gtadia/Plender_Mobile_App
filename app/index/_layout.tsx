@@ -31,6 +31,11 @@ export default function TabLayout() {
         screenOptions={({ route }) => ({
           headerShown: false,
         })}>
+        <Tabs.Screen name="index" options={{ title: "Home" }} />
+        <Tabs.Screen name="calendar" options={{ title: "Week Calendar" }} />
+        <Tabs.Screen name="dayProgress" options={{ title: "Day Progress" }} />
+        <Tabs.Screen name="testPanel" options={{ title: "Test Panel" }} />
+        <Tabs.Screen name="settings" options={{ title: "Settings" }} />
       </Tabs>
 
       <TouchableOpacity

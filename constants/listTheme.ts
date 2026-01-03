@@ -1,15 +1,17 @@
 import { colorTheme } from "@/constants/Colors";
 
-const palette = colorTheme.catppuccin.latte;
+type Palette = typeof colorTheme.catppuccin.latte;
 
-export const listTheme = {
+export const getListTheme = (palette: Palette, isDark: boolean) => ({
   colors: {
-    card: "#ffffff",
-    row: "#f7f7fb",
-    divider: "rgba(0,0,0,0.08)",
+    card: isDark ? palette.surface0 : "#ffffff",
+    row: isDark ? palette.surface1 : palette.mantle,
+    divider: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)",
     subtleText: palette.subtext0,
     secondaryText: palette.subtext1,
     emptyText: palette.subtext0,
+    text: palette.text,
+    iconButton: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.05)",
   },
   spacing: {
     containerPadding: 12,
@@ -47,9 +49,9 @@ export const listTheme = {
     emptySize: 16,
   },
   shadow: {
-    shadowOpacity: 0.08,
+    shadowOpacity: isDark ? 0.2 : 0.08,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-};
+});

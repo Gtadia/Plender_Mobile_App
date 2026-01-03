@@ -1,7 +1,6 @@
 import { StyleSheet, View, ScrollView, RefreshControl } from "react-native";
 import { Text, ScreenView } from "@/components/Themed";
 import { globalTheme, horizontalPadding } from "@/constants/globalThemeVar";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { taskDetailsSheet$, loadDay } from "@/utils/stateManager";
 import { Memo, useObservable } from "@legendapp/state/react";
 import { CurrentTaskView, TodayTaskView } from "@/components/HomeScreenTasks";
@@ -9,11 +8,11 @@ import { useCallback } from "react";
 import { flushDirtyTasksToDB } from "@/utils/dirtyTaskStore";
 import { useRouter } from "expo-router";
 import { getNow } from "@/utils/timeOverride";
+import { ScreenHeader } from "@/components/ScreenHeader";
 
 // TODO — for drag down to reload
 
 export default function TabOneScreen() {
-  const insets = useSafeAreaInsets();
   const homePageInfo$ = useObservable({
     reload: false
   })
@@ -33,14 +32,7 @@ export default function TabOneScreen() {
 
   return (
     <ScreenView style={globalTheme.container}>
-      <View
-        style={[
-          styles.titleContainer,
-          { paddingTop: insets.top, marginBottom: 5 },
-        ]}
-      >
-        <Text style={[styles.title, styles.mainTitle]}>Home</Text>
-      </View>
+      <ScreenHeader title="Home" />
       <ScrollView
         style={{ width: "100%" }}
         refreshControl={
@@ -61,8 +53,10 @@ export default function TabOneScreen() {
           }}
         />
 
-        <View style={[styles.titleContainer, styles.todayHeader]}>
-          <Text style={[styles.title, styles.secondaryTitle, styles.titleReset]}>Today</Text>
+        <View style={styles.todayHeader}>
+          <Text style={styles.sectionTitle} fontColor="strong">
+            Today
+          </Text>
           <Memo>
             {() => {
               const todayLabel = getNow().toLocaleDateString("en-US", { dateStyle: "medium" });
@@ -90,18 +84,6 @@ export default function TabOneScreen() {
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    width: "100%",
-  },
-  title: {
-    left: horizontalPadding,
-    color: "#000",
-    marginLeft: 0,
-    fontWeight: "bold",
-  },
-  titleReset: {
-    left: 0,
-  },
   todayHeader: {
     flexDirection: "row",
     alignItems: "baseline",
@@ -113,16 +95,14 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: "700",
+  },
   separator: {
     marginVertical: 30,
     height: 1,
     width: "80%",
   },
 
-  mainTitle: {
-    fontSize: 28,
-  },
-  secondaryTitle: {
-    fontSize: 24,
-  },
 });

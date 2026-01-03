@@ -193,7 +193,7 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
             <HorizontalProgressBarPercentage
               width={progressWidth}
               percentage={percent}
-              color={colorTheme$.colors.accent.get()}
+              color={colorTheme$.colorTheme.get().green}
               trackColor="rgba(255,255,255,0.35)"
               textColor="#fff"
             />

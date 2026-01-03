@@ -2,10 +2,16 @@ import { computed, observable, observe } from "@legendapp/state";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { fonts } from "@/constants/types";
 import { colorTheme } from "@/constants/Colors";
+import { AccentKey, ThemeKey, getThemeTokens } from "@/constants/themes";
 import type { Theme } from "@/node_modules/@react-navigation/native/src/types";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+import timezone from "dayjs/plugin/timezone";
 import { dbEvents, eventsType, getEventsForDate } from "./database";
 import moment from "moment";
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 interface categoryItem {
   label: string;
@@ -251,7 +257,7 @@ export const colorTheme$ = observable({
       background: colorTheme.catppuccin.latte.surface1, // NOTE — this is the background color of the app (the main content covers this area however)
       card: colorTheme.catppuccin.latte.surface1, // pop up menu?
       text: colorTheme.catppuccin.latte.text,
-      border: "rgb(39, 39, 41)", // Make it really black (light mode) / white (dark mode)
+      border: colorTheme.catppuccin.latte.overlay0,
       notification: "rgb(255, 69, 58)",
     },
     fonts,
@@ -271,10 +277,190 @@ export const colorTheme$ = observable({
 
     subtext0: colorTheme.catppuccin.latte.subtext0,
     subtext1: colorTheme.catppuccin.latte.subtext1,
+    text: colorTheme.catppuccin.latte.text,
+    textStrong: "#000000",
     // Add more colors as needed
   },
 });
 
 export const styling$ = observable({
   mainContentRadius: 0, // 55 is the radius of iphone 14 pro max corners
+  tabBarBlurEnabled: true,
+});
+
+const STYLING_STORAGE_KEY = "stylingStore";
+let stylingHydrated = false;
+let stylingReady = false;
+let stylingPromise: Promise<void> | null = null;
+
+async function hydrateStylingInternal() {
+  try {
+    const raw = await AsyncStorage.getItem(STYLING_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as { tabBarBlurEnabled?: boolean };
+      if (parsed.tabBarBlurEnabled !== undefined) {
+        styling$.tabBarBlurEnabled.set(parsed.tabBarBlurEnabled);
+      }
+    }
+  } catch (err) {
+    console.warn("Failed to load styling store", err);
+  } finally {
+    stylingHydrated = true;
+    stylingReady = true;
+    const snapshot = { tabBarBlurEnabled: styling$.tabBarBlurEnabled.get() };
+    AsyncStorage.setItem(STYLING_STORAGE_KEY, JSON.stringify(snapshot)).catch((err) => {
+      console.warn("Failed to persist styling store", err);
+    });
+  }
+}
+
+export async function ensureStylingHydrated() {
+  if (stylingHydrated) return;
+  stylingPromise ??= hydrateStylingInternal();
+  await stylingPromise;
+}
+
+observe(() => {
+  if (!stylingReady) return;
+  const snapshot = { tabBarBlurEnabled: styling$.tabBarBlurEnabled.get() };
+  AsyncStorage.setItem(STYLING_STORAGE_KEY, JSON.stringify(snapshot)).catch((err) => {
+    console.warn("Failed to persist styling store", err);
+  });
+});
+
+interface SettingsState {
+  general: {
+    timezoneMode: "auto" | "manual";
+    timezone: string;
+    startWeekOn: string;
+    allowQuickTasks: boolean;
+  };
+  personalization: {
+    theme: ThemeKey;
+    accent: AccentKey;
+  };
+  productivity: {
+    notificationsEnabled: boolean;
+  };
+}
+
+const defaultTimezone = (() => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Local Timezone";
+  } catch (err) {
+    return "Local Timezone";
+  }
+})();
+
+export const settings$ = observable<SettingsState>({
+  general: {
+    timezoneMode: "auto",
+    timezone: defaultTimezone,
+    startWeekOn: "Sunday",
+    allowQuickTasks: true,
+  },
+  personalization: {
+    theme: "light",
+    accent: "peach",
+  },
+  productivity: {
+    notificationsEnabled: false,
+  },
+});
+
+const getSystemTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Local Timezone";
+  } catch (err) {
+    return "Local Timezone";
+  }
+};
+
+const applyTimezoneFromSettings = () => {
+  const mode = settings$.general.timezoneMode.get();
+  const timezoneValue = mode === "manual" ? settings$.general.timezone.get() : getSystemTimezone();
+  if (!timezoneValue) return;
+  try {
+    dayjs.tz.setDefault(timezoneValue);
+  } catch (err) {
+    console.warn("Failed to apply timezone", err);
+  }
+};
+
+const applyThemeFromSettings = () => {
+  const themeKey = settings$.personalization.theme.get();
+  const accentKey = settings$.personalization.accent.get();
+  const { palette, accent, textStrong, theme } = getThemeTokens(themeKey, accentKey);
+
+  colorTheme$.colorTheme.set(palette);
+  colorTheme$.nativeTheme.dark.set(theme.isDark);
+  colorTheme$.nativeTheme.colors.assign({
+    primary: palette.blue,
+    background: palette.base,
+    card: palette.surface1,
+    text: palette.text,
+    border: palette.overlay0,
+    notification: palette.red,
+  });
+  colorTheme$.tabBar.iconColor.set(palette.text);
+  colorTheme$.colors.assign({
+    primary: palette.yellow,
+    secondary: palette.red,
+    accent,
+    background: palette.base,
+    surface0: palette.surface0,
+    surface1: palette.surface1,
+    subtext0: palette.subtext0,
+    subtext1: palette.subtext1,
+    text: palette.text,
+    textStrong,
+  });
+};
+
+const SETTINGS_STORAGE_KEY = "settingsStore";
+let settingsHydrated = false;
+let settingsReady = false;
+let settingsPromise: Promise<void> | null = null;
+
+async function hydrateSettingsInternal() {
+  try {
+    const raw = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<SettingsState>;
+      if (parsed?.general) settings$.general.assign(parsed.general);
+      if (parsed?.personalization) settings$.personalization.assign(parsed.personalization);
+      if (parsed?.productivity) settings$.productivity.assign(parsed.productivity);
+    }
+  } catch (err) {
+    console.warn("Failed to load settings store", err);
+  } finally {
+    settingsHydrated = true;
+    settingsReady = true;
+    const snapshot = settings$.get();
+    AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(snapshot)).catch((err) => {
+      console.warn("Failed to persist settings store", err);
+    });
+    applyThemeFromSettings();
+    applyTimezoneFromSettings();
+  }
+}
+
+export async function ensureSettingsHydrated() {
+  if (settingsHydrated) return;
+  settingsPromise ??= hydrateSettingsInternal();
+  await settingsPromise;
+}
+
+observe(() => {
+  settings$.personalization.theme.get();
+  settings$.personalization.accent.get();
+  settings$.general.timezoneMode.get();
+  settings$.general.timezone.get();
+  if (!settingsReady) return;
+  applyThemeFromSettings();
+  applyTimezoneFromSettings();
+  const snapshot = settings$.get();
+  AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(snapshot)).catch((err) => {
+    console.warn("Failed to persist settings store", err);
+  });
 });

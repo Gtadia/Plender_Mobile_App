@@ -1,149 +1,200 @@
-import { StyleSheet, View, Button, Alert, ScrollView } from 'react-native';
+import React from 'react';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
-import React, { useCallback, useState } from 'react';
-import AnimationToast from '@/components/animation-toast/animation-toast';
-import moment from 'moment';
-import { clearEvents, createEvent } from '@/utils/database';
-import { loadDay, tasks$ } from '@/utils/stateManager';
-import { clearActiveTimerState } from '@/utils/activeTimerStore';
-import { dirtyTasks$ } from '@/utils/dirtyTaskStore';
-import { clearFakeNow, setFakeNow, fakeNow$ } from '@/utils/timeOverride';
-import DateTimePicker, { useDefaultStyles } from 'react-native-ui-datepicker';
+import { observer } from '@legendapp/state/react';
+import { AntDesign } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { colorTheme$ } from '@/utils/stateManager';
+import { settings$ } from '@/utils/stateManager';
+import { getThemeTokens, themeOptions } from '@/constants/themes';
+import { ScreenHeader } from '@/components/ScreenHeader';
+import { horizontalPadding } from '@/constants/globalThemeVar';
 
-export default function SettingsScreen() {
-  const refreshToday = useCallback(async () => {
-    await loadDay(new Date());
-  }, []);
-  const [showPicker, setShowPicker] = useState(false);
-  const [pickerDate, setPickerDate] = useState<Date>(new Date());
+const withOpacity = (hex: string, opacity: number) => {
+  const normalized = hex.replace('#', '');
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
-  const singleDayRule = useCallback((date: Date) => {
-    const dtstart = moment(date).utc().format('YYYYMMDD[T]HHmmss[Z]');
-    return `DTSTART=${dtstart};FREQ=DAILY;COUNT=1`;
-  }, []);
+const resolveSystemTimezone = () => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local Timezone';
+  } catch (err) {
+    return 'Local Timezone';
+  }
+};
 
-  const handleClearDb = useCallback(async () => {
-    await clearEvents();
-    clearActiveTimerState();
-    dirtyTasks$.set({});
-    await refreshToday();
-    Alert.alert('Database cleared');
-  }, [refreshToday]);
+const SettingsScreen = observer(() => {
+  const router = useRouter();
+  const themeKey = settings$.personalization.theme.get();
+  const accentKey = settings$.personalization.accent.get();
+  const { palette, accent } = getThemeTokens(themeKey, accentKey);
+  const themeLabel = themeOptions.find((option) => option.key === themeKey)?.label ?? "Light";
 
-  const handleCreateCustom = useCallback(async () => {
-    const start = moment().startOf('day').toDate();
-    await createEvent({
-      title: 'Focus Block',
-      rrule: singleDayRule(start),
-      timeGoal: 2 * 60 * 60,
-      timeSpent: 0,
-      category: 0,
-      description: 'Custom two hour focus session',
-    });
-    await refreshToday();
-    Alert.alert('Custom event added');
-  }, [refreshToday, singleDayRule]);
+  const subtext0 = colorTheme$.colors.subtext0.get();
+  const subtext1 = colorTheme$.colors.subtext1.get();
+  const surface0 = colorTheme$.colors.surface0.get();
+  const surface2 = palette.surface2;
+  const cardTint = colorTheme$.nativeTheme.dark.get()
+    ? withOpacity(surface2, 0.4)
+    : withOpacity(surface0, 0.6);
+  const dividerColor = withOpacity(subtext0, 0.18);
+  const systemTimezone = resolveSystemTimezone();
+  const timezoneMode = settings$.general.timezoneMode.get();
+  const isAutoTimezone = timezoneMode === 'auto';
+  const timezoneLabel = isAutoTimezone ? systemTimezone : settings$.general.timezone.get();
 
-  const handleCreateRandomToday = useCallback(async () => {
-    const randomHour = Math.floor(Math.random() * 12);
-    const randomDurationMinutes = 30 + Math.floor(Math.random() * 120);
-    const start = moment().startOf('day').add(randomHour, 'hours').toDate();
-    await createEvent({
-      title: `Random Task ${randomHour + 1}`,
-      rrule: singleDayRule(start),
-      timeGoal: randomDurationMinutes * 60,
-      timeSpent: 0,
-      category: (randomHour % 5),
-      description: 'Auto-generated test event',
-    });
-    await refreshToday();
-    Alert.alert('Random event created for today');
-  }, [refreshToday, singleDayRule]);
-
-  const handleClearCache = useCallback(() => {
-    tasks$.entities.set({});
-    tasks$.lists.byDate.set({});
-    Alert.alert('tasks$ cache cleared');
-  }, []);
-
-  const handleSetFakeNow = useCallback((date: Date) => {
-    setFakeNow(date);
-    Alert.alert('Fake time set', moment(date).format('LLLL'));
-  }, []);
-
-  const handleSetFakeNowTomorrow = useCallback(() => {
-    const d = moment().add(1, 'day').startOf('day').add(9, 'hours').toDate();
-    handleSetFakeNow(d);
-  }, [handleSetFakeNow]);
-
-  const handleClearFakeNow = useCallback(() => {
-    clearFakeNow();
-    Alert.alert('Fake time cleared');
-  }, []);
+  const RowIcon = ({ name }: { name: keyof typeof AntDesign.glyphMap }) => (
+    <View style={[styles.iconBadge, { backgroundColor: withOpacity(accent, 0.14) }]}>
+      <AntDesign name={name} size={16} color={accent} />
+    </View>
+  );
 
   return (
     <ScreenView style={styles.container}>
+      <ScreenHeader title="Settings" />
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Settings</Text>
-        <AnimationToast />
-        <View style={styles.devPanel}>
-          <Text style={styles.panelTitle}>Debug Tasks</Text>
-          <View style={styles.panelButton}>
-            <Button title="Clear Database" onPress={handleClearDb} />
-          </View>
-          <View style={styles.panelButton}>
-            <Button title="Create Custom Event" onPress={handleCreateCustom} />
-          </View>
-          <View style={styles.panelButton}>
-            <Button title="Random Event (Today)" onPress={handleCreateRandomToday} />
-          </View>
-          <View style={styles.panelButton}>
-            <Button title="Clear Tasks Cache" onPress={handleClearCache} />
-          </View>
-          <View style={styles.panelButton}>
-            <Button title="Set Fake Now (Tomorrow 9am)" onPress={handleSetFakeNowTomorrow} />
-          </View>
-          <View style={styles.panelButton}>
-            <Button title="Pick Fake Now…" onPress={() => { setPickerDate(new Date()); setShowPicker(true); }} />
-          </View>
-          {showPicker && (
-            <View style={styles.pickerCard}>
-              <DateTimePicker
-                mode="single"
-                date={pickerDate}
-                onChange={(ev) => {
-                  if (ev.date) setPickerDate(ev.date);
-                }}
-                styles={{
-                  ...useDefaultStyles,
-                  today: { borderColor: 'black', borderRadius: 12, borderWidth: 1, backgroundColor: 'transparent' },
-                  selected: { backgroundColor: '#000', borderRadius: 12 },
-                  selected_label: { color: 'white' },
-                }}
-              />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
-                <Button title="Cancel" onPress={() => setShowPicker(false)} />
-                <Button
-                  title="Set Fake Now"
-                  onPress={() => {
-                    handleSetFakeNow(pickerDate);
-                    setShowPicker(false);
-                  }}
-                />
-              </View>
-            </View>
-          )}
-          <View style={styles.panelButton}>
-            <Button title="Clear Fake Now" onPress={handleClearFakeNow} />
-          </View>
-          <Text style={styles.fakeLabel}>
-            {fakeNow$.get() ? `Fake now: ${moment(fakeNow$.get()).format('LLLL')}` : 'Fake now: off'}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle} fontColor="strong">
+            General
           </Text>
+          <View style={[styles.card, { backgroundColor: cardTint, borderColor: dividerColor }]}>
+            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Date &amp; Time</Text>
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <RowIcon name="clockcircleo" />
+                <Text style={styles.rowLabel} fontColor="strong">
+                  Automatic Timezone
+                </Text>
+              </View>
+              <Switch
+                value={isAutoTimezone}
+                onValueChange={(value) =>
+                  settings$.general.timezoneMode.set(value ? 'auto' : 'manual')
+                }
+                trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                thumbColor={isAutoTimezone ? accent : palette.surface0}
+              />
+            </View>
+            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+            <Pressable
+              style={[styles.row, isAutoTimezone && styles.rowDisabled]}
+              onPress={() => {
+                if (!isAutoTimezone) router.push('/settingsTimezoneSelect');
+              }}
+            >
+              <View style={styles.rowLeft}>
+                <RowIcon name="earth" />
+                <Text style={styles.rowLabel} fontColor="strong">
+                  Timezone
+                </Text>
+              </View>
+              <View style={styles.rowRight}>
+                <Text style={[styles.rowValue, { color: subtext0 }]}>{timezoneLabel}</Text>
+                <AntDesign name="right" size={14} color={subtext0} />
+              </View>
+            </Pressable>
+            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+            <Pressable style={styles.row} onPress={() => router.push('/settingsWeekStartSelect')}>
+              <View style={styles.rowLeft}>
+                <RowIcon name="calendar" />
+                <Text style={styles.rowLabel} fontColor="strong">
+                  Start Week On
+                </Text>
+              </View>
+              <View style={styles.rowRight}>
+                <Text style={[styles.rowValue, { color: subtext0 }]}>
+                  {settings$.general.startWeekOn.get()}
+                </Text>
+                <AntDesign name="right" size={14} color={subtext0} />
+              </View>
+            </Pressable>
+
+            <View style={[styles.groupDivider, { backgroundColor: dividerColor }]} />
+            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Tasks</Text>
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <RowIcon name="rocket1" />
+                <Text style={styles.rowLabel} fontColor="strong">
+                  Allow "Quick Tasks"
+                </Text>
+              </View>
+              <Switch
+                value={settings$.general.allowQuickTasks.get()}
+                onValueChange={(value) => settings$.general.allowQuickTasks.set(value)}
+                trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                thumbColor={settings$.general.allowQuickTasks.get() ? accent : palette.surface0}
+              />
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle} fontColor="strong">
+            Personalization
+          </Text>
+          <View style={[styles.card, { backgroundColor: cardTint, borderColor: dividerColor }]}>
+            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Theme</Text>
+            <Pressable style={styles.row} onPress={() => router.push('/settingsThemeSelect')}>
+              <View style={styles.rowLeft}>
+                <RowIcon name="skin" />
+                <Text style={styles.rowLabel} fontColor="strong">
+                  Select Theme
+                </Text>
+              </View>
+              <View style={styles.rowRight}>
+                <Text style={[styles.rowValue, { color: subtext0 }]}>{themeLabel}</Text>
+                <AntDesign name="right" size={14} color={subtext0} />
+              </View>
+            </Pressable>
+            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+            <Pressable style={styles.row} onPress={() => router.push('/settingsAccentSelect')}>
+              <View style={styles.rowLeft}>
+                <RowIcon name="star" />
+                <Text style={styles.rowLabel} fontColor="strong">
+                  Accent Color
+                </Text>
+              </View>
+              <View style={styles.rowRight}>
+                <View
+                  style={[styles.accentPreview, { backgroundColor: accent, borderColor: dividerColor }]}
+                />
+                <AntDesign name="right" size={14} color={subtext0} />
+              </View>
+            </Pressable>
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle} fontColor="strong">
+            Productivity
+          </Text>
+          <View style={[styles.card, { backgroundColor: cardTint, borderColor: dividerColor }]}>
+            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Notifications</Text>
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <RowIcon name="bells" />
+                <Text style={styles.rowLabel} fontColor="strong">
+                  Enable Notifications
+                </Text>
+              </View>
+              <Switch
+                value={settings$.productivity.notificationsEnabled.get()}
+                onValueChange={(value) => settings$.productivity.notificationsEnabled.set(value)}
+                trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                thumbColor={settings$.productivity.notificationsEnabled.get() ? accent : palette.surface0}
+              />
+            </View>
+          </View>
         </View>
       </ScrollView>
     </ScreenView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -151,46 +202,81 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingVertical: 16,
+    paddingHorizontal: horizontalPadding,
+    gap: 18,
+  },
+  section: {
+    gap: 10,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  card: {
+    borderRadius: 22,
+    paddingVertical: 12,
     paddingHorizontal: 12,
+    gap: 6,
+    borderWidth: 1,
+  },
+  subsectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+    paddingHorizontal: 6,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
     gap: 12,
+    paddingHorizontal: 6,
   },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  rowLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
   },
-  separator: {
-    marginVertical: 30,
-    height: 1,
-    width: '80%',
-  },
-  devPanel: {
-    marginTop: 30,
-    width: '90%',
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: '#f1f1f5',
-    gap: 12,
-  },
-  panelTitle: {
-    fontSize: 16,
+  rowLabel: {
+    fontSize: 15,
     fontWeight: '600',
   },
-  panelButton: {
-    width: '100%',
+  rowValue: {
+    fontSize: 13,
+    fontWeight: '600',
   },
-  pickerCard: {
-    marginTop: 4,
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  rowDisabled: {
+    opacity: 0.45,
+  },
+  divider: {
+    height: 1,
+    marginHorizontal: 6,
+  },
+  groupDivider: {
+    height: 1,
+    marginVertical: 6,
+    marginHorizontal: 6,
+  },
+  accentPreview: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  iconBadge: {
+    width: 30,
+    height: 30,
     borderRadius: 12,
-    padding: 8,
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  fakeLabel: {
-    fontSize: 12,
-    color: '#555',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
+
+export default SettingsScreen;

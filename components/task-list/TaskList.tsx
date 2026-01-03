@@ -9,12 +9,12 @@ import {
   type ViewStyle,
 } from "react-native";
 import { Text } from "@/components/Themed";
-import { Memo } from "@legendapp/state/react";
+import { Memo, observer } from "@legendapp/state/react";
 import { FontAwesome5 } from "@expo/vector-icons";
 import moment from "moment";
 import HorizontalProgressBarPercentage from "@/components/custom_ui/HorizontalProgressBarPercentage";
 import { fmt } from "@/helpers/fmt";
-import { listTheme } from "@/constants/listTheme";
+import { getListTheme } from "@/constants/listTheme";
 import { activeTimer$ } from "@/utils/activeTimerStore";
 import { getDirtyEntry } from "@/utils/dirtyTaskStore";
 import {
@@ -124,14 +124,20 @@ const confirmSwap = (onStart: () => void, onStop: () => void) => {
   ]);
 };
 
+type TaskListStyles = ReturnType<typeof createStyles>;
+
 const TaskListSectionHeader = ({
   category,
   dateKey,
   variant,
+  styles,
+  listTheme,
 }: {
   category: number;
   dateKey: string;
   variant: TaskListVariant;
+  styles: TaskListStyles;
+  listTheme: ReturnType<typeof getListTheme>;
 }) => {
   return (
     <Memo>
@@ -204,12 +210,14 @@ const TaskListItem = ({
   variant,
   onPressItem,
   dateKey,
+  styles,
 }: {
   id: number;
   showDivider: boolean;
   variant: TaskListVariant;
   onPressItem?: (id: number) => void;
   dateKey: string;
+  styles: TaskListStyles;
 }) => {
   const showControls = variant === "home";
   return (
@@ -328,7 +336,7 @@ const TaskListItem = ({
   );
 };
 
-export const TaskList = ({
+export const TaskList = observer(({
   dateKey,
   variant,
   onPressItem,
@@ -336,8 +344,15 @@ export const TaskList = ({
   emptyContainerStyle,
   emptyText,
 }: TaskListProps) => {
+  const themePalette = colorTheme$.colorTheme.get();
+  const themeKey = themePalette.theme ?? "default";
+  const listTheme = getListTheme(
+    themePalette,
+    colorTheme$.nativeTheme.dark.get()
+  );
+  const styles = createStyles(listTheme);
   return (
-    <Memo>
+    <Memo key={themeKey}>
       {() => {
         const ids = tasks$.lists.byDate[dateKey]?.get?.() ?? [];
         const grouped = ids.reduce((acc, id) => {
@@ -371,7 +386,13 @@ export const TaskList = ({
           <View style={[styles.container, containerStyle]}>
             {entries.map(([catKey, listIds]) => (
               <View key={catKey} style={styles.sectionCard}>
-                <TaskListSectionHeader category={+catKey} dateKey={dateKey} variant={variant} />
+                <TaskListSectionHeader
+                  category={+catKey}
+                  dateKey={dateKey}
+                  variant={variant}
+                  styles={styles}
+                  listTheme={listTheme}
+                />
                 <View style={styles.categoryTaskList}>
                   {(listIds as number[]).map((taskId, idx, arr) => (
                     <TaskListItem
@@ -381,6 +402,7 @@ export const TaskList = ({
                       showDivider={idx !== arr.length - 1}
                       onPressItem={onPressItem}
                       dateKey={dateKey}
+                      styles={styles}
                     />
                   ))}
                 </View>
@@ -391,108 +413,109 @@ export const TaskList = ({
       }}
     </Memo>
   );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    padding: listTheme.spacing.containerPadding,
-    gap: listTheme.spacing.sectionGap,
-  },
-  sectionCard: {
-    backgroundColor: listTheme.colors.card,
-    borderRadius: listTheme.radii.section,
-    paddingVertical: listTheme.spacing.sectionPadding,
-    paddingHorizontal: listTheme.spacing.sectionPadding,
-    shadowOpacity: listTheme.shadow.shadowOpacity,
-    shadowRadius: listTheme.shadow.shadowRadius,
-    shadowOffset: listTheme.shadow.shadowOffset,
-    elevation: listTheme.shadow.elevation,
-    marginBottom: 18,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "baseline",
-    justifyContent: "space-between",
-    paddingHorizontal: listTheme.spacing.headerHorizontal,
-    paddingVertical: listTheme.spacing.headerVertical,
-  },
-  sectionTitle: {
-    fontSize: listTheme.typography.sectionTitleSize,
-    fontWeight: listTheme.typography.sectionTitleWeight as "700",
-    flexShrink: 1,
-    marginRight: 1,
-  },
-  sectionPercent: {
-    fontSize: listTheme.typography.sectionPercentSize,
-    fontWeight: listTheme.typography.sectionPercentWeight as "700",
-    color: listTheme.colors.secondaryText,
-  },
-  sectionTotals: {
-    fontSize: listTheme.typography.sectionTotalsSize,
-    fontWeight: listTheme.typography.sectionTotalsWeight as "700",
-    color: listTheme.colors.secondaryText,
-  },
-  categoryTaskList: {
-    borderRadius: listTheme.radii.inner,
-    overflow: "hidden",
-    backgroundColor: listTheme.colors.row,
-  },
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: listTheme.spacing.rowVertical,
-    paddingHorizontal: listTheme.spacing.rowHorizontal,
-    backgroundColor: listTheme.colors.row,
-  },
-  sectionDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: listTheme.colors.divider,
-    marginHorizontal: listTheme.spacing.rowHorizontal,
-  },
-  rowTitle: {
-    fontSize: listTheme.typography.rowTitleSize,
-    fontWeight: listTheme.typography.rowTitleWeight as "700",
-  },
-  rowSub: {
-    fontSize: listTheme.typography.rowSubSize,
-    color: listTheme.colors.subtleText,
-    marginTop: 2,
-  },
-  rowTime: {
-    textAlign: "right",
-    fontSize: listTheme.typography.rowTimeSize,
-    fontWeight: listTheme.typography.rowTimeWeight as "700",
-    color: "#111",
-  },
-  taskGoal: {
-    fontSize: listTheme.typography.taskGoalSize,
-    color: listTheme.colors.subtleText,
-    fontWeight: listTheme.typography.taskGoalWeight as "600",
-  },
-  rowPercent: {
-    fontSize: listTheme.typography.rowPercentSize,
-    color: listTheme.colors.subtleText,
-    marginTop: 2,
-  },
-  iconButton: {
-    width: listTheme.sizes.iconButton,
-    height: listTheme.sizes.iconButton,
-    borderRadius: listTheme.radii.iconButton,
-    marginRight: listTheme.spacing.iconGap,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  rowRight: {
-    alignItems: "flex-end",
-    gap: 4,
-  },
-  emptyView: {
-    paddingVertical: 40,
-    alignItems: "center",
-  },
-  emptyText: {
-    fontSize: listTheme.typography.emptySize,
-    color: listTheme.colors.emptyText,
-  },
 });
+
+const createStyles = (listTheme: ReturnType<typeof getListTheme>) =>
+  StyleSheet.create({
+    container: {
+      padding: listTheme.spacing.containerPadding,
+      gap: listTheme.spacing.sectionGap,
+    },
+    sectionCard: {
+      backgroundColor: listTheme.colors.card,
+      borderRadius: listTheme.radii.section,
+      paddingVertical: listTheme.spacing.sectionPadding,
+      paddingHorizontal: listTheme.spacing.sectionPadding,
+      shadowOpacity: listTheme.shadow.shadowOpacity,
+      shadowRadius: listTheme.shadow.shadowRadius,
+      shadowOffset: listTheme.shadow.shadowOffset,
+      elevation: listTheme.shadow.elevation,
+      marginBottom: 18,
+    },
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "baseline",
+      justifyContent: "space-between",
+      paddingHorizontal: listTheme.spacing.headerHorizontal,
+      paddingVertical: listTheme.spacing.headerVertical,
+    },
+    sectionTitle: {
+      fontSize: listTheme.typography.sectionTitleSize,
+      fontWeight: listTheme.typography.sectionTitleWeight as "700",
+      flexShrink: 1,
+      marginRight: 1,
+    },
+    sectionPercent: {
+      fontSize: listTheme.typography.sectionPercentSize,
+      fontWeight: listTheme.typography.sectionPercentWeight as "700",
+      color: listTheme.colors.secondaryText,
+    },
+    sectionTotals: {
+      fontSize: listTheme.typography.sectionTotalsSize,
+      fontWeight: listTheme.typography.sectionTotalsWeight as "700",
+      color: listTheme.colors.secondaryText,
+    },
+    categoryTaskList: {
+      borderRadius: listTheme.radii.inner,
+      overflow: "hidden",
+      backgroundColor: listTheme.colors.row,
+    },
+    row: {
+      flexDirection: "row",
+      alignItems: "center",
+      paddingVertical: listTheme.spacing.rowVertical,
+      paddingHorizontal: listTheme.spacing.rowHorizontal,
+      backgroundColor: listTheme.colors.row,
+    },
+    sectionDivider: {
+      height: StyleSheet.hairlineWidth,
+      backgroundColor: listTheme.colors.divider,
+      marginHorizontal: listTheme.spacing.rowHorizontal,
+    },
+    rowTitle: {
+      fontSize: listTheme.typography.rowTitleSize,
+      fontWeight: listTheme.typography.rowTitleWeight as "700",
+    },
+    rowSub: {
+      fontSize: listTheme.typography.rowSubSize,
+      color: listTheme.colors.subtleText,
+      marginTop: 2,
+    },
+    rowTime: {
+      textAlign: "right",
+      fontSize: listTheme.typography.rowTimeSize,
+      fontWeight: listTheme.typography.rowTimeWeight as "700",
+      color: listTheme.colors.text,
+    },
+    taskGoal: {
+      fontSize: listTheme.typography.taskGoalSize,
+      color: listTheme.colors.subtleText,
+      fontWeight: listTheme.typography.taskGoalWeight as "600",
+    },
+    rowPercent: {
+      fontSize: listTheme.typography.rowPercentSize,
+      color: listTheme.colors.subtleText,
+      marginTop: 2,
+    },
+    iconButton: {
+      width: listTheme.sizes.iconButton,
+      height: listTheme.sizes.iconButton,
+      borderRadius: listTheme.radii.iconButton,
+      marginRight: listTheme.spacing.iconGap,
+      backgroundColor: listTheme.colors.iconButton,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    rowRight: {
+      alignItems: "flex-end",
+      gap: 4,
+    },
+    emptyView: {
+      paddingVertical: 40,
+      alignItems: "center",
+    },
+    emptyText: {
+      fontSize: listTheme.typography.emptySize,
+      color: listTheme.colors.emptyText,
+    },
+  });

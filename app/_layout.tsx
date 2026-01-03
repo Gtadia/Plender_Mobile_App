@@ -5,7 +5,7 @@ import { clearEvents, eventsType, getEventsForDate, initializeDB } from '@/utils
 import { useBackNavOverride } from '@/utils/useBackNavOverride';
 import { Toast } from '@/components/animation-toast/components';
 import { toastShow$ } from '@/components/animation-toast/toastStore';
-import { ensureCategoriesHydrated, loadDay, tasks$ } from '@/utils/stateManager';
+import { ensureCategoriesHydrated, ensureSettingsHydrated, ensureStylingHydrated, loadDay, tasks$ } from '@/utils/stateManager';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import dayjs from 'dayjs';
@@ -19,14 +19,11 @@ export default function TabLayout() {
   initializeDB();
   useBackNavOverride();   // Overrides default back behavior of Android
 
-  // Set dayjs timezone
-  const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  dayjs.tz.setDefault(localZone);
-  console.log("Default timezone set to:", localZone);
-
   // Load Today's Event's
   console.log("Initialize DB cache")
   ensureCategoriesHydrated().catch((err) => console.warn("Failed to hydrate categories", err));
+  ensureStylingHydrated().catch((err) => console.warn("Failed to hydrate styling", err));
+  ensureSettingsHydrated().catch((err) => console.warn("Failed to hydrate settings", err));
   // getEventsForDate(new Date()).then((events) => {
   //   Today$.set(events);
   // })
@@ -60,6 +57,22 @@ export default function TabLayout() {
           headerShown: false,
           presentation: "transparentModal",
           animation: "fade",
+        }}/>
+        <Stack.Screen name="settingsThemeSelect" options={{
+          headerShown: false,
+          animation: "slide_from_right",
+        }}/>
+        <Stack.Screen name="settingsAccentSelect" options={{
+          headerShown: false,
+          animation: "slide_from_right",
+        }}/>
+        <Stack.Screen name="settingsWeekStartSelect" options={{
+          headerShown: false,
+          animation: "slide_from_right",
+        }}/>
+        <Stack.Screen name="settingsTimezoneSelect" options={{
+          headerShown: false,
+          animation: "slide_from_right",
         }}/>
       </Stack>
 

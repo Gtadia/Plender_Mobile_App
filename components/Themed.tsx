@@ -5,6 +5,7 @@
 
 import { colorTheme$, styling$ } from '@/utils/stateManager';
 import { Text as DefaultText, View as DefaultView } from 'react-native';
+import { observer } from '@legendapp/state/react';
 
 // import { useColorScheme } from './useColorScheme';
 import { useColorScheme } from 'react-native';
@@ -22,10 +23,10 @@ export type TextProps = TextTheme & DefaultText['props'];
 export type ViewProps = ThemeProps & DefaultView['props'];
 
 
-export function Text(props: TextProps) {
+export const Text = observer((props: TextProps) => {
   const { style, fontColor, fontSize, ...otherProps } = props;
   const extraStyle = {
-    color: fontColor || colorTheme$.nativeTheme.colors.text.get(),
+    color: fontColor || colorTheme$.colors.text.get(),
     fontSize: 16
   };
 
@@ -39,8 +40,12 @@ export function Text(props: TextProps) {
       extraStyle.color = colorTheme$.colors.subtext1.get();
       break;
     }
+    case 'strong': {
+      extraStyle.color = colorTheme$.colors.textStrong.get();
+      break;
+    }
     default: {
-      extraStyle.color = colorTheme$.nativeTheme.colors.text.get();
+      extraStyle.color = colorTheme$.colors.text.get();
       break;
     }
   }
@@ -58,9 +63,9 @@ export function Text(props: TextProps) {
   }
 
   return <DefaultText style={[extraStyle, style]} {...otherProps} />;
-}
+});
 
-export function ScreenView(props: ViewProps) {
+export const ScreenView = observer((props: ViewProps) => {
   const { style, radius, ...otherProps } = props;
 
   const screenTheme = {
@@ -69,4 +74,4 @@ export function ScreenView(props: ViewProps) {
   }
 
   return <DefaultView style={[ screenTheme, style]} {...otherProps} />;
-}
+});
