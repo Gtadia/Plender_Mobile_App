@@ -16,16 +16,26 @@
 
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useEffect } from 'react'
-import { useNavigation } from 'expo-router'
+import { useNavigation, useRouter } from 'expo-router'
 import { task$ } from './create'
 import { Memo } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
-import { themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateManager';
+import { BlurView } from 'expo-blur';
+import { styling$, themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateManager';
 import { updateEvent } from '@/utils/database';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 // import Picker from '@/components/TimeCarousel/Picker';
 // import { Picker } from 'react-native-wheel-pick';
 import Picker from '@/components/TimeCarousel/Picker';
+
+const withOpacity = (hex: string, opacity: number) => {
+  const normalized = hex.replace('#', '');
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
 // -------------------------------------------------------------
 // Observable: time selection state (hours/minutes)
@@ -55,10 +65,19 @@ const hours = new Array(24).fill(0).map((_, index) => (index));
 // -------------------------------------------------------------
 const TimeGoalSelectSheet = () => {
   const navigation = useNavigation();
+  const router = useRouter();
   const { width, height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
-  const isDark = themeTokens$.isDark.get();
+  const { palette, colors, isDark } = themeTokens$.get();
+  const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
+  const containerBackground = palette.surface1;
+  const cardBackground = palette.surface0;
+  const borderColor = withOpacity(palette.overlay0, isDark ? 0.45 : 0.25);
+  const textColor = colors.text;
+  const mutedText = colors.subtext0;
+  const pickerTextStyle = { primaryColor: colors.text, secondaryColor: colors.subtext1 };
+  const pickerPill = withOpacity(palette.overlay0, isDark ? 0.4 : 0.2);
   const editingId = timeGoalEdit$.taskId.get();
   const isEditing = editingId !== null && editingId !== undefined;
 
@@ -74,12 +93,26 @@ const TimeGoalSelectSheet = () => {
     translateY.value = withTiming(0, { duration: 260 });
   }, [translateY]);
 
+  const closingRef = React.useRef(false);
+
   const closeSheet = () => {
-    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
-      if (finished) {
-        runOnJS(() => navigation.goBack())();
+    if (closingRef.current) return;
+    closingRef.current = true;
+    translateY.value = withTiming(height, { duration: 220 });
+    setTimeout(() => {
+      try {
+        if (typeof (router as any).canGoBack === "function") {
+          if ((router as any).canGoBack()) {
+            router.back();
+            return;
+          }
+        }
+        (navigation as any).goBack?.();
+      } catch (err) {
+        console.warn("Failed to close time goal sheet", err);
+        closingRef.current = false;
       }
-    });
+    }, 230);
   };
 
   const sheetStyle = useAnimatedStyle(() => ({
@@ -87,7 +120,19 @@ const TimeGoalSelectSheet = () => {
   }));
 
   return (
-    <View style={[styles.flex1, { backgroundColor: overlayColor }]}>
+    <View style={styles.overlay}>
+      {blurEnabled ? (
+        <BlurView
+          tint={isDark ? "dark" : "light"}
+          intensity={40}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
+      />
       {/* Tap outside to dismiss */}
       <Pressable
         onPress={() => {
@@ -100,7 +145,13 @@ const TimeGoalSelectSheet = () => {
       />
 
       {/* Sheet container (dynamic height preserved) */}
-      <Animated.View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle ]}>
+      <Animated.View
+        style={[
+          styles.container,
+          { height: height * 6 / 8, minHeight: 500, backgroundColor: containerBackground },
+          sheetStyle,
+        ]}
+      >
         {/* Header: Back / Title / Done */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -112,26 +163,36 @@ const TimeGoalSelectSheet = () => {
               closeSheet();
             }}
           >
-            <Text>Back</Text>
+            <Text style={{ color: textColor }}>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Select Goal</Text>
+          <Text style={[styles.title, { color: textColor }]}>Select Goal</Text>
           <TouchableOpacity
             style={styles.button}
             onPress={async () => {
               const totalSeconds = time$.hours.get() * 3600 + time$.minutes.get() * 60;
-              if (isEditing) {
-                const id = editingId!;
-                tasks$.entities[id].timeGoal.set(totalSeconds);
-                await updateEvent({ id, timeGoal: totalSeconds });
+              try {
+                if (isEditing) {
+                  const id = editingId!;
+                  const node = tasks$.entities[id];
+                  if (node) {
+                    node.timeGoal.set(totalSeconds);
+                    await updateEvent({ id, timeGoal: totalSeconds });
+                  } else {
+                    task$.timeGoal.set(totalSeconds);
+                  }
+                  timeGoalEdit$.taskId.set(null);
+                } else {
+                  task$.timeGoal.set(totalSeconds);
+                }
+                console.log("The time has been sent: ", time$.hours.get(), time$.minutes.get(), totalSeconds);
+                closeSheet();
+              } catch (err) {
+                console.warn("Failed to apply time goal", err);
                 timeGoalEdit$.taskId.set(null);
-              } else {
-                task$.timeGoal.set(totalSeconds);
               }
-              console.log("The time has been sent: ", time$.hours.get(), time$.minutes.get(), totalSeconds);
-              closeSheet();
             }}
           >
-            <Text>Done</Text>
+            <Text style={{ color: textColor }}>Done</Text>
           </TouchableOpacity>
         </View>
 
@@ -153,10 +214,16 @@ const TimeGoalSelectSheet = () => {
                   return (
                     <>
                       {/* Card: label + current selection + pickers */}
-                      <View style={[styles.subMenuSquare, styles.subMenuSquarePadding]}>
+                      <View
+                        style={[
+                          styles.subMenuSquare,
+                          styles.subMenuSquarePadding,
+                          { backgroundColor: cardBackground, borderColor, borderWidth: 1 },
+                        ]}
+                      >
                         <View style={styles.subMenuBar}>
-                          <Text style={styles.menuText}>Time Goal</Text>
-                          <Text style={styles.menuTextEnd}>{goalString}</Text>
+                          <Text style={[styles.menuText, { color: textColor }]}>Time Goal</Text>
+                          <Text style={[styles.menuTextEnd, { color: mutedText }]}>{goalString}</Text>
                         </View>
 
                         <View style={styles.max380}>
@@ -172,6 +239,8 @@ const TimeGoalSelectSheet = () => {
                               enableSelectBox={true}
                               ITEM_HEIGHT={34}
                               VISIBLE_ITEMS={5}
+                              textStyle={pickerTextStyle}
+                              pillColor={pickerPill}
                             />
                             {/* Minutes picker */}
                             <Picker
@@ -182,6 +251,8 @@ const TimeGoalSelectSheet = () => {
                               enableSelectBox={true}
                               ITEM_HEIGHT={34}
                               VISIBLE_ITEMS={5}
+                              textStyle={pickerTextStyle}
+                              pillColor={pickerPill}
                             />
                             {/* <View style={styles.pill} /> */}
                           </View>
@@ -207,6 +278,7 @@ export default TimeGoalSelectSheet
 // -------------------------------------------------------------
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
+  overlay: { flex: 1, backgroundColor: "transparent" },
 
   // Outside tap area
   background: {

@@ -35,15 +35,18 @@ import {
   ensureCategoriesHydrated,
   taskDetailsSheet$,
   tasks$,
+  styling$,
   themeTokens$,
 } from '@/utils/stateManager';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { BlurView } from 'expo-blur';
 
 export default function CategoryCreateSheet() {
   const navigation = useNavigation();
   const { width, height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const isDark = themeTokens$.isDark.get();
+  const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const newCategory$ = useObservable({
     label: '',
@@ -73,7 +76,19 @@ export default function CategoryCreateSheet() {
   }));
 
   return (
-    <View style={{ flex: 1, backgroundColor: overlayColor }}>
+    <View style={styles.overlay}>
+      {blurEnabled ? (
+        <BlurView
+          tint={isDark ? "dark" : "light"}
+          intensity={40}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
+      />
       <Pressable onPress={closeSheet} style={styles.background} />
       <Animated.View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle ]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width:"100%", marginBottom: 15}}>
@@ -171,6 +186,10 @@ export default function CategoryCreateSheet() {
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
   background: {
     backgroundColor: 'transparent',
     flex: 1,

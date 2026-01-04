@@ -43,7 +43,7 @@ import {
 import { Memo, Show } from "@legendapp/state/react";
 import moment from "moment";
 import { RRule } from "rrule";
-import { Category$, loadDay, tasks$, themeTokens$ } from "@/utils/stateManager";
+import { Category$, loadDay, styling$, tasks$, themeTokens$ } from "@/utils/stateManager";
 import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -55,12 +55,22 @@ import { Toast } from "@/components/animation-toast/components";
 import { toastShow$ } from "@/components/animation-toast/toastStore";
 import { clearEvents, createEvent, getEventsForDate } from "@/utils/database";
 import { useFocusEffect } from "@react-navigation/native";
+import { BlurView } from "expo-blur";
 
 interface categoryItem {
   label: string;
   color: string;
   id: number;
 }
+
+const withOpacity = (hex: string, opacity: number) => {
+  const normalized = hex.replace("#", "");
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
 // -------------------------------------------------------------
 // Global observable state for the new task
@@ -100,15 +110,20 @@ const CategoryPopup = ({
   position?: { bottom?: number; left?: number; right?: number; top?: number };
 }) => {
   const router = useRouter();
+  const { palette, colors, isDark } = themeTokens$.get();
+  const mutedText = colors.subtext0;
+  const cardBorder = withOpacity(palette.overlay0, isDark ? 0.35 : 0.25);
 
   // Localized styles for the popup card
   const categoryStyles = StyleSheet.create({
     card: {
-      backgroundColor: "white",
+      backgroundColor: palette.surface1,
       borderRadius: 10,
       paddingHorizontal: 18,
       paddingVertical: 10,
       maxHeight: 320,
+      borderWidth: 1,
+      borderColor: cardBorder,
       // shadow
       shadowColor: "#000",
       shadowOpacity: 0.12,
@@ -123,7 +138,7 @@ const CategoryPopup = ({
       alignItems: 'center',
       flexDirection: 'row',
     },
-    label: { fontSize: 16, color: "#111" },
+    label: { fontSize: 16, color: colors.text },
     createCategory: {
       flexDirection: "row",
       alignContent: "center",
@@ -194,16 +209,16 @@ const CategoryPopup = ({
                 ]}
                 onPress={() => {
                   console.log("Creating a new Cateogry");
-                  router.push("/categoryCreateSheet");
+                  router.push("/(tasks)/categoryCreateSheet");
                 }}
               >
                 {/* <View> */}
                 <AntDesign
                   name="addfile"
                   size={16}
-                  color={"rgba(0, 0, 0, 0.3)"}
+                  color={mutedText}
                 />
-                <Text style={[categoryStyles.label, { marginLeft: 5 }]}>
+                <Text style={[categoryStyles.label, { marginLeft: 5, color: mutedText }]}>
                   Add Category
                 </Text>
                 {/* </View> */}
@@ -227,8 +242,14 @@ const create = () => {
   const router = useRouter();
   let { height } = Dimensions.get("window");
   const titleRef = React.useRef<any>(null);
-  const isDark = themeTokens$.isDark.get();
+  const { palette, colors, isDark } = themeTokens$.get();
+  const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
+  const actionBorder = withOpacity(palette.overlay0, isDark ? 0.5 : 0.35);
+  const actionTextColor = colors.subtext0;
+  const cardBackground = palette.surface1;
+  const submitBackground = colors.accent;
+  const submitIconColor = colors.textStrong;
 
   // Keep keyboard visible by refocusing the title when it hides
   React.useEffect(() => {
@@ -239,7 +260,19 @@ const create = () => {
   }, []);
 
   return (
-    <View style={[styles.overlay, { backgroundColor: overlayColor }]}>
+    <View style={styles.overlay}>
+      {blurEnabled ? (
+        <BlurView
+          tint={isDark ? "dark" : "light"}
+          intensity={40}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
+      />
       <TouchableWithoutFeedback
         onPress={Keyboard.dismiss}
         accessible={false}
@@ -257,25 +290,25 @@ const create = () => {
       >
         <ScrollView keyboardShouldPersistTaps={"always"} scrollEnabled={false}>
           {/* Card container */}
-          <View style={styles.cardContainer}>
+          <View style={[styles.cardContainer, { backgroundColor: cardBackground }]}>
             {/* Title */}
             <$TextInput
               $value={task$.title}
-              style={styles.textInput}
+              style={[styles.textInput, { color: colors.text }]}
               autoFocus={true}
               multiline
               placeholder={"Task Name"}
-              placeholderTextColor={"rgba(0, 0, 0, 0.5)"}
+              placeholderTextColor={colors.subtext1}
               ref={titleRef}
             />
 
             {/* Description */}
             <$TextInput
               $value={task$.description}
-              style={[styles.textInput, styles.description]}
+              style={[styles.textInput, styles.description, { color: colors.text }]}
               multiline
               placeholder="Description"
-              placeholderTextColor={"rgba(0, 0, 0, 0.4)"}
+              placeholderTextColor={colors.subtext1}
             />
 
             {/* Actions row: date, time goal, category + submit */}
@@ -288,9 +321,9 @@ const create = () => {
                 <View style={styles.actions}>
                   {/* Date / Recurrence */}
                   <TouchableOpacity
-                    style={styles.actionButton}
+                    style={[styles.actionButton, { borderColor: actionBorder }]}
                     onPress={() => {
-                      router.push("/dateSelectSheet");
+                      router.push("/(tasks)/dateSelectSheet");
                     }}
                   >
                     <Memo>
@@ -332,9 +365,9 @@ const create = () => {
                             <AntDesign
                               name="calendar"
                               size={15}
-                              color="rgba(0, 0, 0, 0.75)"
+                              color={actionTextColor}
                             />
-                            <Text style={styles.actionText}>Date</Text>
+                            <Text style={[styles.actionText, { color: actionTextColor }]}>Date</Text>
                           </>
                         );
                       }}
@@ -343,9 +376,9 @@ const create = () => {
 
                   {/* Time Goal */}
                   <TouchableOpacity
-                    style={styles.actionButton}
+                    style={[styles.actionButton, { borderColor: actionBorder }]}
                     onPress={() => {
-                      router.push("/timeGoalSelectSheet");
+                      router.push("/(tasks)/timeGoalSelectSheet");
                     }}
                   >
                     <Memo>
@@ -373,9 +406,9 @@ const create = () => {
                             <AntDesign
                               name="clockcircleo"
                               size={15}
-                              color="rgba(0, 0, 0, 0.75)"
+                              color={actionTextColor}
                             />
-                            <Text style={styles.actionText}>Time Goal</Text>
+                            <Text style={[styles.actionText, { color: actionTextColor }]}>Time Goal</Text>
                           </>
                         );
                       }}
@@ -384,7 +417,7 @@ const create = () => {
 
                   {/* Category */}
                   <TouchableOpacity
-                    style={styles.actionButton}
+                    style={[styles.actionButton, { borderColor: actionBorder }]}
                     onPress={() => {
                       categoryPopup$.set((prev) => !prev);
                       console.log(categoryPopup$.get());
@@ -421,9 +454,9 @@ const create = () => {
                             <AntDesign
                               name="flag"
                               size={15}
-                              color="rgba(0, 0, 0, 0.75)"
+                              color={actionTextColor}
                             />
-                            <Text style={styles.actionText}>Category</Text>
+                            <Text style={[styles.actionText, { color: actionTextColor }]}>Category</Text>
                           </>
                         );
                       }}
@@ -439,7 +472,7 @@ const create = () => {
 
               {/* Submit button (currently logs; TODO hook to DB) */}
               <TouchableOpacity
-                style={styles.submitButton}
+                style={[styles.submitButton, { backgroundColor: submitBackground }]}
                 onPress={async () => {
                   const ok = await addToDatabase();
                   if (ok && toastShow$.whereToDisplay.get() === 0) {
@@ -447,7 +480,7 @@ const create = () => {
                   }
                 }}
               >
-                <Entypo name="arrow-up" size={20} color="white" />
+                <Entypo name="arrow-up" size={20} color={submitIconColor} />
               </TouchableOpacity>
             </View>
           </View>
@@ -590,7 +623,7 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
 
-  // The white card body holding inputs and actions
+  // The card body holding inputs and actions
   cardContainer: {
     height: "auto",
     maxWidth: 500,

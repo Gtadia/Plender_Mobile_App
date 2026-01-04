@@ -4,7 +4,7 @@ import { Text, ScreenView } from '@/components/Themed';
 import { observer } from '@legendapp/state/react';
 import { AntDesign } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { settings$, themeTokens$ } from '@/utils/stateManager';
+import { settings$, styling$, themeTokens$ } from '@/utils/stateManager';
 import { themeOptions } from '@/constants/themes';
 import { ScreenHeader } from '@/components/ScreenHeader';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
@@ -33,6 +33,7 @@ const SettingsScreen = observer(() => {
   const themeKey = settings$.personalization.theme.get();
   const { palette, colors, isDark } = themeTokens$.get();
   const accent = colors.accent;
+  const blurEnabled = styling$.tabBarBlurEnabled.get();
   const themeLabel = themeOptions.find((option) => option.key === themeKey)?.label ?? "Light";
 
   const subtext0 = colors.subtext0;
@@ -164,6 +165,24 @@ const SettingsScreen = observer(() => {
                 <AntDesign name="right" size={14} color={subtext0} />
               </View>
             </Pressable>
+          </SettingsCard>
+
+          <SettingsCard style={styles.card}>
+            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Extra Features</Text>
+            <View style={styles.row}>
+              <View style={styles.rowLeft}>
+                <RowIcon name="filter" />
+                <Text style={styles.rowLabel} fontColor="strong">
+                  Blur Backgrounds
+                </Text>
+              </View>
+              <Switch
+                value={blurEnabled}
+                onValueChange={(value) => styling$.tabBarBlurEnabled.set(value)}
+                trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                thumbColor={blurEnabled ? accent : palette.surface0}
+              />
+            </View>
           </SettingsCard>
         </View>
 

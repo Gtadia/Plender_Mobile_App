@@ -27,7 +27,7 @@ import {
   View,
 } from "react-native";
 import React, { useEffect } from "react";
-import { useNavigation } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import moment from "moment";
 import { AntDesign } from "@expo/vector-icons";
 import { task$ } from "./create";
@@ -37,8 +37,9 @@ import { observable } from "@legendapp/state";
 import { Picker } from "react-native-wheel-pick";
 import RNDateTimePicker from "@react-native-community/datetimepicker";
 import { DateTime } from "luxon";
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
-import { themeTokens$ } from "@/utils/stateManager";
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { BlurView } from "expo-blur";
+import { styling$, themeTokens$ } from "@/utils/stateManager";
 
 // -------------------------------------------------------------
 // Observable state for repeat settings
@@ -75,6 +76,15 @@ const dayOfWeekRrule = [
   RRule.FR,
   RRule.SA,
 ];
+
+const withOpacity = (hex: string, opacity: number) => {
+  const normalized = hex.replace("#", "");
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
 // -------------------------------------------------------------
 // Build & set RRule into task$
@@ -133,10 +143,19 @@ const AddRrule = () => {
 // -------------------------------------------------------------
 const DateSelectSheet = () => {
   const navigation = useNavigation();
+  const router = useRouter();
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
-  const isDark = themeTokens$.isDark.get();
+  const { palette, colors, isDark } = themeTokens$.get();
+  const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
+  const containerBackground = palette.surface1;
+  const cardBackground = palette.surface0;
+  const borderColor = withOpacity(palette.overlay0, isDark ? 0.45 : 0.25);
+  const textColor = colors.text;
+  const mutedText = colors.subtext0;
+  const pickerLine = withOpacity(colors.text, isDark ? 0.25 : 0.2);
+  const cardStyle = { backgroundColor: cardBackground, borderColor, borderWidth: 1 };
 
   // Default: repeat on current day of the week
   repeat$.weeks[moment().day()].set(true);
@@ -145,12 +164,26 @@ const DateSelectSheet = () => {
     translateY.value = withTiming(0, { duration: 260 });
   }, [translateY]);
 
+  const closingRef = React.useRef(false);
+
   const closeSheet = () => {
-    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
-      if (finished) {
-        runOnJS(() => navigation.goBack())();
+    if (closingRef.current) return;
+    closingRef.current = true;
+    translateY.value = withTiming(height, { duration: 220 });
+    setTimeout(() => {
+      try {
+        if (typeof (router as any).canGoBack === "function") {
+          if ((router as any).canGoBack()) {
+            router.back();
+            return;
+          }
+        }
+        (navigation as any).goBack?.();
+      } catch (err) {
+        console.warn("Failed to close date sheet", err);
+        closingRef.current = false;
       }
-    });
+    }, 230);
   };
 
   const sheetStyle = useAnimatedStyle(() => ({
@@ -158,12 +191,28 @@ const DateSelectSheet = () => {
   }));
 
   return (
-    <View style={{ flex: 1, backgroundColor: overlayColor }}>
+    <View style={styles.overlay}>
+      {blurEnabled ? (
+        <BlurView
+          tint={isDark ? "dark" : "light"}
+          intensity={40}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
+      />
       {/* Click outside to dismiss */}
       <Pressable onPress={closeSheet} style={styles.background} />
 
       <Animated.View
-        style={[styles.container, { height: (height * 6) / 8, minHeight: 500 }, sheetStyle]}
+        style={[
+          styles.container,
+          { height: (height * 6) / 8, minHeight: 500, backgroundColor: containerBackground },
+          sheetStyle,
+        ]}
       >
         {/* Header: Back / Title / Done */}
         <View style={styles.header}>
@@ -171,17 +220,21 @@ const DateSelectSheet = () => {
             style={styles.button}
             onPress={closeSheet}
           >
-            <Text>Back</Text>
+            <Text style={{ color: textColor }}>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Select Date</Text>
+          <Text style={[styles.title, { color: textColor }]}>Select Date</Text>
           <TouchableOpacity
             style={styles.button}
             onPress={() => {
-              AddRrule();
-              closeSheet();
+              try {
+                AddRrule();
+                closeSheet();
+              } catch (err) {
+                console.warn("Failed to apply date rule", err);
+              }
             }}
           >
-            <Text>Done</Text>
+            <Text style={{ color: textColor }}>Done</Text>
           </TouchableOpacity>
         </View>
 
@@ -190,7 +243,7 @@ const DateSelectSheet = () => {
           <View style={{ alignItems: "center" }}>
             <View style={{ maxWidth: 400, alignSelf: "center" }}>
               {/* Start Date Picker */}
-              <View style={styles.subMenuSquare}>
+              <View style={[styles.subMenuSquare, cardStyle]}>
                 <View
                   style={[
                     styles.subMenuBar,
@@ -198,15 +251,18 @@ const DateSelectSheet = () => {
                     { alignItems: "center" },
                   ]}
                 >
-                  <Text style={styles.menuText}>Start Date</Text>
+                  <Text style={[styles.menuText, { color: textColor }]}>Start Date</Text>
                   {/* dayjs(date).startOf('day') uses startOf in order to keep up with local time zone and not get stuck on UTC */}
                   <RNDateTimePicker
                     mode="date"
                     display="compact"
+                    textColor={textColor}
                     // design="material"
                     value={repeat$.startsOn.get().toDate()}
                     onChange={(e, date) => {
-                      repeat$.startsOn.set(moment(date));
+                      if (date) {
+                        repeat$.startsOn.set(moment(date));
+                      }
                     }}
                   />
                 </View>
@@ -218,9 +274,9 @@ const DateSelectSheet = () => {
                   <AntDesign
                     name="retweet"
                     size={20}
-                    color={"rgba(0, 0, 0, 0.75)"}
+                    color={mutedText}
                   />
-                  <Text style={[styles.menuText, styles.subMenuText]}>
+                  <Text style={[styles.menuText, styles.subMenuText, { color: textColor }]}>
                     Repeat
                   </Text>
                 </View>
@@ -243,17 +299,19 @@ const DateSelectSheet = () => {
                         style={[
                           styles.subMenuSquare,
                           styles.subMenuSquarePadding,
+                          cardStyle,
                         ]}
                       >
                         <View style={styles.subMenuBar}>
-                          <Text style={styles.menuText}>Every</Text>
-                          <Text style={styles.menuTextEnd}>{repeatValue}</Text>
+                          <Text style={[styles.menuText, { color: textColor }]}>Every</Text>
+                          <Text style={[styles.menuTextEnd, { color: mutedText }]}>{repeatValue}</Text>
                         </View>
                         <View style={{ flexDirection: "row" }}>
                           {/* Number Picker */}
                           <Picker
-                            style={styles.picker}
-                            itemStyle={styles.pickerItem}
+                            style={[styles.picker, { backgroundColor: cardBackground }]}
+                            itemStyle={[styles.pickerItem, { color: textColor }]}
+                            textColor={textColor}
                             selectedValue={repeat$.num.get()}
                             pickerData={values}
                             onValueChange={(value: string) => {
@@ -273,10 +331,11 @@ const DateSelectSheet = () => {
                           {/* Type Picker */}
                           <Picker
                             isShowSelectLine={false}
-                            selectLineColor="black"
+                            selectLineColor={pickerLine}
                             selectLineSize={6}
-                            style={styles.picker}
-                            itemStyle={styles.pickerItem}
+                            style={[styles.picker, { backgroundColor: cardBackground }]}
+                            itemStyle={[styles.pickerItem, { color: textColor }]}
+                            textColor={textColor}
                             selectedValue={repeat$.type.get()}
                             pickerData={types}
                             onValueChange={(value: string) => {
@@ -298,10 +357,11 @@ const DateSelectSheet = () => {
                       <Show if={repeat$.isWeeks} else={() => <></>}>
                         {() => (
                           <>
-                            <Text>ON</Text>
+                            <Text style={{ color: mutedText }}>ON</Text>
                             <View
                               style={[
                                 styles.subMenuSquare,
+                                cardStyle,
                                 { flexDirection: "row", overflow: "hidden" },
                               ]}
                             >
@@ -312,7 +372,7 @@ const DateSelectSheet = () => {
                                     styles.weekDayButton,
                                     {
                                       backgroundColor: repeat$.weeks[i].get()
-                                        ? "rgba(200, 0, 0, 0.75)"
+                                        ? colors.accent
                                         : "transparent",
                                     },
                                   ]}
@@ -326,7 +386,9 @@ const DateSelectSheet = () => {
                                     }
                                   }}
                                 >
-                                  <Text>{d}</Text>
+                                  <Text style={{ color: repeat$.weeks[i].get() ? colors.textStrong : mutedText }}>
+                                    {d}
+                                  </Text>
                                 </TouchableOpacity>
                               ))}
                             </View>
@@ -338,8 +400,8 @@ const DateSelectSheet = () => {
                       <Show if={repeat$.isRepeat} else={() => <></>}>
                         {() => (
                           <>
-                            <Text>ENDS</Text>
-                            <View style={styles.subMenuSquare}>
+                            <Text style={{ color: mutedText }}>ENDS</Text>
+                            <View style={[styles.subMenuSquare, cardStyle]}>
                               {/* Never option */}
                               <TouchableOpacity
                                 style={[
@@ -348,14 +410,14 @@ const DateSelectSheet = () => {
                                 ]}
                                 onPress={() => repeat$.endsOnMode.set(false)}
                               >
-                                <Text style={styles.menuText}>Never</Text>
+                                <Text style={[styles.menuText, { color: textColor }]}>Never</Text>
                                 <Memo>
                                   {() =>
                                     !repeat$.endsOnMode.get() && (
                                       <AntDesign
                                         name="check"
                                         size={18}
-                                        color="rgba(200, 0, 0, 0.75)"
+                                        color={colors.accent}
                                       />
                                     )
                                   }
@@ -371,7 +433,7 @@ const DateSelectSheet = () => {
                                 ]}
                                 onPress={() => repeat$.endsOnMode.set(true)}
                               >
-                                <Text style={styles.menuText}>On Date</Text>
+                                <Text style={[styles.menuText, { color: textColor }]}>On Date</Text>
                                 <View
                                   style={{
                                     flexDirection: "row",
@@ -385,13 +447,14 @@ const DateSelectSheet = () => {
                                     <RNDateTimePicker
                                       mode="date"
                                       display="compact"
+                                      textColor={textColor}
                                       // design="material"
                                       value={repeat$.endsOn.get().toDate()}
-                                      onChange={(e, date) =>
-                                        repeat$.endsOn.set(
-                                          moment(date)
-                                        )
-                                      }
+                                      onChange={(e, date) => {
+                                        if (date) {
+                                          repeat$.endsOn.set(moment(date));
+                                        }
+                                      }}
                                     />
                                   </Show>
                                   <Memo>
@@ -400,7 +463,7 @@ const DateSelectSheet = () => {
                                         <AntDesign
                                           name="check"
                                           size={18}
-                                          color="rgba(200, 0, 0, 0.75)"
+                                          color={colors.accent}
                                         />
                                       )
                                     }
@@ -429,6 +492,7 @@ export default DateSelectSheet;
 // Styles
 // -------------------------------------------------------------
 const styles = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: "transparent" },
   background: { backgroundColor: "transparent", flex: 1 },
   title: { fontWeight: "500", fontSize: 15 },
   container: { backgroundColor: "#F2F2F7", padding: 15, alignItems: "center" },

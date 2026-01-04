@@ -6,6 +6,8 @@ export default function TasksLayout() {
     <Stack
       screenOptions={{
         headerShown: false,
+        presentation: "transparentModal",
+        animation: "fade",
         contentStyle: { backgroundColor: "transparent" },
       }}
     />

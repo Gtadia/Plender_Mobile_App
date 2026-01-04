@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { $TextInput } from '@legendapp/state/react-native';
-import { themeTokens$ } from '@/utils/stateManager';
+import { BlurView } from 'expo-blur';
+import { styling$, themeTokens$ } from '@/utils/stateManager';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 export default function TaskEditView() {
@@ -10,6 +11,7 @@ export default function TaskEditView() {
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const isDark = themeTokens$.isDark.get();
+  const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
 
   useEffect(() => {
@@ -29,7 +31,19 @@ export default function TaskEditView() {
   }));
 
   return (
-    <View style={{ flex: 1, backgroundColor: overlayColor }}>
+    <View style={styles.overlay}>
+      {blurEnabled ? (
+        <BlurView
+          tint={isDark ? "dark" : "light"}
+          intensity={40}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
+      />
       <Pressable onPress={closeSheet} style={styles.background} />
       <Animated.View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle ]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width:"100%", marginBottom: 15}}>
@@ -75,6 +89,10 @@ export default function TaskEditView() {
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "transparent",
+  },
   background: {
     backgroundColor: 'transparent',
     flex: 1,

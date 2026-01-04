@@ -19,6 +19,7 @@ import moment from "moment";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { BlurView } from "expo-blur";
 
 import { Text } from "@/components/Themed";
 import { fmt } from "@/helpers/fmt";
@@ -33,6 +34,7 @@ import {
   taskDetailsSheet$,
   timeGoalEdit$,
   tasks$,
+  styling$,
   themeTokens$,
 } from "@/utils/stateManager";
 import { clearDirtyTask } from "@/utils/dirtyTaskStore";
@@ -42,6 +44,7 @@ export default function TaskDetailsSheet() {
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const isDark = themeTokens$.isDark.get();
+  const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
 
   useEffect(() => {
@@ -66,7 +69,19 @@ export default function TaskDetailsSheet() {
   }));
 
   return (
-    <View style={[styles.overlay, { backgroundColor: overlayColor }]}>
+    <View style={styles.overlay}>
+      {blurEnabled ? (
+        <BlurView
+          tint={isDark ? "dark" : "light"}
+          intensity={40}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
+      />
       <Pressable onPress={closeSheet} style={styles.background} />
 
       <View style={styles.kav}>
@@ -298,7 +313,7 @@ const TaskDetailsContent = observer(() => {
                         <TouchableOpacity
                           onPress={() => {
                             timeGoalEdit$.taskId.set(id);
-                            router.push("/timeGoalSelectSheet");
+                            router.push("/(tasks)/timeGoalSelectSheet");
                           }}
                           style={sheetStyles.goalButton}
                         >
@@ -392,7 +407,7 @@ const TaskDetailsContent = observer(() => {
                         style={[sheetStyles.categoryPopupRow, sheetStyles.categoryPopupCreate]}
                         onPress={() => {
                           categoryPopup$.set(false);
-                          router.push("/categoryCreateSheet");
+                          router.push("/(tasks)/categoryCreateSheet");
                         }}
                       >
                         <AntDesign name="addfile" size={16} color={colors.subtext0} />
@@ -415,7 +430,7 @@ const TaskDetailsContent = observer(() => {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "transparent",
   },
   background: {
     ...StyleSheet.absoluteFillObject,

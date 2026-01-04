@@ -11,7 +11,8 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Text } from "@/components/Themed";
 import { selectedDate$ } from "@/app/index/calendar/rowCalendar";
 import { getNow } from "@/utils/timeOverride";
-import { themeTokens$ } from "@/utils/stateManager";
+import { BlurView } from "expo-blur";
+import { styling$, themeTokens$ } from "@/utils/stateManager";
 
 const pickerDate$ = observable<Moment>(selectedDate$.get());
 
@@ -32,6 +33,7 @@ const CalendarDateSheet = observer(() => {
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
+  const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const accentSoft = withOpacity(colors.accent, 0.14);
   const accentBorder = withOpacity(colors.accent, 0.28);
@@ -68,7 +70,19 @@ const CalendarDateSheet = observer(() => {
   }, [closeSheet]);
 
   return (
-    <View style={[styles.overlay, { backgroundColor: overlayColor }]}>
+    <View style={styles.overlay}>
+      {blurEnabled ? (
+        <BlurView
+          tint={isDark ? "dark" : "light"}
+          intensity={40}
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
+      <View
+        pointerEvents="none"
+        style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
+      />
       <Pressable onPress={closeSheet} style={styles.background} />
       <Animated.View
         style={[
