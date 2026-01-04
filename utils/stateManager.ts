@@ -19,21 +19,28 @@ interface categoryItem {
   contrastColor?: string;
 }
 
-const DEFAULT_CATEGORY_ACCENT: AccentKey = "peach";
+type Palette = typeof colorTheme.catppuccin.latte;
+
+const DEFAULT_CATEGORY_ACCENT: AccentKey = "sapphire";
 const DEFAULT_CATEGORY_CONTRAST = accentOpposites[DEFAULT_CATEGORY_ACCENT];
 
-const DEFAULT_CATEGORY_META: categoryItem = {
+const LEGACY_DEFAULT_ACCENT: AccentKey = "peach";
+
+const getDefaultCategoryMeta = (palette: Palette): categoryItem => ({
   label: "General",
-  color: colorTheme.catppuccin.latte[DEFAULT_CATEGORY_ACCENT],
+  color: (palette as Record<string, string>)[DEFAULT_CATEGORY_ACCENT] ?? palette.blue,
   accentKey: DEFAULT_CATEGORY_ACCENT,
   contrastKey: DEFAULT_CATEGORY_CONTRAST,
-  contrastColor: colorTheme.catppuccin.latte[DEFAULT_CATEGORY_CONTRAST],
-};
-const NO_CATEGORY_META: categoryItem = {
+  contrastColor: (palette as Record<string, string>)[DEFAULT_CATEGORY_CONTRAST] ?? palette.text,
+});
+
+const getNoCategoryMeta = (palette: Palette): categoryItem => ({
   label: "No Category",
-  color: colorTheme.catppuccin.latte.overlay1,
-  contrastColor: colorTheme.catppuccin.latte.text,
-};
+  color: palette.overlay0,
+  contrastColor: palette.text,
+});
+
+const DEFAULT_CATEGORY_META: categoryItem = getDefaultCategoryMeta(colorTheme.catppuccin.latte);
 
 export const DEFAULT_CATEGORY_ID = 0;
 export const NO_CATEGORY_ID = -1;
@@ -56,9 +63,16 @@ let categoriesPromise: Promise<void> | null = null;
 
 const ensureDefaultCategory = () => {
   const categories = Category$.get();
-  if (!Object.prototype.hasOwnProperty.call(categories, DEFAULT_CATEGORY_ID)) {
+  const palette = themeTokens$.get().palette as Palette;
+  const hasDefault = Object.prototype.hasOwnProperty.call(categories, DEFAULT_CATEGORY_ID);
+  const existing = categories[DEFAULT_CATEGORY_ID];
+  const shouldRefresh =
+    hasDefault &&
+    existing?.label === "General" &&
+    (!existing.accentKey || existing.accentKey === LEGACY_DEFAULT_ACCENT);
+  if (!hasDefault || shouldRefresh) {
     Category$.assign({
-      [DEFAULT_CATEGORY_ID]: { ...DEFAULT_CATEGORY_META },
+      [DEFAULT_CATEGORY_ID]: getDefaultCategoryMeta(palette),
     });
   }
 };
@@ -87,11 +101,10 @@ export const getCategoryMeta = (id?: number | null): categoryItem => {
   }
   if (resolved === DEFAULT_CATEGORY_ID) {
     return {
-      ...DEFAULT_CATEGORY_META,
-      contrastColor: DEFAULT_CATEGORY_META.contrastColor ?? DEFAULT_CATEGORY_META.color,
+      ...getDefaultCategoryMeta(themeTokens$.get().palette as Palette),
     };
   }
-  return NO_CATEGORY_META;
+  return getNoCategoryMeta(themeTokens$.get().palette as Palette);
 };
 
 export const getCategoryContrastColor = (id?: number | null, fallback?: string) => {
