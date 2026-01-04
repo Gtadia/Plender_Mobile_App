@@ -1,7 +1,7 @@
 import { computed, observable, observe } from "@legendapp/state";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { colorTheme } from "@/constants/Colors";
-import { AccentKey, ThemeKey, getThemeTokens } from "@/constants/themes";
+import { AccentKey, ThemeKey, accentOpposites, getThemeTokens } from "@/constants/themes";
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
@@ -14,15 +14,25 @@ dayjs.extend(timezone);
 interface categoryItem {
   label: string;
   color: string;
+  accentKey?: AccentKey;
+  contrastKey?: AccentKey;
+  contrastColor?: string;
 }
+
+const DEFAULT_CATEGORY_ACCENT: AccentKey = "peach";
+const DEFAULT_CATEGORY_CONTRAST = accentOpposites[DEFAULT_CATEGORY_ACCENT];
 
 const DEFAULT_CATEGORY_META: categoryItem = {
   label: "General",
-  color: colorTheme.catppuccin.latte.peach,
+  color: colorTheme.catppuccin.latte[DEFAULT_CATEGORY_ACCENT],
+  accentKey: DEFAULT_CATEGORY_ACCENT,
+  contrastKey: DEFAULT_CATEGORY_CONTRAST,
+  contrastColor: colorTheme.catppuccin.latte[DEFAULT_CATEGORY_CONTRAST],
 };
 const NO_CATEGORY_META: categoryItem = {
   label: "No Category",
   color: colorTheme.catppuccin.latte.overlay1,
+  contrastColor: colorTheme.catppuccin.latte.text,
 };
 
 export const DEFAULT_CATEGORY_ID = 0;
@@ -70,12 +80,23 @@ export const getCategoryMeta = (id?: number | null): categoryItem => {
   const categories = Category$.get();
   const entry = categories[resolved];
   if (entry) {
-    return entry;
+    return {
+      ...entry,
+      contrastColor: entry.contrastColor ?? entry.color,
+    };
   }
   if (resolved === DEFAULT_CATEGORY_ID) {
-    return DEFAULT_CATEGORY_META;
+    return {
+      ...DEFAULT_CATEGORY_META,
+      contrastColor: DEFAULT_CATEGORY_META.contrastColor ?? DEFAULT_CATEGORY_META.color,
+    };
   }
   return NO_CATEGORY_META;
+};
+
+export const getCategoryContrastColor = (id?: number | null, fallback?: string) => {
+  const meta = getCategoryMeta(id);
+  return meta.contrastColor ?? fallback ?? meta.color;
 };
 
 async function hydrateCategoriesInternal() {

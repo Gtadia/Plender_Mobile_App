@@ -12,6 +12,7 @@ import { Text } from "@/components/Themed";
 import {
   CurrentTaskID$,
   tasks$,
+  getCategoryContrastColor,
   getCategoryMeta,
   themeTokens$,
 } from "@/utils/stateManager";
@@ -162,6 +163,7 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
       const catId = node.category?.get?.() ?? 0;
       const categoryMeta = getCategoryMeta(catId);
       const color = categoryMeta.color || colors.primary;
+      const opposite = getCategoryContrastColor(catId, colors.textStrong);
       const progressWidth = Math.min(
         Dimensions.get("window").width - 140,
         360,
@@ -187,7 +189,7 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
               <Text style={taskStyles.cardPercent}>{Math.round(percent * 100)}%</Text>
               <TouchableOpacity onPress={stopCurrentWithSplitPrompt} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <FontAwesome5 name="stop" size={18} color="#fff" />
+                <FontAwesome5 name="stop" size={18} color={opposite} />
               </TouchableOpacity>
             </View>
           </View>
@@ -197,7 +199,7 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
             <HorizontalProgressBarPercentage
               width={progressWidth}
               percentage={percent}
-              color={palette.green}
+              color={opposite}
               trackColor="rgba(255,255,255,0.35)"
               textColor="#fff"
             />

@@ -1,29 +1,52 @@
 import React, { useEffect } from 'react';
 import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import { useNavigation } from 'expo-router';
+import { useNavigation, useRouter } from 'expo-router';
 import { $TextInput } from '@legendapp/state/react-native';
 import { BlurView } from 'expo-blur';
 import { styling$, themeTokens$ } from '@/utils/stateManager';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { getListTheme } from '@/constants/listTheme';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 export default function TaskEditView() {
   const navigation = useNavigation();
+  const router = useRouter();
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
-  const isDark = themeTokens$.isDark.get();
+  const { palette, colors, isDark } = themeTokens$.get();
+  const listTheme = getListTheme(palette, isDark);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
+  const containerBackground = listTheme.colors.card;
+  const rowBackground = listTheme.colors.row;
+  const dividerColor = listTheme.colors.divider;
+  const textColor = colors.text;
+  const subtextColor = colors.subtext0;
+  const cardStyle = { backgroundColor: rowBackground, borderColor: dividerColor, borderWidth: 1 };
 
   useEffect(() => {
     translateY.value = withTiming(0, { duration: 260 });
   }, [translateY]);
 
+  const closingRef = React.useRef(false);
+
   const closeSheet = () => {
-    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
-      if (finished) {
-        runOnJS(() => navigation.goBack())();
+    if (closingRef.current) return;
+    closingRef.current = true;
+    translateY.value = withTiming(height, { duration: 220 });
+    setTimeout(() => {
+      try {
+        if (typeof (router as any).canGoBack === "function") {
+          if ((router as any).canGoBack()) {
+            router.back();
+            return;
+          }
+        }
+        (navigation as any).goBack?.();
+      } catch (err) {
+        console.warn("Failed to close task edit sheet", err);
+        closingRef.current = false;
       }
-    });
+    }, 230);
   };
 
   const sheetStyle = useAnimatedStyle(() => ({
@@ -45,12 +68,18 @@ export default function TaskEditView() {
         style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
       />
       <Pressable onPress={closeSheet} style={styles.background} />
-      <Animated.View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle ]}>
+      <Animated.View
+        style={[
+          styles.container,
+          { height: height * 6 / 8, minHeight: 500, backgroundColor: containerBackground },
+          sheetStyle,
+        ]}
+      >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width:"100%", marginBottom: 15}}>
           <TouchableOpacity style={styles.button} onPress={closeSheet}>
-            <Text>Back</Text>
+            <Text style={{ color: textColor }}>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Task Details</Text>
+          <Text style={[styles.title, { color: textColor }]}>Task Details</Text>
           <TouchableOpacity
             style={styles.button}
             onPress={() => {
@@ -58,25 +87,25 @@ export default function TaskEditView() {
               closeSheet();
             }}
           >
-            <Text>Done</Text>
+            <Text style={{ color: textColor }}>Done</Text>
           </TouchableOpacity>
         </View>
 
 
         <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', }}>
           {/* TEXT */}
-          <View style={[ styles.subMenuSquare, styles.subMenuSquarePadding ]}>
+          <View style={[styles.subMenuSquare, styles.subMenuSquarePadding, cardStyle]}>
             <View style={[styles.subMenuBar, { alignItems: 'center' }]}>
-              <Text style={styles.menuText}>Name</Text>
+              <Text style={[styles.menuText, { color: textColor }]}>Name</Text>
             </View>
             <View style={{ paddingVertical: 15}}>
                <$TextInput
                 $value={"Hello"}
-                style={styles.textInput}
+                style={[styles.textInput, { color: textColor }]}
                 autoFocus={true}
                 multiline
                 placeholder={"Category Name"}
-                placeholderTextColor={'rgba(0, 0, 0, 0.5)'}
+                placeholderTextColor={subtextColor}
               />
             </View>
           </View>
@@ -102,7 +131,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   container: {
-    backgroundColor: '#F2F2F7',
     padding: 15,
     alignItems: 'center',
 
@@ -125,7 +153,6 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   subMenuSquare: {
-    backgroundColor: 'white',
     borderRadius: 10,
     marginBottom: 10,
   },
@@ -145,12 +172,10 @@ const styles = StyleSheet.create({
   menuTextEnd: {
     fontWeight: 300,
     fontSize: 16,
-    color: 'rgba(0, 0, 0, 0.75)',
   },
   button: {
   },
   textInput: {
-    color: 'rgba(0, 0, 0)',
     fontSize: 18,
     fontWeight: 500,
   },

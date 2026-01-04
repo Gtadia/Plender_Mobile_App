@@ -295,8 +295,8 @@ const TaskDetailsContent = observer(() => {
                     <Switch
                       value={isQuick}
                       onValueChange={toggleQuick}
-                      thumbColor={isQuick ? catColor : "#fff"}
-                      trackColor={{ true: `${catColor}55`, false: "#ccc" }}
+                      thumbColor={isQuick ? catColor : colors.textStrong}
+                      trackColor={{ true: `${catColor}55`, false: colors.subtext1 }}
                       disabled={!isEditing}
                     />
                   </View>

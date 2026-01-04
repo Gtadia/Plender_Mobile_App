@@ -44,6 +44,7 @@ import { Memo, Show } from "@legendapp/state/react";
 import moment from "moment";
 import { RRule } from "rrule";
 import { Category$, loadDay, styling$, tasks$, themeTokens$ } from "@/utils/stateManager";
+import { getListTheme } from "@/constants/listTheme";
 import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -111,13 +112,14 @@ const CategoryPopup = ({
 }) => {
   const router = useRouter();
   const { palette, colors, isDark } = themeTokens$.get();
+  const listTheme = getListTheme(palette, isDark);
   const mutedText = colors.subtext0;
-  const cardBorder = withOpacity(palette.overlay0, isDark ? 0.35 : 0.25);
+  const cardBorder = listTheme.colors.divider;
 
   // Localized styles for the popup card
   const categoryStyles = StyleSheet.create({
     card: {
-      backgroundColor: palette.surface1,
+      backgroundColor: listTheme.colors.card,
       borderRadius: 10,
       paddingHorizontal: 18,
       paddingVertical: 10,
@@ -189,7 +191,7 @@ const CategoryPopup = ({
                 }}
               >
                 <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: item.color, marginRight: 8 }} />
-                <Text>{item.label}</Text>
+                <Text style={categoryStyles.label}>{item.label}</Text>
               </TouchableOpacity>
             </View>
           );
@@ -243,13 +245,16 @@ const create = () => {
   let { height } = Dimensions.get("window");
   const titleRef = React.useRef<any>(null);
   const { palette, colors, isDark } = themeTokens$.get();
+  const listTheme = getListTheme(palette, isDark);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const actionBorder = withOpacity(palette.overlay0, isDark ? 0.5 : 0.35);
   const actionTextColor = colors.subtext0;
-  const cardBackground = palette.surface1;
+  const cardBackground = listTheme.colors.card;
   const submitBackground = colors.accent;
   const submitIconColor = colors.textStrong;
+  const dateAccent = palette.green;
+  const timeAccent = palette.red;
 
   // Keep keyboard visible by refocusing the title when it hides
   React.useEffect(() => {
@@ -335,12 +340,12 @@ const create = () => {
                               <AntDesign
                                 name="calendar"
                                 size={15}
-                                color="rgb(64, 160, 43)"
+                                color={dateAccent}
                               />
                               <Text
                                 style={[
                                   styles.actionText,
-                                  { color: "rgb(64, 160, 43)" },
+                                  { color: dateAccent },
                                 ]}
                               >
                                 {moment(task$.rrule.get().DTSTART).format(
@@ -352,7 +357,7 @@ const create = () => {
                                   <AntDesign
                                     name="retweet"
                                     size={15}
-                                    color="rgb(64, 160, 43)"
+                                    color={dateAccent}
                                   />
                                 ) : null;
                               })()}
@@ -389,12 +394,12 @@ const create = () => {
                               <AntDesign
                                 name="clockcircleo"
                                 size={15}
-                                color="rgba(200, 0, 0, 0.75)"
+                                color={timeAccent}
                               />
                               <Text
                                 style={[
                                   styles.actionText,
-                                  { color: "rgba(200, 0, 0, 0.75)" },
+                                  { color: timeAccent },
                                 ]}
                               >{`${time$.hours.get()}:${
                                 time$.minutes.get() < 10 ? "0" : ""
@@ -465,7 +470,7 @@ const create = () => {
 
                   {/* Placeholder for "More" options in future */}
                   {/* <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
-                    <MaterialIcons name="more-horiz" size={15} color="rgba(0, 0, 0, 0.75)"/>
+                    <MaterialIcons name="more-horiz" size={15} color={actionTextColor} />
                   </TouchableOpacity> */}
                 </View>
               </ScrollView>
@@ -628,7 +633,6 @@ const styles = StyleSheet.create({
     height: "auto",
     maxWidth: 500,
     borderRadius: 0,
-    backgroundColor: "white",
     padding: 15,
   },
 
@@ -647,7 +651,6 @@ const styles = StyleSheet.create({
 
   // Inputs
   textInput: {
-    color: "rgba(0, 0, 0)",
     fontSize: 18,
     fontWeight: 500 as any, // keep as-is; typed constant as in original
   },
@@ -684,7 +687,6 @@ const styles = StyleSheet.create({
   actionButton: {
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "rgba(0, 0, 0, 0.3)",
     flexDirection: "row",
     padding: 8,
     alignItems: "center",
@@ -693,7 +695,6 @@ const styles = StyleSheet.create({
 
   // Chip text
   actionText: {
-    color: "rgba(0, 0, 0, 0.75)",
     fontSize: 13,
     fontWeight: 500 as any,
     paddingHorizontal: 5,
@@ -702,7 +703,6 @@ const styles = StyleSheet.create({
   // Submit (arrow) button
   submitButton: {
     borderRadius: 100,
-    backgroundColor: "rgba(200, 0, 0, 0.75)",
     aspectRatio: 1,
     width: 40,
     justifyContent: "center",

@@ -39,6 +39,7 @@ import RNDateTimePicker from "@react-native-community/datetimepicker";
 import { DateTime } from "luxon";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
+import { getListTheme } from "@/constants/listTheme";
 import { styling$, themeTokens$ } from "@/utils/stateManager";
 
 // -------------------------------------------------------------
@@ -147,11 +148,12 @@ const DateSelectSheet = () => {
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
+  const listTheme = getListTheme(palette, isDark);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
-  const containerBackground = palette.surface1;
-  const cardBackground = palette.surface0;
-  const borderColor = withOpacity(palette.overlay0, isDark ? 0.45 : 0.25);
+  const containerBackground = listTheme.colors.card;
+  const cardBackground = listTheme.colors.row;
+  const borderColor = listTheme.colors.divider;
   const textColor = colors.text;
   const mutedText = colors.subtext0;
   const pickerLine = withOpacity(colors.text, isDark ? 0.25 : 0.2);
@@ -495,7 +497,7 @@ const styles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: "transparent" },
   background: { backgroundColor: "transparent", flex: 1 },
   title: { fontWeight: "500", fontSize: 15 },
-  container: { backgroundColor: "#F2F2F7", padding: 15, alignItems: "center" },
+  container: { padding: 15, alignItems: "center" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -512,7 +514,6 @@ const styles = StyleSheet.create({
   },
   subMenuText: { paddingLeft: 10 },
   subMenuSquare: {
-    backgroundColor: "white",
     borderRadius: 10,
     marginBottom: 10,
   },
@@ -528,9 +529,8 @@ const styles = StyleSheet.create({
   menuTextEnd: {
     fontWeight: "300",
     fontSize: 16,
-    color: "rgba(0, 0, 0, 0.75)",
   },
-  picker: { backgroundColor: "white", width: "50%", height: 215 },
+  picker: { width: "50%", height: 215 },
   pickerItem: { fontSize: 18 },
   weekDayButton: {
     flex: 1,

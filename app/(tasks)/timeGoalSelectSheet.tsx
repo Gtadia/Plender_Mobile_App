@@ -22,6 +22,7 @@ import { Memo } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
 import { BlurView } from 'expo-blur';
 import { styling$, themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateManager';
+import { getListTheme } from '@/constants/listTheme';
 import { updateEvent } from '@/utils/database';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 // import Picker from '@/components/TimeCarousel/Picker';
@@ -50,10 +51,6 @@ export const time$ = observable({
 // -------------------------------------------------------------
 const ITEM_HEIGHT = 34;
 const VISIBLE_ITEMS = 5;
-const pillOffsetX = 0;
-const pillOffsetY = 0;
-const pillColor = "rgba(0, 0, 0, 0.22)";
-// const pillBorderColor = "rgba(0, 0, 0, 0.22)";
 const pickerPadding = 70
 
 // TODO — move this somewhere so that it only renders ONCE!!!
@@ -69,11 +66,12 @@ const TimeGoalSelectSheet = () => {
   const { width, height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
+  const listTheme = getListTheme(palette, isDark);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
-  const containerBackground = palette.surface1;
-  const cardBackground = palette.surface0;
-  const borderColor = withOpacity(palette.overlay0, isDark ? 0.45 : 0.25);
+  const containerBackground = listTheme.colors.card;
+  const cardBackground = listTheme.colors.row;
+  const borderColor = listTheme.colors.divider;
   const textColor = colors.text;
   const mutedText = colors.subtext0;
   const pickerTextStyle = { primaryColor: colors.text, secondaryColor: colors.subtext1 };
@@ -288,7 +286,6 @@ const styles = StyleSheet.create({
 
   // Container for the sheet content (static parts)
   container: {
-    backgroundColor: '#F2F2F7',
     padding: 15,
     alignItems: 'center',
   },
@@ -326,7 +323,6 @@ const styles = StyleSheet.create({
 
   // Card styles
   subMenuSquare: {
-    backgroundColor: 'white',
     borderRadius: 10,
     marginBottom: 10,
   },
@@ -342,7 +338,7 @@ const styles = StyleSheet.create({
 
   // Labels
   menuText: { fontWeight: 500, fontSize: 16 },
-  menuTextEnd: { fontWeight: 300, fontSize: 16, color: 'rgba(0, 0, 0, 0.75)' },
+  menuTextEnd: { fontWeight: 300, fontSize: 16 },
 
   // Buttons (placeholder style kept)
   button: {},
@@ -366,7 +362,7 @@ const styles = StyleSheet.create({
     // top: (ITEM_HEIGHT * VISIBLE_ITEMS - ITEM_HEIGHT) / 2,
     height: ITEM_HEIGHT,
     width: '100%',
-    backgroundColor: "rgba(0, 0, 0, 0.22)",
+    backgroundColor: "transparent",
     borderRadius: 12,
     zIndex: 20,
     elevation: 20,

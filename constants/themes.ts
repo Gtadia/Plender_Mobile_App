@@ -42,6 +42,23 @@ export const accentKeys = [
 
 export type AccentKey = (typeof accentKeys)[number];
 
+export const accentOpposites: Record<AccentKey, AccentKey> = {
+  rosewater: "blue",
+  flamingo: "sapphire",
+  pink: "sky",
+  mauve: "green",
+  red: "teal",
+  maroon: "yellow",
+  peach: "lavender",
+  yellow: "maroon",
+  green: "mauve",
+  teal: "red",
+  sky: "pink",
+  sapphire: "flamingo",
+  blue: "rosewater",
+  lavender: "peach",
+};
+
 export const getThemeTokens = (themeKey: ThemeKey, accentKey: AccentKey) => {
   const theme = themeOptions.find((option) => option.key === themeKey) ?? themeOptions[2];
   const palette = theme.palette;

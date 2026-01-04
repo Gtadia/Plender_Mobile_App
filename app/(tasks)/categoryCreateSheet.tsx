@@ -21,14 +21,15 @@
 //   - Minimum height for container is 500px, max height ~6/8 screen
 // -------------------------------------------------------------
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import ColorPicker, { Panel3 } from 'reanimated-color-picker';
 import { task$ } from './create';
-import { useNavigation } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { Memo, useObservable } from '@legendapp/state/react';
 import { $TextInput } from '@legendapp/state/react-native';
 import { updateEvent } from '@/utils/database';
+import { accentKeys, accentOpposites } from '@/constants/themes';
+import { getListTheme } from '@/constants/listTheme';
 import {
   Category$,
   CategoryIDCount$,
@@ -38,23 +39,40 @@ import {
   styling$,
   themeTokens$,
 } from '@/utils/stateManager';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 
 export default function CategoryCreateSheet() {
-  const navigation = useNavigation();
-  const { width, height } = Dimensions.get("window");
+  const router = useRouter();
+  const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
-  const isDark = themeTokens$.isDark.get();
+  const { palette, colors, isDark } = themeTokens$.get();
+  const listTheme = getListTheme(palette, isDark);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
+  const containerBackground = listTheme.colors.card;
+  const rowBackground = listTheme.colors.row;
+  const dividerColor = listTheme.colors.divider;
+  const textColor = colors.text;
+  const subtextColor = colors.subtext0;
+  const cardStyle = { backgroundColor: rowBackground, borderColor: dividerColor, borderWidth: 1 };
+  const defaultAccentKey = "peach";
+  const defaultContrastKey = accentOpposites[defaultAccentKey];
+  const paletteOptions = accentKeys.map((accentKey) => {
+    const baseColor = (palette as Record<string, string>)[accentKey] ?? colors.accent;
+    const contrastKey = accentOpposites[accentKey];
+    const contrastColor = (palette as Record<string, string>)[contrastKey] ?? colors.textStrong;
+    return { accentKey, baseColor, contrastKey, contrastColor };
+  });
   const newCategory$ = useObservable({
     label: '',
-    color: '#FF0000',
+    color: (palette as Record<string, string>)[defaultAccentKey] ?? colors.accent,
+    contrastColor:
+      (palette as Record<string, string>)[defaultContrastKey] ?? colors.textStrong,
+    accentKey: defaultAccentKey,
+    contrastKey: defaultContrastKey,
   });
-  // read once for initial color (don’t subscribe the picker)
-  const initialHex = useRef(newCategory$.color.get()).current;
-  // local live preview while dragging (no global re-render storm)
+
   useEffect(() => {
     void ensureCategoriesHydrated();
   }, []);
@@ -63,12 +81,26 @@ export default function CategoryCreateSheet() {
     translateY.value = withTiming(0, { duration: 260 });
   }, [translateY]);
 
+  const closingRef = React.useRef(false);
+
   const closeSheet = () => {
-    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
-      if (finished) {
-        runOnJS(() => navigation.goBack())();
+    if (closingRef.current) return;
+    closingRef.current = true;
+    translateY.value = withTiming(height, { duration: 220 });
+    setTimeout(() => {
+      try {
+        if (typeof (router as any).canGoBack === "function") {
+          if ((router as any).canGoBack()) {
+            router.back();
+            return;
+          }
+        }
+        (router as any).back?.();
+      } catch (err) {
+        console.warn("Failed to close category sheet", err);
+        closingRef.current = false;
       }
-    });
+    }, 230);
   };
 
   const sheetStyle = useAnimatedStyle(() => ({
@@ -90,92 +122,147 @@ export default function CategoryCreateSheet() {
         style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
       />
       <Pressable onPress={closeSheet} style={styles.background} />
-      <Animated.View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle ]}>
+      <Animated.View
+        style={[
+          styles.container,
+          { height: height * 6 / 8, minHeight: 500, backgroundColor: containerBackground },
+          sheetStyle,
+        ]}
+      >
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width:"100%", marginBottom: 15}}>
           <TouchableOpacity style={styles.button} onPress={closeSheet}>
-            <Text>Back</Text>
+            <Text style={{ color: textColor }}>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Select Date</Text>
+          <Text style={[styles.title, { color: textColor }]}>New Category</Text>
           <TouchableOpacity
             style={styles.button}
             onPress={async () => {
-              await ensureCategoriesHydrated();
-              const cat = newCategory$.get(); // { label, color }
+              try {
+                await ensureCategoriesHydrated();
+                const cat = newCategory$.get(); // { label, color, accentKey, contrastColor }
 
-              // (optional) basic validation
-              const label = cat.label.trim();
-              if (!label) {
-                console.warn("Category name required");
-                return;
+                // (optional) basic validation
+                const label = cat.label.trim();
+                if (!label) {
+                  console.warn("Category name required");
+                  return;
+                }
+
+                let id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+                while (Object.prototype.hasOwnProperty.call(Category$.get(), id)) {
+                  id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+                }
+
+                // 1) Save to global categories (Record<number, {label,color}>)
+                Category$.assign({
+                  [id]: {
+                    label,
+                    color: cat.color,
+                    accentKey: cat.accentKey,
+                    contrastKey: cat.contrastKey,
+                    contrastColor: cat.contrastColor,
+                  },
+                });
+
+                // 2) Assign to current task
+                const activeTaskId = taskDetailsSheet$.taskId.get();
+                if (activeTaskId != null) {
+                  const node = tasks$.entities[activeTaskId];
+                  if (node?.category) {
+                    node.category.set(id);
+                    await updateEvent({ id: activeTaskId, category: id });
+                  } else {
+                    task$.category.set(id);
+                  }
+                } else {
+                  task$.category.set(id);
+                }
+
+                // 3) Increment the ID counter for the next category
+                CategoryIDCount$.set(Math.max(CategoryIDCount$.get(), id + 1));
+
+                // close
+                closeSheet();
+              } catch (err) {
+                console.warn("Failed to create category", err);
               }
-
-              let id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-              while (Object.prototype.hasOwnProperty.call(Category$.get(), id)) {
-                id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
-              }
-
-              // 1) Save to global categories (Record<number, {label,color}>)
-              Category$.assign({
-                [id]: { label, color: cat.color },
-              });
-
-              // 2) Assign to current task
-              const activeTaskId = taskDetailsSheet$.taskId.get();
-              if (activeTaskId != null) {
-                tasks$.entities[activeTaskId].category.set(id);
-                await updateEvent({ id: activeTaskId, category: id });
-              } else {
-                task$.category.set(id);
-              }
-
-              // 3) Increment the ID counter for the next category
-              CategoryIDCount$.set(Math.max(CategoryIDCount$.get(), id + 1));
-
-              // close
-              closeSheet();
             }}
           >
-            <Text>Done</Text>
+            <Text style={{ color: textColor }}>Done</Text>
           </TouchableOpacity>
         </View>
 
 
         <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', }}>
           {/* TEXT */}
-          <View style={[ styles.subMenuSquare, styles.subMenuSquarePadding ]}>
+          <View style={[styles.subMenuSquare, styles.subMenuSquarePadding, cardStyle]}>
             <View style={[styles.subMenuBar, { alignItems: 'center' }]}>
-              <Text style={styles.menuText}>Name</Text>
+              <Text style={[styles.menuText, { color: textColor }]}>Name</Text>
             </View>
             <View style={{ paddingVertical: 15}}>
                <$TextInput
                 $value={newCategory$.label}
-                style={styles.textInput}
+                style={[styles.textInput, { color: textColor }]}
                 autoFocus={true}
                 multiline
                 placeholder={"Category Name"}
-                placeholderTextColor={'rgba(0, 0, 0, 0.5)'}
+                placeholderTextColor={subtextColor}
               />
             </View>
           </View>
           {/* TEXT */}
 
           {/* COLOR */}
-          <View style={[ styles.subMenuSquare ]}>
+          <View style={[styles.subMenuSquare, cardStyle]}>
             <View style={[styles.subMenuBar, styles.subMenuSquarePadding, { alignItems: 'center' }]}>
-              <Text style={styles.menuText}>Color</Text>
-              {/* <Text style={styles.menuTextEnd}>Something</Text> */}
+              <Text style={[styles.menuText, { color: textColor }]}>Color</Text>
               <Memo>
-                {() => (<View style={{ height: 20, aspectRatio: 1, borderRadius: 100, backgroundColor: newCategory$.color.get() }} />)}
+                {() => (
+                  <View
+                    style={{
+                      height: 20,
+                      aspectRatio: 1,
+                      borderRadius: 100,
+                      backgroundColor: newCategory$.color.get(),
+                      borderWidth: 1,
+                      borderColor: dividerColor,
+                    }}
+                  />
+                )}
               </Memo>
             </View>
-            <View style={{ paddingVertical: 15}}>
-              <ColorPicker
-                value={initialHex}                       // initial-only; do not control per-frame
-                style={{ width: '70%', aspectRatio: 1, alignSelf: 'center' }}
-                onCompleteJS={(c) => newCategory$.color.set(c.hex)} // commit after gesture ends
-              >
-                <Panel3 centerChannel="saturation" />
-              </ColorPicker>
+            <View style={{ paddingVertical: 12 }}>
+              <Memo>
+                {() => {
+                  const selectedAccent = newCategory$.accentKey.get();
+                  return (
+                    <View style={styles.paletteGrid}>
+                      {paletteOptions.map((option) => (
+                        <Pressable
+                          key={option.accentKey}
+                          onPress={() => {
+                            newCategory$.accentKey.set(option.accentKey);
+                            newCategory$.contrastKey.set(option.contrastKey);
+                            newCategory$.color.set(option.baseColor);
+                            newCategory$.contrastColor.set(option.contrastColor);
+                          }}
+                          style={[
+                            styles.paletteSwatch,
+                            {
+                              backgroundColor: option.baseColor,
+                              borderColor:
+                                option.accentKey === selectedAccent
+                                  ? colors.accent
+                                  : dividerColor,
+                              borderWidth: option.accentKey === selectedAccent ? 2 : 1,
+                            },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  );
+                }}
+              </Memo>
             </View>
           </View>
           {/* COLOR */}
@@ -199,7 +286,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   container: {
-    backgroundColor: '#F2F2F7',
     padding: 15,
     alignItems: 'center',
 
@@ -222,7 +308,6 @@ const styles = StyleSheet.create({
     paddingRight: 8,
   },
   subMenuSquare: {
-    backgroundColor: 'white',
     borderRadius: 10,
     marginBottom: 10,
   },
@@ -242,13 +327,22 @@ const styles = StyleSheet.create({
   menuTextEnd: {
     fontWeight: 300,
     fontSize: 16,
-    color: 'rgba(0, 0, 0, 0.75)',
   },
   button: {
   },
   textInput: {
-    color: 'rgba(0, 0, 0)',
     fontSize: 18,
     fontWeight: 500,
+  },
+  paletteGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingHorizontal: 18,
+  },
+  paletteSwatch: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
   },
 })
