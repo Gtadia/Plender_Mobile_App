@@ -35,6 +35,7 @@ export default function TabOneScreen() {
       <ScreenHeader title="Home" />
       <ScrollView
         style={{ width: "100%" }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={homePageInfo$.reload.get()}

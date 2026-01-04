@@ -148,6 +148,12 @@ export const createListSheetStyles = (listTheme: ListTheme) => {
     container: {
       padding: sheet.containerPadding,
       alignItems: "center",
+      borderRadius: sheet.popupRadius,
+      marginHorizontal: sheet.popupMargin,
+      width: "100%",
+      maxWidth: sheet.popupMaxWidth,
+      alignSelf: "center",
+      overflow: "hidden",
     },
     header: {
       flexDirection: "row",
@@ -159,6 +165,14 @@ export const createListSheetStyles = (listTheme: ListTheme) => {
     title: {
       fontWeight: sheet.titleWeight as "500",
       fontSize: sheet.titleSize,
+    },
+    headerIconButton: {
+      width: sheet.headerButtonSize,
+      height: sheet.headerButtonSize,
+      borderRadius: sheet.headerButtonRadius,
+      alignItems: "center",
+      justifyContent: "center",
+      borderWidth: 1,
     },
     subMenuContainer: {
       paddingHorizontal: sheet.subMenuPaddingHorizontal,

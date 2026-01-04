@@ -247,10 +247,13 @@ const create = () => {
   const { palette, colors, isDark } = themeTokens$.get();
   const listTheme = getListTheme(palette, isDark);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
+  const insets = useSafeAreaInsets();
+  const blurMethod = Platform.OS === "android" ? "dimezisBlurView" : undefined;
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const actionBorder = withOpacity(palette.overlay0, isDark ? 0.5 : 0.35);
   const actionTextColor = colors.subtext0;
   const cardBackground = listTheme.colors.card;
+  const sheetRadius = listTheme.layout.sheet.topRadius;
   const submitBackground = colors.accent;
   const submitIconColor = colors.textStrong;
   const dateAccent = palette.green;
@@ -270,6 +273,7 @@ const create = () => {
         <BlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
+          experimentalBlurMethod={blurMethod}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
@@ -290,12 +294,26 @@ const create = () => {
       </TouchableWithoutFeedback>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : "position"}
+        keyboardVerticalOffset={Platform.OS === "android" ? insets.bottom + 24 : 0}
         style={styles.kav}
       >
-        <ScrollView keyboardShouldPersistTaps={"always"} scrollEnabled={false}>
+        <ScrollView
+          keyboardShouldPersistTaps={"always"}
+          scrollEnabled={false}
+          showsVerticalScrollIndicator={false}
+        >
           {/* Card container */}
-          <View style={[styles.cardContainer, { backgroundColor: cardBackground }]}>
+          <View
+            style={[
+              styles.cardContainer,
+              {
+                backgroundColor: cardBackground,
+                borderTopLeftRadius: sheetRadius,
+                borderTopRightRadius: sheetRadius,
+              },
+            ]}
+          >
             {/* Title */}
             <$TextInput
               $value={task$.title}
@@ -541,6 +559,18 @@ const addToDatabase = async () => {
     return parts.join(" ");
   };
 
+  const isRepeatingRule = (rruleToCheck: RRule | null) => {
+    if (!rruleToCheck) return false;
+    const options = rruleToCheck.options;
+    if (options.count && options.count > 1) return true;
+    if (options.interval && options.interval > 1) return true;
+    if (options.byweekday && options.byweekday.length) return true;
+    if (options.until && options.dtstart && options.until.getTime() !== options.dtstart.getTime()) {
+      return true;
+    }
+    return false;
+  };
+
   const targetDate =
     rrule?.options?.dtstart instanceof Date
       ? rrule.options.dtstart
@@ -559,6 +589,16 @@ const addToDatabase = async () => {
       whereToDisplay: 1,
     }));
     return false;
+  }
+  if (!isRepeatingRule(rrule) && moment(targetDate).isSame(moment(), "day")) {
+    const remainingLabel = formatRemaining(remainingSeconds);
+    toastShow$.set(({ toggleFire }) => ({
+      type: "warning",
+      title: "Time left today",
+      description: `${remainingLabel} remaining for today.`,
+      toggleFire: !toggleFire,
+      whereToDisplay: 1,
+    }));
   }
 
   const submitTask = {

@@ -468,7 +468,8 @@ export default observer(function FlatListSwiperExample() {
                     </TouchableOpacity>
                       <ScrollView
                         style={styles.placeholder}
-                        contentContainerStyle={{ paddingBottom: tabBarHeight + 12, flexGrow: 1 }}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ flexGrow: 1 }}
                         bounces
                         overScrollMode="always"
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
@@ -484,6 +485,7 @@ export default observer(function FlatListSwiperExample() {
                           ]}
                           containerStyle={{ padding: 0 }}
                         />
+                        <View style={globalTheme.tabBarAvoidingPadding} />
                       </ScrollView>
                     </View>
                   );

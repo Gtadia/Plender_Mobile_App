@@ -95,7 +95,7 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
       style={[
         styles.tabBar,
         {
-          bottom: insets.bottom,
+          bottom: insets.bottom + 6,
           left: (windowWidth - tabWidth) / 2,
           width: tabWidth,
           borderColor: surface,
@@ -111,7 +111,7 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
         style={[
           styles.activePill,
           indicatorStyle,
-          { backgroundColor: withOpacity(primaryColor, 0.2), borderColor: withOpacity(primaryColor, 0.65) },
+          { backgroundColor: withOpacity(primaryColor, 0.2) },
         ]}
       />
       {visibleRoutes.map((route, index) => {
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     width: itemWidth,
     height: barHeight,
     borderRadius: 999,
-    borderWidth: 1,
+    borderWidth: 0,
   },
   tabLabel: {
     fontSize: 11,

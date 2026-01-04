@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { $TextInput } from '@legendapp/state/react-native';
 import { BlurView } from 'expo-blur';
@@ -7,6 +7,7 @@ import { styling$, themeTokens$ } from '@/utils/stateManager';
 import { getListTheme } from '@/constants/listTheme';
 import { createListSheetStyles } from '@/constants/listStyles';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { AntDesign } from "@expo/vector-icons";
 
 export default function TaskEditView() {
   const navigation = useNavigation();
@@ -17,9 +18,10 @@ export default function TaskEditView() {
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
+  const blurMethod = Platform.OS === "android" ? "dimezisBlurView" : undefined;
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
-  const containerBackground = listTheme.colors.card;
-  const rowBackground = listTheme.colors.row;
+  const containerBackground = listTheme.colors.row;
+  const rowBackground = listTheme.colors.card;
   const dividerColor = listTheme.colors.divider;
   const textColor = colors.text;
   const subtextColor = colors.subtext0;
@@ -61,6 +63,7 @@ export default function TaskEditView() {
         <BlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
+          experimentalBlurMethod={blurMethod}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
@@ -73,23 +76,32 @@ export default function TaskEditView() {
       <Animated.View
         style={[
           sheetStyles.container,
-          { height: height * 6 / 8, minHeight: 500, backgroundColor: containerBackground },
+          { height: height * 0.7, minHeight: 460, backgroundColor: containerBackground },
           sheetStyle,
         ]}
       >
         <View style={sheetStyles.header}>
-          <TouchableOpacity style={sheetStyles.button} onPress={closeSheet}>
-            <Text style={{ color: textColor }}>Back</Text>
+          <TouchableOpacity
+            style={[
+              sheetStyles.headerIconButton,
+              { backgroundColor: listTheme.colors.card, borderColor: dividerColor },
+            ]}
+            onPress={closeSheet}
+          >
+            <AntDesign name="close" size={22} color={textColor} />
           </TouchableOpacity>
           <Text style={[sheetStyles.title, { color: textColor }]}>Task Details</Text>
           <TouchableOpacity
-            style={sheetStyles.button}
+            style={[
+              sheetStyles.headerIconButton,
+              { backgroundColor: colors.accent, borderColor: colors.accent },
+            ]}
             onPress={() => {
               // close
               closeSheet();
             }}
           >
-            <Text style={{ color: textColor }}>Done</Text>
+            <AntDesign name="check" size={22} color={colors.textStrong} />
           </TouchableOpacity>
         </View>
 

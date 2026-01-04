@@ -19,6 +19,7 @@
 
 import {
   Dimensions,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -34,7 +35,8 @@ import { task$ } from "./create";
 import { RRule } from "rrule";
 import { Memo, Show } from "@legendapp/state/react";
 import { observable } from "@legendapp/state";
-import { Picker } from "react-native-wheel-pick";
+import { Picker as WheelPicker } from "react-native-wheel-pick";
+import { Picker as NativePicker } from "@react-native-picker/picker";
 import RNDateTimePicker from "@react-native-community/datetimepicker";
 import { DateTime } from "luxon";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
@@ -152,13 +154,16 @@ const DateSelectSheet = () => {
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
+  const blurMethod = Platform.OS === "android" ? "dimezisBlurView" : undefined;
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
-  const containerBackground = listTheme.colors.card;
-  const cardBackground = listTheme.colors.row;
+  const containerBackground = listTheme.colors.row;
+  const cardBackground = listTheme.colors.card;
   const borderColor = listTheme.colors.divider;
   const textColor = colors.text;
+  const headerTextColor = colors.textStrong;
   const mutedText = colors.subtext0;
-  const pickerLine = withOpacity(colors.text, isDark ? 0.25 : 0.2);
+  const pickerLine = withOpacity(colors.text, isDark ? 0.4 : 0.32);
+  const pickerTextColor = isDark ? colors.text : colors.textStrong;
   const cardStyle = { backgroundColor: cardBackground, borderColor, borderWidth: 1 };
 
   // Default: repeat on current day of the week
@@ -200,6 +205,7 @@ const DateSelectSheet = () => {
         <BlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
+          experimentalBlurMethod={blurMethod}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
@@ -214,21 +220,27 @@ const DateSelectSheet = () => {
       <Animated.View
         style={[
           sheetStyles.container,
-          { height: (height * 6) / 8, minHeight: 500, backgroundColor: containerBackground },
+          { height: height * 0.7, minHeight: 460, backgroundColor: containerBackground },
           sheetStyle,
         ]}
       >
         {/* Header: Back / Title / Done */}
         <View style={sheetStyles.header}>
           <TouchableOpacity
-            style={sheetStyles.button}
+            style={[
+              sheetStyles.headerIconButton,
+              { backgroundColor: listTheme.colors.card, borderColor },
+            ]}
             onPress={closeSheet}
           >
-            <Text style={{ color: textColor }}>Back</Text>
+            <AntDesign name="close" size={22} color={headerTextColor} />
           </TouchableOpacity>
-          <Text style={[sheetStyles.title, { color: textColor }]}>Select Date</Text>
+          <Text style={[sheetStyles.title, { color: headerTextColor }]}>Select Date</Text>
           <TouchableOpacity
-            style={sheetStyles.button}
+            style={[
+              sheetStyles.headerIconButton,
+              { backgroundColor: colors.accent, borderColor: colors.accent },
+            ]}
             onPress={() => {
               try {
                 AddRrule();
@@ -238,12 +250,12 @@ const DateSelectSheet = () => {
               }
             }}
           >
-            <Text style={{ color: textColor }}>Done</Text>
+            <AntDesign name="check" size={22} color={colors.textStrong} />
           </TouchableOpacity>
         </View>
 
         {/* Content Scroll */}
-        <ScrollView>
+        <ScrollView showsVerticalScrollIndicator={false}>
           <View style={{ alignItems: "center" }}>
             <View style={{ maxWidth: 400, alignSelf: "center" }}>
               {/* Start Date Picker */}
@@ -260,6 +272,7 @@ const DateSelectSheet = () => {
                   <RNDateTimePicker
                     mode="date"
                     display="compact"
+                    themeVariant={isDark ? "dark" : "light"}
                     textColor={textColor}
                     // design="material"
                     value={repeat$.startsOn.get().toDate()}
@@ -312,12 +325,41 @@ const DateSelectSheet = () => {
                         </View>
                         <View style={{ flexDirection: "row" }}>
                           {/* Number Picker */}
-                          <Picker
-                            style={[styles.picker, { backgroundColor: cardBackground }]}
-                            itemStyle={[styles.pickerItem, { color: textColor }]}
-                            textColor={textColor}
-                            selectedValue={repeat$.num.get()}
-                            pickerData={values}
+                          {Platform.OS === "android" ? (
+                            <NativePicker
+                              selectedValue={repeat$.num.get()}
+                              onValueChange={(value: string) => {
+                                repeat$.isRepeat.set(true);
+                                if (value === "") {
+                                  repeat$.isRepeat.set(false);
+                                  repeat$.type.set("None");
+                                  repeat$.num.set("");
+                                } else if (repeat$.type.get() === "None") {
+                                  repeat$.type.set("Day");
+                                  repeat$.num.set(value);
+                                } else {
+                                  repeat$.num.set(value);
+                                }
+                              }}
+                              style={styles.nativePicker}
+                              itemStyle={[styles.nativePickerItem, { color: pickerTextColor }]}
+                              dropdownIconColor={pickerTextColor}
+                            >
+                              {values.map((value) => (
+                                <NativePicker.Item
+                                  key={`repeat-${value || "blank"}`}
+                                  label={value === "" ? " " : String(value)}
+                                  value={value}
+                                />
+                              ))}
+                            </NativePicker>
+                          ) : (
+                            <WheelPicker
+                              style={[styles.picker, { backgroundColor: cardBackground }]}
+                              itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
+                              textColor={pickerTextColor}
+                              selectedValue={repeat$.num.get()}
+                              pickerData={values}
                             onValueChange={(value: string) => {
                               repeat$.isRepeat.set(true);
                               if (value === "") {
@@ -331,29 +373,54 @@ const DateSelectSheet = () => {
                                 repeat$.num.set(value);
                               }
                             }}
-                          />
+                            />
+                          )}
                           {/* Type Picker */}
-                          <Picker
-                            isShowSelectLine={false}
-                            selectLineColor={pickerLine}
-                            selectLineSize={6}
-                            style={[styles.picker, { backgroundColor: cardBackground }]}
-                            itemStyle={[styles.pickerItem, { color: textColor }]}
-                            textColor={textColor}
-                            selectedValue={repeat$.type.get()}
-                            pickerData={types}
-                            onValueChange={(value: string) => {
-                              repeat$.type.set(value);
-                              repeat$.isRepeat.set(true);
-                              if (value === "None") {
-                                repeat$.num.set("");
-                                repeat$.isRepeat.set(false);
-                              } else if (repeat$.num.get() === "") {
-                                repeat$.num.set("1");
-                              }
-                              repeat$.isWeeks.set(value === "Week");
-                            }}
-                          />
+                          {Platform.OS === "android" ? (
+                            <NativePicker
+                              selectedValue={repeat$.type.get()}
+                              onValueChange={(value: string) => {
+                                repeat$.type.set(value);
+                                repeat$.isRepeat.set(true);
+                                if (value === "None") {
+                                  repeat$.num.set("");
+                                  repeat$.isRepeat.set(false);
+                                } else if (repeat$.num.get() === "") {
+                                  repeat$.num.set("1");
+                                }
+                                repeat$.isWeeks.set(value === "Week");
+                              }}
+                              style={styles.nativePicker}
+                              itemStyle={[styles.nativePickerItem, { color: pickerTextColor }]}
+                              dropdownIconColor={pickerTextColor}
+                            >
+                              {types.map((value) => (
+                                <NativePicker.Item key={`type-${value}`} label={value} value={value} />
+                              ))}
+                            </NativePicker>
+                          ) : (
+                            <WheelPicker
+                              isShowSelectLine={false}
+                              selectLineColor={pickerLine}
+                              selectLineSize={6}
+                              style={[styles.picker, { backgroundColor: cardBackground }]}
+                              itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
+                              textColor={pickerTextColor}
+                              selectedValue={repeat$.type.get()}
+                              pickerData={types}
+                              onValueChange={(value: string) => {
+                                repeat$.type.set(value);
+                                repeat$.isRepeat.set(true);
+                                if (value === "None") {
+                                  repeat$.num.set("");
+                                  repeat$.isRepeat.set(false);
+                                } else if (repeat$.num.get() === "") {
+                                  repeat$.num.set("1");
+                                }
+                                repeat$.isWeeks.set(value === "Week");
+                              }}
+                            />
+                          )}
                         </View>
                       </View>
 
@@ -451,6 +518,7 @@ const DateSelectSheet = () => {
                                     <RNDateTimePicker
                                       mode="date"
                                       display="compact"
+                                      themeVariant={isDark ? "dark" : "light"}
                                       textColor={textColor}
                                       // design="material"
                                       value={repeat$.endsOn.get().toDate()}
@@ -497,7 +565,9 @@ export default DateSelectSheet;
 // -------------------------------------------------------------
 const styles = StyleSheet.create({
   picker: { width: "50%", height: 215 },
-  pickerItem: { fontSize: 18 },
+  pickerItem: { fontSize: 20 },
+  nativePicker: { width: "50%", height: 215 },
+  nativePickerItem: { fontSize: 20 },
   weekDayButton: {
     flex: 1,
     alignItems: "center",

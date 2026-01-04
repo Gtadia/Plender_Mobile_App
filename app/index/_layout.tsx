@@ -42,7 +42,7 @@ export default observer(function TabLayout() {
       </Tabs>
 
       <TouchableOpacity
-        style={[styles.touchable, { bottom: insets.bottom + 60 + 5, backgroundColor: accent }]}
+        style={[styles.touchable, { bottom: insets.bottom + 60 + 12, backgroundColor: accent }]}
         onPress={() => {
           router.push("/create");
         }}

@@ -14,7 +14,7 @@
 //   - Dynamic layout (height) remains inline where required
 // -------------------------------------------------------------
 
-import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Dimensions, Platform, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useEffect } from 'react'
 import { useNavigation, useRouter } from 'expo-router'
 import { task$ } from './create'
@@ -25,6 +25,7 @@ import { styling$, themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateMana
 import { getListTheme } from '@/constants/listTheme';
 import { createListSheetStyles } from '@/constants/listStyles';
 import { updateEvent } from '@/utils/database';
+import { AntDesign } from "@expo/vector-icons";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 // import Picker from '@/components/TimeCarousel/Picker';
 // import { Picker } from 'react-native-wheel-pick';
@@ -70,13 +71,18 @@ const TimeGoalSelectSheet = () => {
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
+  const blurMethod = Platform.OS === "android" ? "dimezisBlurView" : undefined;
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
-  const containerBackground = listTheme.colors.card;
-  const cardBackground = listTheme.colors.row;
+  const containerBackground = listTheme.colors.row;
+  const cardBackground = listTheme.colors.card;
   const borderColor = listTheme.colors.divider;
   const textColor = colors.text;
   const mutedText = colors.subtext0;
-  const pickerTextStyle = { primaryColor: colors.text, secondaryColor: colors.subtext1 };
+  const pickerTextStyle = {
+    primaryColor: isDark ? colors.text : colors.textStrong,
+    secondaryColor: isDark ? colors.subtext0 : colors.subtext1,
+    fontSize: 20,
+  };
   const pickerPill = withOpacity(palette.overlay0, isDark ? 0.4 : 0.2);
   const editingId = timeGoalEdit$.taskId.get();
   const isEditing = editingId !== null && editingId !== undefined;
@@ -125,6 +131,7 @@ const TimeGoalSelectSheet = () => {
         <BlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
+          experimentalBlurMethod={blurMethod}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
@@ -148,14 +155,17 @@ const TimeGoalSelectSheet = () => {
       <Animated.View
         style={[
           sheetStyles.container,
-          { height: height * 6 / 8, minHeight: 500, backgroundColor: containerBackground },
+          { height: height * 0.7, minHeight: 460, backgroundColor: containerBackground },
           sheetStyle,
         ]}
       >
         {/* Header: Back / Title / Done */}
         <View style={sheetStyles.header}>
           <TouchableOpacity
-            style={sheetStyles.button}
+            style={[
+              sheetStyles.headerIconButton,
+              { backgroundColor: listTheme.colors.card, borderColor },
+            ]}
             onPress={() => {
               if (isEditing) {
                 timeGoalEdit$.taskId.set(null);
@@ -163,11 +173,14 @@ const TimeGoalSelectSheet = () => {
               closeSheet();
             }}
           >
-            <Text style={{ color: textColor }}>Back</Text>
+            <AntDesign name="close" size={22} color={textColor} />
           </TouchableOpacity>
           <Text style={[sheetStyles.title, { color: textColor }]}>Select Goal</Text>
           <TouchableOpacity
-            style={sheetStyles.button}
+            style={[
+              sheetStyles.headerIconButton,
+              { backgroundColor: colors.accent, borderColor: colors.accent },
+            ]}
             onPress={async () => {
               const totalSeconds = time$.hours.get() * 3600 + time$.minutes.get() * 60;
               try {
@@ -192,7 +205,7 @@ const TimeGoalSelectSheet = () => {
               }
             }}
           >
-            <Text style={{ color: textColor }}>Done</Text>
+            <AntDesign name="check" size={22} color={colors.textStrong} />
           </TouchableOpacity>
         </View>
 
