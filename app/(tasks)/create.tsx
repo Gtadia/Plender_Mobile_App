@@ -531,6 +531,36 @@ const addToDatabase = async () => {
     return;
   }
 
+  const formatRemaining = (seconds: number) => {
+    const safe = Math.max(0, Math.floor(seconds));
+    const hours = Math.floor(safe / 3600);
+    const minutes = Math.floor((safe % 3600) / 60);
+    const parts: string[] = [];
+    if (hours > 0) parts.push(`${hours}h`);
+    parts.push(`${minutes}m`);
+    return parts.join(" ");
+  };
+
+  const targetDate =
+    rrule?.options?.dtstart instanceof Date
+      ? rrule.options.dtstart
+      : new Date();
+  const existing = await getEventsForDate(targetDate);
+  const existingGoal = existing.reduce((sum, task) => sum + (task.timeGoal ?? 0), 0);
+  const daySeconds = 24 * 60 * 60;
+  const remainingSeconds = daySeconds - existingGoal;
+  if (timeGoal > remainingSeconds) {
+    const remainingLabel = formatRemaining(remainingSeconds);
+    toastShow$.set(({ toggleFire }) => ({
+      type: "error",
+      title: "Not enough time left",
+      description: `Only ${remainingLabel} remaining on ${moment(targetDate).format("MMM D")}.`,
+      toggleFire: !toggleFire,
+      whereToDisplay: 1,
+    }));
+    return false;
+  }
+
   const submitTask = {
     title,
     description: task$.description.get(),

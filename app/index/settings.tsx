@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Pressable, ScrollView, Switch, View } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { observer } from '@legendapp/state/react';
 import { AntDesign } from '@expo/vector-icons';
@@ -7,9 +7,10 @@ import { useRouter } from 'expo-router';
 import { settings$, styling$, themeTokens$ } from '@/utils/stateManager';
 import { themeOptions } from '@/constants/themes';
 import { ScreenHeader } from '@/components/ScreenHeader';
-import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
+import { globalTheme } from '@/constants/globalThemeVar';
 import { getListTheme } from '@/constants/listTheme';
 import { SettingsCard } from '@/components/SettingsCard';
+import { createSettingsListStyles } from '@/constants/listStyles';
 
 const withOpacity = (hex: string, opacity: number) => {
   const normalized = hex.replace('#', '');
@@ -39,6 +40,7 @@ const SettingsScreen = observer(() => {
   const subtext0 = colors.subtext0;
   const subtext1 = colors.subtext1;
   const listTheme = getListTheme(palette, isDark);
+  const listStyles = createSettingsListStyles(listTheme);
   const dividerColor = listTheme.colors.divider;
   const systemTimezone = resolveSystemTimezone();
   const timezoneMode = settings$.general.timezoneMode.get();
@@ -46,26 +48,26 @@ const SettingsScreen = observer(() => {
   const timezoneLabel = isAutoTimezone ? systemTimezone : settings$.general.timezone.get();
 
   const RowIcon = ({ name }: { name: keyof typeof AntDesign.glyphMap }) => (
-    <View style={[styles.iconBadge, { backgroundColor: withOpacity(accent, 0.14) }]}>
+    <View style={[listStyles.iconBadge, { backgroundColor: withOpacity(accent, 0.14) }]}>
       <AntDesign name={name} size={16} color={accent} />
     </View>
   );
 
   return (
-    <ScreenView style={styles.container}>
+    <ScreenView style={listStyles.container}>
       <ScreenHeader title="Settings" />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={listStyles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle} fontColor="strong">
+        <View style={listStyles.section}>
+          <Text style={listStyles.sectionTitle} fontColor="strong">
             General
           </Text>
-          <SettingsCard style={styles.card}>
-            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Date &amp; Time</Text>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
+          <SettingsCard style={listStyles.card}>
+            <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Date &amp; Time</Text>
+            <View style={listStyles.row}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="clockcircleo" />
-                <Text style={styles.rowLabel} fontColor="strong">
+                <Text style={listStyles.rowLabel} fontColor="strong">
                   Automatic Timezone
                 </Text>
               </View>
@@ -78,34 +80,34 @@ const SettingsScreen = observer(() => {
                 thumbColor={isAutoTimezone ? accent : palette.surface0}
               />
             </View>
-            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
+            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
             <Pressable
-              style={[styles.row, isAutoTimezone && styles.rowDisabled]}
+              style={[listStyles.row, isAutoTimezone && listStyles.rowDisabled]}
               onPress={() => {
                 if (!isAutoTimezone) router.push('/settingsTimezoneSelect');
               }}
             >
-              <View style={styles.rowLeft}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="earth" />
-                <Text style={styles.rowLabel} fontColor="strong">
+                <Text style={listStyles.rowLabel} fontColor="strong">
                   Timezone
                 </Text>
               </View>
-              <View style={styles.rowRight}>
-                <Text style={[styles.rowValue, { color: subtext0 }]}>{timezoneLabel}</Text>
+              <View style={listStyles.rowRight}>
+                <Text style={[listStyles.rowValue, { color: subtext0 }]}>{timezoneLabel}</Text>
                 <AntDesign name="right" size={14} color={subtext0} />
               </View>
             </Pressable>
-            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-            <Pressable style={styles.row} onPress={() => router.push('/settingsWeekStartSelect')}>
-              <View style={styles.rowLeft}>
+            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
+            <Pressable style={listStyles.row} onPress={() => router.push('/settingsWeekStartSelect')}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="calendar" />
-                <Text style={styles.rowLabel} fontColor="strong">
+                <Text style={listStyles.rowLabel} fontColor="strong">
                   Start Week On
                 </Text>
               </View>
-              <View style={styles.rowRight}>
-                <Text style={[styles.rowValue, { color: subtext0 }]}>
+              <View style={listStyles.rowRight}>
+                <Text style={[listStyles.rowValue, { color: subtext0 }]}>
                   {settings$.general.startWeekOn.get()}
                 </Text>
                 <AntDesign name="right" size={14} color={subtext0} />
@@ -113,12 +115,12 @@ const SettingsScreen = observer(() => {
             </Pressable>
           </SettingsCard>
 
-          <SettingsCard style={styles.card}>
-            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Tasks</Text>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
+          <SettingsCard style={listStyles.card}>
+            <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Tasks</Text>
+            <View style={listStyles.row}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="rocket1" />
-                <Text style={styles.rowLabel} fontColor="strong">
+                <Text style={listStyles.rowLabel} fontColor="strong">
                   Allow "Quick Tasks"
                 </Text>
               </View>
@@ -132,47 +134,47 @@ const SettingsScreen = observer(() => {
           </SettingsCard>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle} fontColor="strong">
+        <View style={listStyles.section}>
+          <Text style={listStyles.sectionTitle} fontColor="strong">
             Personalization
           </Text>
-          <SettingsCard style={styles.card}>
-            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Theme</Text>
-            <Pressable style={styles.row} onPress={() => router.push('/settingsThemeSelect')}>
-              <View style={styles.rowLeft}>
+          <SettingsCard style={listStyles.card}>
+            <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Theme</Text>
+            <Pressable style={listStyles.row} onPress={() => router.push('/settingsThemeSelect')}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="skin" />
-                <Text style={styles.rowLabel} fontColor="strong">
+                <Text style={listStyles.rowLabel} fontColor="strong">
                   Select Theme
                 </Text>
               </View>
-              <View style={styles.rowRight}>
-                <Text style={[styles.rowValue, { color: subtext0 }]}>{themeLabel}</Text>
+              <View style={listStyles.rowRight}>
+                <Text style={[listStyles.rowValue, { color: subtext0 }]}>{themeLabel}</Text>
                 <AntDesign name="right" size={14} color={subtext0} />
               </View>
             </Pressable>
-            <View style={[styles.divider, { backgroundColor: dividerColor }]} />
-            <Pressable style={styles.row} onPress={() => router.push('/settingsAccentSelect')}>
-              <View style={styles.rowLeft}>
+            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
+            <Pressable style={listStyles.row} onPress={() => router.push('/settingsAccentSelect')}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="star" />
-                <Text style={styles.rowLabel} fontColor="strong">
+                <Text style={listStyles.rowLabel} fontColor="strong">
                   Accent Color
                 </Text>
               </View>
-              <View style={styles.rowRight}>
+              <View style={listStyles.rowRight}>
                 <View
-                  style={[styles.accentPreview, { backgroundColor: accent, borderColor: dividerColor }]}
+                  style={[listStyles.accentPreview, { backgroundColor: accent, borderColor: dividerColor }]}
                 />
                 <AntDesign name="right" size={14} color={subtext0} />
               </View>
             </Pressable>
           </SettingsCard>
 
-          <SettingsCard style={styles.card}>
-            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Extra Features</Text>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
+          <SettingsCard style={listStyles.card}>
+            <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Extra Features</Text>
+            <View style={listStyles.row}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="filter" />
-                <Text style={styles.rowLabel} fontColor="strong">
+                <Text style={listStyles.rowLabel} fontColor="strong">
                   Blur Backgrounds
                 </Text>
               </View>
@@ -186,16 +188,16 @@ const SettingsScreen = observer(() => {
           </SettingsCard>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle} fontColor="strong">
+        <View style={listStyles.section}>
+          <Text style={listStyles.sectionTitle} fontColor="strong">
             Productivity
           </Text>
-          <SettingsCard style={styles.card}>
-            <Text style={[styles.subsectionTitle, { color: subtext1 }]}>Notifications</Text>
-            <View style={styles.row}>
-              <View style={styles.rowLeft}>
+          <SettingsCard style={listStyles.card}>
+            <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Notifications</Text>
+            <View style={listStyles.row}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="bells" />
-                <Text style={styles.rowLabel} fontColor="strong">
+                <Text style={listStyles.rowLabel} fontColor="strong">
                   Enable Notifications
                 </Text>
               </View>
@@ -213,88 +215,6 @@ const SettingsScreen = observer(() => {
       </ScrollView>
     </ScreenView>
   );
-});
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingVertical: 16,
-    paddingHorizontal: horizontalPadding,
-    gap: 18,
-  },
-  section: {
-    gap: 10,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-  },
-  card: {
-    borderRadius: 22,
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    gap: 6,
-  },
-  subsectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-    paddingHorizontal: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    gap: 12,
-    paddingHorizontal: 6,
-  },
-  rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flex: 1,
-  },
-  rowLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  rowValue: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  rowRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  rowDisabled: {
-    opacity: 0.45,
-  },
-  divider: {
-    height: 1,
-    marginHorizontal: 6,
-  },
-  groupDivider: {
-    height: 1,
-    marginVertical: 6,
-    marginHorizontal: 6,
-  },
-  accentPreview: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  iconBadge: {
-    width: 30,
-    height: 30,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });
 
 export default SettingsScreen;

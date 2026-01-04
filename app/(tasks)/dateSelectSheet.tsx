@@ -40,6 +40,7 @@ import { DateTime } from "luxon";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { getListTheme } from "@/constants/listTheme";
+import { createListSheetStyles } from "@/constants/listStyles";
 import { styling$, themeTokens$ } from "@/utils/stateManager";
 
 // -------------------------------------------------------------
@@ -149,6 +150,7 @@ const DateSelectSheet = () => {
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
   const listTheme = getListTheme(palette, isDark);
+  const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const containerBackground = listTheme.colors.card;
@@ -193,7 +195,7 @@ const DateSelectSheet = () => {
   }));
 
   return (
-    <View style={styles.overlay}>
+    <View style={sheetStyles.overlay}>
       {blurEnabled ? (
         <BlurView
           tint={isDark ? "dark" : "light"}
@@ -207,26 +209,26 @@ const DateSelectSheet = () => {
         style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
       />
       {/* Click outside to dismiss */}
-      <Pressable onPress={closeSheet} style={styles.background} />
+      <Pressable onPress={closeSheet} style={sheetStyles.background} />
 
       <Animated.View
         style={[
-          styles.container,
+          sheetStyles.container,
           { height: (height * 6) / 8, minHeight: 500, backgroundColor: containerBackground },
           sheetStyle,
         ]}
       >
         {/* Header: Back / Title / Done */}
-        <View style={styles.header}>
+        <View style={sheetStyles.header}>
           <TouchableOpacity
-            style={styles.button}
+            style={sheetStyles.button}
             onPress={closeSheet}
           >
             <Text style={{ color: textColor }}>Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.title, { color: textColor }]}>Select Date</Text>
+          <Text style={[sheetStyles.title, { color: textColor }]}>Select Date</Text>
           <TouchableOpacity
-            style={styles.button}
+            style={sheetStyles.button}
             onPress={() => {
               try {
                 AddRrule();
@@ -245,15 +247,15 @@ const DateSelectSheet = () => {
           <View style={{ alignItems: "center" }}>
             <View style={{ maxWidth: 400, alignSelf: "center" }}>
               {/* Start Date Picker */}
-              <View style={[styles.subMenuSquare, cardStyle]}>
+              <View style={[sheetStyles.subMenuSquare, cardStyle]}>
                 <View
                   style={[
-                    styles.subMenuBar,
-                    styles.subMenuSquarePadding,
+                    sheetStyles.subMenuBar,
+                    sheetStyles.subMenuSquarePadding,
                     { alignItems: "center" },
                   ]}
                 >
-                  <Text style={[styles.menuText, { color: textColor }]}>Start Date</Text>
+                  <Text style={[sheetStyles.menuText, { color: textColor }]}>Start Date</Text>
                   {/* dayjs(date).startOf('day') uses startOf in order to keep up with local time zone and not get stuck on UTC */}
                   <RNDateTimePicker
                     mode="date"
@@ -271,14 +273,14 @@ const DateSelectSheet = () => {
               </View>
 
               {/* Repeat Section */}
-              <View style={[styles.subMenu, { marginTop: 10 }]}>
+              <View style={sheetStyles.subMenu}>
                 <View style={{ flexDirection: "row" }}>
                   <AntDesign
                     name="retweet"
                     size={20}
                     color={mutedText}
                   />
-                  <Text style={[styles.menuText, styles.subMenuText, { color: textColor }]}>
+                  <Text style={[sheetStyles.menuText, sheetStyles.subMenuText, { color: textColor }]}>
                     Repeat
                   </Text>
                 </View>
@@ -299,14 +301,14 @@ const DateSelectSheet = () => {
                       {/* Number + Type Pickers */}
                       <View
                         style={[
-                          styles.subMenuSquare,
-                          styles.subMenuSquarePadding,
+                          sheetStyles.subMenuSquare,
+                          sheetStyles.subMenuSquarePadding,
                           cardStyle,
                         ]}
                       >
-                        <View style={styles.subMenuBar}>
-                          <Text style={[styles.menuText, { color: textColor }]}>Every</Text>
-                          <Text style={[styles.menuTextEnd, { color: mutedText }]}>{repeatValue}</Text>
+                        <View style={sheetStyles.subMenuBar}>
+                          <Text style={[sheetStyles.menuText, { color: textColor }]}>Every</Text>
+                          <Text style={[sheetStyles.menuTextEnd, { color: mutedText }]}>{repeatValue}</Text>
                         </View>
                         <View style={{ flexDirection: "row" }}>
                           {/* Number Picker */}
@@ -362,7 +364,7 @@ const DateSelectSheet = () => {
                             <Text style={{ color: mutedText }}>ON</Text>
                             <View
                               style={[
-                                styles.subMenuSquare,
+                                sheetStyles.subMenuSquare,
                                 cardStyle,
                                 { flexDirection: "row", overflow: "hidden" },
                               ]}
@@ -403,16 +405,16 @@ const DateSelectSheet = () => {
                         {() => (
                           <>
                             <Text style={{ color: mutedText }}>ENDS</Text>
-                            <View style={[styles.subMenuSquare, cardStyle]}>
+                            <View style={[sheetStyles.subMenuSquare, cardStyle]}>
                               {/* Never option */}
                               <TouchableOpacity
                                 style={[
-                                  styles.subMenuBar,
-                                  styles.subMenuSquarePadding,
+                                  sheetStyles.subMenuBar,
+                                  sheetStyles.subMenuSquarePadding,
                                 ]}
                                 onPress={() => repeat$.endsOnMode.set(false)}
                               >
-                                <Text style={[styles.menuText, { color: textColor }]}>Never</Text>
+                                <Text style={[sheetStyles.menuText, { color: textColor }]}>Never</Text>
                                 <Memo>
                                   {() =>
                                     !repeat$.endsOnMode.get() && (
@@ -429,13 +431,13 @@ const DateSelectSheet = () => {
                               {/* On Date option */}
                               <TouchableOpacity
                                 style={[
-                                  styles.subMenuBar,
-                                  styles.subMenuSquarePadding,
+                                  sheetStyles.subMenuBar,
+                                  sheetStyles.subMenuSquarePadding,
                                   { alignItems: "center" },
                                 ]}
                                 onPress={() => repeat$.endsOnMode.set(true)}
                               >
-                                <Text style={[styles.menuText, { color: textColor }]}>On Date</Text>
+                                <Text style={[sheetStyles.menuText, { color: textColor }]}>On Date</Text>
                                 <View
                                   style={{
                                     flexDirection: "row",
@@ -494,42 +496,6 @@ export default DateSelectSheet;
 // Styles
 // -------------------------------------------------------------
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: "transparent" },
-  background: { backgroundColor: "transparent", flex: 1 },
-  title: { fontWeight: "500", fontSize: 15 },
-  container: { padding: 15, alignItems: "center" },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    width: "100%",
-    marginBottom: 15,
-  },
-  button: {},
-  subMenu: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingBottom: 10,
-    marginTop: 10,
-  },
-  subMenuText: { paddingLeft: 10 },
-  subMenuSquare: {
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  subMenuSquarePadding: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  subMenuBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  menuText: { fontWeight: "500", fontSize: 16 },
-  menuTextEnd: {
-    fontWeight: "300",
-    fontSize: 16,
-  },
   picker: { width: "50%", height: 215 },
   pickerItem: { fontSize: 18 },
   weekDayButton: {

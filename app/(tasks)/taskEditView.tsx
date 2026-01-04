@@ -5,6 +5,7 @@ import { $TextInput } from '@legendapp/state/react-native';
 import { BlurView } from 'expo-blur';
 import { styling$, themeTokens$ } from '@/utils/stateManager';
 import { getListTheme } from '@/constants/listTheme';
+import { createListSheetStyles } from '@/constants/listStyles';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 export default function TaskEditView() {
@@ -14,6 +15,7 @@ export default function TaskEditView() {
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
   const listTheme = getListTheme(palette, isDark);
+  const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const containerBackground = listTheme.colors.card;
@@ -54,7 +56,7 @@ export default function TaskEditView() {
   }));
 
   return (
-    <View style={styles.overlay}>
+    <View style={sheetStyles.overlay}>
       {blurEnabled ? (
         <BlurView
           tint={isDark ? "dark" : "light"}
@@ -67,21 +69,21 @@ export default function TaskEditView() {
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
       />
-      <Pressable onPress={closeSheet} style={styles.background} />
+      <Pressable onPress={closeSheet} style={sheetStyles.background} />
       <Animated.View
         style={[
-          styles.container,
+          sheetStyles.container,
           { height: height * 6 / 8, minHeight: 500, backgroundColor: containerBackground },
           sheetStyle,
         ]}
       >
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width:"100%", marginBottom: 15}}>
-          <TouchableOpacity style={styles.button} onPress={closeSheet}>
+        <View style={sheetStyles.header}>
+          <TouchableOpacity style={sheetStyles.button} onPress={closeSheet}>
             <Text style={{ color: textColor }}>Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.title, { color: textColor }]}>Task Details</Text>
+          <Text style={[sheetStyles.title, { color: textColor }]}>Task Details</Text>
           <TouchableOpacity
-            style={styles.button}
+            style={sheetStyles.button}
             onPress={() => {
               // close
               closeSheet();
@@ -94,14 +96,14 @@ export default function TaskEditView() {
 
         <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', }}>
           {/* TEXT */}
-          <View style={[styles.subMenuSquare, styles.subMenuSquarePadding, cardStyle]}>
-            <View style={[styles.subMenuBar, { alignItems: 'center' }]}>
-              <Text style={[styles.menuText, { color: textColor }]}>Name</Text>
+          <View style={[sheetStyles.subMenuSquare, sheetStyles.subMenuSquarePadding, cardStyle]}>
+            <View style={[sheetStyles.subMenuBar, { alignItems: 'center' }]}>
+              <Text style={[sheetStyles.menuText, { color: textColor }]}>Name</Text>
             </View>
             <View style={{ paddingVertical: 15}}>
                <$TextInput
                 $value={"Hello"}
-                style={[styles.textInput, { color: textColor }]}
+                style={[sheetStyles.textInput, { color: textColor }]}
                 autoFocus={true}
                 multiline
                 placeholder={"Category Name"}
@@ -116,67 +118,3 @@ export default function TaskEditView() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: "transparent",
-  },
-  background: {
-    backgroundColor: 'transparent',
-    flex: 1,
-  },
-  title: {
-    fontWeight: 500,
-    fontSize: 15,
-  },
-  container: {
-    padding: 15,
-    alignItems: 'center',
-
-  },
-  subMenuContainer: {
-    paddingHorizontal: 18,
-
-  },
-  subMenu: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingBottom: 10,
-    marginTop: 10
-  },
-  subMenuText: {
-    paddingLeft: 10,
-  },
-  subMenuTextEnd: {
-    paddingLeft: 10,
-    paddingRight: 8,
-  },
-  subMenuSquare: {
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  subMenuSquarePadding: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  subMenuBar: {
-    flexDirection: 'row',
-    width: '100%',
-    justifyContent: 'space-between'
-  },
-  menuText: {
-    fontWeight: 500,
-    fontSize: 16,
-  },
-  menuTextEnd: {
-    fontWeight: 300,
-    fontSize: 16,
-  },
-  button: {
-  },
-  textInput: {
-    fontSize: 18,
-    fontWeight: 500,
-  },
-})

@@ -23,6 +23,7 @@ import { observable } from '@legendapp/state';
 import { BlurView } from 'expo-blur';
 import { styling$, themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateManager';
 import { getListTheme } from '@/constants/listTheme';
+import { createListSheetStyles } from '@/constants/listStyles';
 import { updateEvent } from '@/utils/database';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 // import Picker from '@/components/TimeCarousel/Picker';
@@ -67,6 +68,7 @@ const TimeGoalSelectSheet = () => {
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
   const listTheme = getListTheme(palette, isDark);
+  const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const containerBackground = listTheme.colors.card;
@@ -118,7 +120,7 @@ const TimeGoalSelectSheet = () => {
   }));
 
   return (
-    <View style={styles.overlay}>
+    <View style={sheetStyles.overlay}>
       {blurEnabled ? (
         <BlurView
           tint={isDark ? "dark" : "light"}
@@ -139,21 +141,21 @@ const TimeGoalSelectSheet = () => {
           }
           closeSheet();
         }}
-        style={styles.background}
+        style={sheetStyles.background}
       />
 
       {/* Sheet container (dynamic height preserved) */}
       <Animated.View
         style={[
-          styles.container,
+          sheetStyles.container,
           { height: height * 6 / 8, minHeight: 500, backgroundColor: containerBackground },
           sheetStyle,
         ]}
       >
         {/* Header: Back / Title / Done */}
-        <View style={styles.header}>
+        <View style={sheetStyles.header}>
           <TouchableOpacity
-            style={styles.button}
+            style={sheetStyles.button}
             onPress={() => {
               if (isEditing) {
                 timeGoalEdit$.taskId.set(null);
@@ -163,9 +165,9 @@ const TimeGoalSelectSheet = () => {
           >
             <Text style={{ color: textColor }}>Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.title, { color: textColor }]}>Select Goal</Text>
+          <Text style={[sheetStyles.title, { color: textColor }]}>Select Goal</Text>
           <TouchableOpacity
-            style={styles.button}
+            style={sheetStyles.button}
             onPress={async () => {
               const totalSeconds = time$.hours.get() * 3600 + time$.minutes.get() * 60;
               try {
@@ -212,16 +214,16 @@ const TimeGoalSelectSheet = () => {
                   return (
                     <>
                       {/* Card: label + current selection + pickers */}
-                      <View
+                        <View
                         style={[
-                          styles.subMenuSquare,
-                          styles.subMenuSquarePadding,
+                          sheetStyles.subMenuSquare,
+                          sheetStyles.subMenuSquarePadding,
                           { backgroundColor: cardBackground, borderColor, borderWidth: 1 },
                         ]}
                       >
-                        <View style={styles.subMenuBar}>
-                          <Text style={[styles.menuText, { color: textColor }]}>Time Goal</Text>
-                          <Text style={[styles.menuTextEnd, { color: mutedText }]}>{goalString}</Text>
+                        <View style={sheetStyles.subMenuBar}>
+                          <Text style={[sheetStyles.menuText, { color: textColor }]}>Time Goal</Text>
+                          <Text style={[sheetStyles.menuTextEnd, { color: mutedText }]}>{goalString}</Text>
                         </View>
 
                         <View style={styles.max380}>
@@ -275,98 +277,26 @@ export default TimeGoalSelectSheet
 // Styles
 // -------------------------------------------------------------
 const styles = StyleSheet.create({
-  flex1: { flex: 1 },
-  overlay: { flex: 1, backgroundColor: "transparent" },
-
-  // Outside tap area
-  background: {
-    backgroundColor: 'transparent',
-    flex: 1,
-  },
-
-  // Container for the sheet content (static parts)
-  container: {
-    padding: 15,
-    alignItems: 'center',
-  },
-
-  // Header row
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    width:"100%",
-    marginBottom: 15
-  },
-
-  // Title text
-  title: {
-    fontWeight: 500,
-    fontSize: 15,
-  },
-
-  // Center helper
-  center: { alignItems: 'center' },
-
-  // Optional sub-menu wrappers (kept from original)
-  subMenuContainer: {
-    paddingHorizontal: 18,
-  },
-  subMenu: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingBottom: 10,
-    marginTop: 10
-  },
-  subMenuText: { paddingLeft: 10 },
-  subMenuTextEnd: { paddingLeft: 10, paddingRight: 8 },
-
-  // Card styles
-  subMenuSquare: {
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  subMenuSquarePadding: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-  },
-  subMenuBar: {
-    flexDirection: 'row',
-    width: '100%',
-    justifyContent: 'space-between'
-  },
-
-  // Labels
-  menuText: { fontWeight: 500, fontSize: 16 },
-  menuTextEnd: { fontWeight: 300, fontSize: 16 },
-
-  // Buttons (placeholder style kept)
-  button: {},
-
-  // Picker row and constraints
+  center: { alignItems: "center" },
   max380: { maxWidth: 380 },
   pickerRow: {
     flexDirection: "row",
     gap: 12,
     alignItems: "center",
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
+    justifyContent: "center",
+    backgroundColor: "transparent",
     paddingVertical: 14,
     paddingHorizontal: pickerPadding,
   },
-
-  // Selection "pill" overlay (currently unused)
   pill: {
     position: "absolute",
-    right: pickerPadding, // was missing before
-    // top: (ITEM_HEIGHT * VISIBLE_ITEMS - ITEM_HEIGHT) / 2,
+    right: pickerPadding,
     height: ITEM_HEIGHT,
-    width: '100%',
+    width: "100%",
     backgroundColor: "transparent",
     borderRadius: 12,
     zIndex: 20,
     elevation: 20,
     pointerEvents: "none",
-    // transform: [{ translateX: pillOffsetX }, { translateY: pillOffsetY }],
   },
 });

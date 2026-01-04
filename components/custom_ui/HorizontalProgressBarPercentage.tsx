@@ -92,7 +92,7 @@ const HorizontalProgressBar = observer(
             bottom: 0,
             }}
         >
-          <Text style={{ fontSize: 10, fontWeight: "800", textAlign:'center', color: textColor }}>
+          <Text style={{ fontSize: 12, fontWeight: "700", textAlign:'center', color: textColor }}>
             {Math.round(pct * 100)}%
           </Text>
         </View>
