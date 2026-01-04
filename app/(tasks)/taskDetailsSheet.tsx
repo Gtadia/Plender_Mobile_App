@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef } from "react";
 import {
   ActionSheetIOS,
   Alert,
@@ -13,11 +13,12 @@ import {
   Switch,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
-import { Stack, useNavigation, useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import { Memo, Show, observer, useObservable } from "@legendapp/state/react";
 import moment from "moment";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 
 import { Text } from "@/components/Themed";
 import { fmt } from "@/helpers/fmt";
@@ -39,25 +40,39 @@ import { clearDirtyTask } from "@/utils/dirtyTaskStore";
 export default function TaskDetailsSheet() {
   const navigation = useNavigation();
   const { height } = Dimensions.get("window");
+  const translateY = useSharedValue(height);
+  const isDark = themeTokens$.isDark.get();
+  const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
 
-  const closeSheet = () => {
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 260 });
+  }, [translateY]);
+
+  const finishClose = () => {
     taskDetailsSheet$.taskId.set(null);
     (navigation as any).goBack?.();
   };
 
-  return (
-    <View style={styles.overlay}>
-      <Stack.Screen
-        name="taskDetailsSheet"
-        options={{ headerShown: false, presentation: "transparentModal", animation: "fade" }}
-      />
+  const closeSheet = () => {
+    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
+      if (finished) {
+        runOnJS(finishClose)();
+      }
+    });
+  };
 
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return (
+    <View style={[styles.overlay, { backgroundColor: overlayColor }]}>
       <Pressable onPress={closeSheet} style={styles.background} />
 
       <View style={styles.kav}>
-        <View style={[styles.container, { height: height * 6 / 8, minHeight: 500 }]}>
+        <Animated.View style={[styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle]}>
           <TaskDetailsContent />
-        </View>
+        </Animated.View>
       </View>
     </View>
   );

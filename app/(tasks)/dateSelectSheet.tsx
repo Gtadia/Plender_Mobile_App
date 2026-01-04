@@ -26,8 +26,8 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React from "react";
-import { Stack, useNavigation } from "expo-router";
+import React, { useEffect } from "react";
+import { useNavigation } from "expo-router";
 import moment from "moment";
 import { AntDesign } from "@expo/vector-icons";
 import { task$ } from "./create";
@@ -37,6 +37,8 @@ import { observable } from "@legendapp/state";
 import { Picker } from "react-native-wheel-pick";
 import RNDateTimePicker from "@react-native-community/datetimepicker";
 import { DateTime } from "luxon";
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import { themeTokens$ } from "@/utils/stateManager";
 
 // -------------------------------------------------------------
 // Observable state for repeat settings
@@ -131,33 +133,43 @@ const AddRrule = () => {
 // -------------------------------------------------------------
 const DateSelectSheet = () => {
   const navigation = useNavigation();
-  let { height } = Dimensions.get("window");
+  const { height } = Dimensions.get("window");
+  const translateY = useSharedValue(height);
+  const isDark = themeTokens$.isDark.get();
+  const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
 
   // Default: repeat on current day of the week
   repeat$.weeks[moment().day()].set(true);
 
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 260 });
+  }, [translateY]);
+
+  const closeSheet = () => {
+    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
+      if (finished) {
+        runOnJS(() => navigation.goBack())();
+      }
+    });
+  };
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
   return (
-    <View style={{ flex: 1 }}>
-      {/* Transparent modal presentation */}
-      <Stack.Screen
-        name="dateSelectSheet"
-        options={{ headerShown: false, presentation: "transparentModal" }}
-      />
-
+    <View style={{ flex: 1, backgroundColor: overlayColor }}>
       {/* Click outside to dismiss */}
-      <Pressable
-        onPress={() => navigation.goBack()}
-        style={styles.background}
-      />
+      <Pressable onPress={closeSheet} style={styles.background} />
 
-      <View
-        style={[styles.container, { height: (height * 6) / 8, minHeight: 500 }]}
+      <Animated.View
+        style={[styles.container, { height: (height * 6) / 8, minHeight: 500 }, sheetStyle]}
       >
         {/* Header: Back / Title / Done */}
         <View style={styles.header}>
           <TouchableOpacity
             style={styles.button}
-            onPress={() => navigation.goBack()}
+            onPress={closeSheet}
           >
             <Text>Back</Text>
           </TouchableOpacity>
@@ -166,7 +178,7 @@ const DateSelectSheet = () => {
             style={styles.button}
             onPress={() => {
               AddRrule();
-              navigation.goBack();
+              closeSheet();
             }}
           >
             <Text>Done</Text>
@@ -406,7 +418,7 @@ const DateSelectSheet = () => {
             </View>
           </View>
         </ScrollView>
-      </View>
+      </Animated.View>
     </View>
   );
 };

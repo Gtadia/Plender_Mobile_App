@@ -31,7 +31,8 @@ const CalendarDateSheet = observer(() => {
   const insets = useSafeAreaInsets();
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
-  const { palette, colors } = themeTokens$.get();
+  const { palette, colors, isDark } = themeTokens$.get();
+  const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const accentSoft = withOpacity(colors.accent, 0.14);
   const accentBorder = withOpacity(colors.accent, 0.28);
   const styles = createStyles({ palette, colors, accentSoft, accentBorder });
@@ -67,7 +68,7 @@ const CalendarDateSheet = observer(() => {
   }, [closeSheet]);
 
   return (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, { backgroundColor: overlayColor }]}>
       <Pressable onPress={closeSheet} style={styles.background} />
       <Animated.View
         style={[
@@ -215,7 +216,7 @@ const createStyles = ({
   StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
+    backgroundColor: "transparent",
   },
   background: {
     flex: 1,

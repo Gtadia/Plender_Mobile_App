@@ -43,7 +43,7 @@ import {
 import { Memo, Show } from "@legendapp/state/react";
 import moment from "moment";
 import { RRule } from "rrule";
-import { Category$, loadDay, tasks$ } from "@/utils/stateManager";
+import { Category$, loadDay, tasks$, themeTokens$ } from "@/utils/stateManager";
 import Animated, {
   useAnimatedKeyboard,
   useAnimatedStyle,
@@ -227,6 +227,8 @@ const create = () => {
   const router = useRouter();
   let { height } = Dimensions.get("window");
   const titleRef = React.useRef<any>(null);
+  const isDark = themeTokens$.isDark.get();
+  const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
 
   // Keep keyboard visible by refocusing the title when it hides
   React.useEffect(() => {
@@ -237,7 +239,7 @@ const create = () => {
   }, []);
 
   return (
-    <View style={styles.overlay}>
+    <View style={[styles.overlay, { backgroundColor: overlayColor }]}>
       <TouchableWithoutFeedback
         onPress={Keyboard.dismiss}
         accessible={false}
@@ -566,7 +568,7 @@ const styles = StyleSheet.create({
   // Full-screen darkened overlay behind the sheet
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    backgroundColor: "transparent",
   },
 
   // Transparent flex filler (used on TouchableWithoutFeedback wrapper)

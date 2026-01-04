@@ -1,27 +1,39 @@
-import React, { useRef } from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import ColorPicker, { Panel3 } from 'reanimated-color-picker';
-import { task$ } from './create';
-import { Stack, useNavigation } from 'expo-router';
-import { Memo, useObservable } from '@legendapp/state/react';
+import { useNavigation } from 'expo-router';
 import { $TextInput } from '@legendapp/state/react-native';
-import { Category$, CategoryIDCount$ } from '@/utils/stateManager';
+import { themeTokens$ } from '@/utils/stateManager';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 export default function TaskEditView() {
   const navigation = useNavigation();
-  let { width, height } = Dimensions.get("window");
+  const { height } = Dimensions.get("window");
+  const translateY = useSharedValue(height);
+  const isDark = themeTokens$.isDark.get();
+  const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
+
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 260 });
+  }, [translateY]);
+
+  const closeSheet = () => {
+    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
+      if (finished) {
+        runOnJS(() => navigation.goBack())();
+      }
+    });
+  };
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   return (
-    <View style={{ flex: 1 }}>
-      <Stack.Screen name='dateSelectSheet' options={{
-          headerShown: false,
-          presentation: "transparentModal",
-      }}/>
-
-      <Pressable onPress={() => {navigation.goBack();}} style={styles.background} />
-      <View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 } ]}>
+    <View style={{ flex: 1, backgroundColor: overlayColor }}>
+      <Pressable onPress={closeSheet} style={styles.background} />
+      <Animated.View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle ]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width:"100%", marginBottom: 15}}>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.button} onPress={closeSheet}>
             <Text>Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Task Details</Text>
@@ -29,7 +41,7 @@ export default function TaskEditView() {
             style={styles.button}
             onPress={() => {
               // close
-              (navigation as any).goBack?.();
+              closeSheet();
             }}
           >
             <Text>Done</Text>
@@ -57,7 +69,7 @@ export default function TaskEditView() {
           {/* TEXT */}
 
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }

@@ -1,5 +1,5 @@
 import { Dimensions, Pressable, StyleSheet, TouchableOpacity, View } from 'react-native';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { useNavigation } from 'expo-router';
 import DateTimePicker, { useDefaultStyles } from 'react-native-ui-datepicker';
 import moment, { Moment } from 'moment';
@@ -10,6 +10,7 @@ import { observable } from '@legendapp/state';
 import { useFocusEffect } from '@react-navigation/native';
 import { Text } from '@/components/Themed';
 import { themeTokens$ } from '@/utils/stateManager';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 const pickerDate$ = observable<Moment>(selectedDate$.get());
 
@@ -19,7 +20,9 @@ const bottomSheet = observer(() => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { height } = Dimensions.get('window');
-  const { palette } = themeTokens$.get();
+  const translateY = useSharedValue(height);
+  const { palette, isDark } = themeTokens$.get();
+  const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const styles = createStyles({ palette });
 
   useFocusEffect(
@@ -29,10 +32,32 @@ const bottomSheet = observer(() => {
     }, [])
   );
 
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 260 });
+  }, [translateY]);
+
+  const closeSheet = useCallback(() => {
+    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
+      if (finished) {
+        runOnJS(navigation.goBack)();
+      }
+    });
+  }, [height, navigation, translateY]);
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
   return (
-    <View style={styles.overlay}>
-      <Pressable onPress={() => navigation.goBack()} style={styles.background} />
-      <View style={[styles.sheet, { maxHeight: height * 0.72, paddingBottom: Math.max(24, insets.bottom + 12) }]}>
+    <View style={[styles.overlay, { backgroundColor: overlayColor }]}>
+      <Pressable onPress={closeSheet} style={styles.background} />
+      <Animated.View
+        style={[
+          styles.sheet,
+          { maxHeight: height * 0.72, paddingBottom: Math.max(24, insets.bottom + 12) },
+          sheetStyle,
+        ]}
+      >
         <View style={styles.handle} />
         <Text style={styles.sheetTitle}>Select Date</Text>
         <Memo>
@@ -72,12 +97,12 @@ const bottomSheet = observer(() => {
           onPress={() => {
             const next = pickerDate$.get();
             selectedDate$.set(next);
-            navigation.goBack();
+            closeSheet();
           }}
         >
           <Text style={styles.confirmText}>Select Date</Text>
         </TouchableOpacity>
-      </View>
+      </Animated.View>
     </View>
   );
 })
@@ -87,7 +112,7 @@ export default bottomSheet
 const createStyles = ({ palette }: { palette: ThemeTokens["palette"] }) => StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'transparent',
   },
   background: {
     flex: 1,

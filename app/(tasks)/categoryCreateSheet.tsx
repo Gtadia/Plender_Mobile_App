@@ -25,7 +25,7 @@ import React, { useEffect, useRef } from 'react';
 import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
 import ColorPicker, { Panel3 } from 'reanimated-color-picker';
 import { task$ } from './create';
-import { Stack, useNavigation } from 'expo-router';
+import { useNavigation } from 'expo-router';
 import { Memo, useObservable } from '@legendapp/state/react';
 import { $TextInput } from '@legendapp/state/react-native';
 import { updateEvent } from '@/utils/database';
@@ -35,11 +35,16 @@ import {
   ensureCategoriesHydrated,
   taskDetailsSheet$,
   tasks$,
+  themeTokens$,
 } from '@/utils/stateManager';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 export default function CategoryCreateSheet() {
   const navigation = useNavigation();
-  let { width, height } = Dimensions.get("window");
+  const { width, height } = Dimensions.get("window");
+  const translateY = useSharedValue(height);
+  const isDark = themeTokens$.isDark.get();
+  const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const newCategory$ = useObservable({
     label: '',
     color: '#FF0000',
@@ -51,17 +56,28 @@ export default function CategoryCreateSheet() {
     void ensureCategoriesHydrated();
   }, []);
 
-  return (
-    <View style={{ flex: 1 }}>
-      <Stack.Screen name='dateSelectSheet' options={{
-          headerShown: false,
-          presentation: "transparentModal",
-      }}/>
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 260 });
+  }, [translateY]);
 
-      <Pressable onPress={() => {navigation.goBack();}} style={styles.background} />
-      <View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 } ]}>
+  const closeSheet = () => {
+    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
+      if (finished) {
+        runOnJS(() => navigation.goBack())();
+      }
+    });
+  };
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return (
+    <View style={{ flex: 1, backgroundColor: overlayColor }}>
+      <Pressable onPress={closeSheet} style={styles.background} />
+      <Animated.View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle ]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', width:"100%", marginBottom: 15}}>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.button} onPress={closeSheet}>
             <Text>Back</Text>
           </TouchableOpacity>
           <Text style={styles.title}>Select Date</Text>
@@ -101,7 +117,7 @@ export default function CategoryCreateSheet() {
               CategoryIDCount$.set(Math.max(CategoryIDCount$.get(), id + 1));
 
               // close
-              (navigation as any).goBack?.();
+              closeSheet();
             }}
           >
             <Text>Done</Text>
@@ -149,7 +165,7 @@ export default function CategoryCreateSheet() {
           </View>
           {/* COLOR */}
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 }

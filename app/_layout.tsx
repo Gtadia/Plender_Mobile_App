@@ -41,44 +41,32 @@ const RootLayout = observer(() => {
     <GestureHandlerRootView>
       <StatusBar style={isDark ? "light" : "dark"} />
       <Stack
-        screenOptions={({ route }) => ({
+        screenOptions={{
           headerShown: false,
-        })}
-        initialRouteName='index'
-        >
-
+        }}
+        initialRouteName="index"
+      >
         <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="create" options={{
-          headerShown: false,
-          presentation: "transparentModal",
-          animation: "fade",
-        }}/>
-        <Stack.Screen name="taskDetailsSheet" options={{
-          headerShown: false,
-          presentation: "transparentModal",
-          animation: "fade",
-        }}/>
-        <Stack.Screen name="calendarDateSheet" options={{
-          headerShown: false,
-          presentation: "transparentModal",
-          animation: "fade",
-        }}/>
-        <Stack.Screen name="settingsThemeSelect" options={{
-          headerShown: false,
-          animation: "slide_from_right",
-        }}/>
-        <Stack.Screen name="settingsAccentSelect" options={{
-          headerShown: false,
-          animation: "slide_from_right",
-        }}/>
-        <Stack.Screen name="settingsWeekStartSelect" options={{
-          headerShown: false,
-          animation: "slide_from_right",
-        }}/>
-        <Stack.Screen name="settingsTimezoneSelect" options={{
-          headerShown: false,
-          animation: "slide_from_right",
-        }}/>
+        <Stack.Screen
+          name="(tasks)"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="(calendar)"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
+        <Stack.Screen
+          name="(settings)"
+          options={{ presentation: "card", animation: "slide_from_right" }}
+        />
       </Stack>
 
       {/* Toast Menu */}

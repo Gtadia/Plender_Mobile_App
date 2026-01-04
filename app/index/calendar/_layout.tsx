@@ -7,7 +7,8 @@ export default function CalendarLayout() {
       <Stack.Screen name="bottomSheet" options={{
         headerShown: false,
         presentation: "transparentModal",
-        animation: "slide_from_bottom",
+        animation: "fade",
+        contentStyle: { backgroundColor: "transparent" },
       }}/>
     </Stack>
   );

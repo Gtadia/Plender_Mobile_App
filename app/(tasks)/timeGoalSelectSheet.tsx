@@ -16,12 +16,13 @@
 
 import { Dimensions, Pressable, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
 import React, { useEffect } from 'react'
-import { Stack, useNavigation } from 'expo-router'
+import { useNavigation } from 'expo-router'
 import { task$ } from './create'
 import { Memo } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
-import { timeGoalEdit$, tasks$ } from '@/utils/stateManager';
+import { themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateManager';
 import { updateEvent } from '@/utils/database';
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 // import Picker from '@/components/TimeCarousel/Picker';
 // import { Picker } from 'react-native-wheel-pick';
 import Picker from '@/components/TimeCarousel/Picker';
@@ -54,7 +55,10 @@ const hours = new Array(24).fill(0).map((_, index) => (index));
 // -------------------------------------------------------------
 const TimeGoalSelectSheet = () => {
   const navigation = useNavigation();
-  let { width, height } = Dimensions.get("window");
+  const { width, height } = Dimensions.get("window");
+  const translateY = useSharedValue(height);
+  const isDark = themeTokens$.isDark.get();
+  const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const editingId = timeGoalEdit$.taskId.get();
   const isEditing = editingId !== null && editingId !== undefined;
 
@@ -66,28 +70,37 @@ const TimeGoalSelectSheet = () => {
     time$.minutes.set(Math.floor((goalSeconds % 3600) / 60));
   }, [editingId]);
 
-  return (
-    <View style={styles.flex1}>
-      {/* Transparent modal presentation */}
-      <Stack.Screen name='TimeGoalSelectSheet
-      ' options={{
-          headerShown: false,
-          presentation: "transparentModal",
-      }}/>
+  useEffect(() => {
+    translateY.value = withTiming(0, { duration: 260 });
+  }, [translateY]);
 
+  const closeSheet = () => {
+    translateY.value = withTiming(height, { duration: 220 }, (finished) => {
+      if (finished) {
+        runOnJS(() => navigation.goBack())();
+      }
+    });
+  };
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  return (
+    <View style={[styles.flex1, { backgroundColor: overlayColor }]}>
       {/* Tap outside to dismiss */}
       <Pressable
         onPress={() => {
           if (isEditing) {
             timeGoalEdit$.taskId.set(null);
           }
-          navigation.goBack();
+          closeSheet();
         }}
         style={styles.background}
       />
 
       {/* Sheet container (dynamic height preserved) */}
-      <View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 } ]}>
+      <Animated.View style={[ styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle ]}>
         {/* Header: Back / Title / Done */}
         <View style={styles.header}>
           <TouchableOpacity
@@ -96,7 +109,7 @@ const TimeGoalSelectSheet = () => {
               if (isEditing) {
                 timeGoalEdit$.taskId.set(null);
               }
-              navigation.goBack();
+              closeSheet();
             }}
           >
             <Text>Back</Text>
@@ -115,7 +128,7 @@ const TimeGoalSelectSheet = () => {
                 task$.timeGoal.set(totalSeconds);
               }
               console.log("The time has been sent: ", time$.hours.get(), time$.minutes.get(), totalSeconds);
-              navigation.goBack();
+              closeSheet();
             }}
           >
             <Text>Done</Text>
@@ -182,7 +195,7 @@ const TimeGoalSelectSheet = () => {
           </View>
         </View>
 
-      </View>
+      </Animated.View>
     </View>
   )
 }
