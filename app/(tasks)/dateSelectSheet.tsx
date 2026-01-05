@@ -19,6 +19,7 @@
 
 import {
   Dimensions,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -27,23 +28,24 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigation, useRouter } from "expo-router";
-import moment from "moment";
+import moment, { Moment } from "moment";
 import { AntDesign } from "@expo/vector-icons";
 import { task$ } from "./create";
 import { RRule } from "rrule";
 import { Memo, Show } from "@legendapp/state/react";
 import { observable } from "@legendapp/state";
+import { useFocusEffect } from "@react-navigation/native";
 import { Picker as WheelPicker } from "react-native-wheel-pick";
 import { Picker as NativePicker } from "@react-native-picker/picker";
-import RNDateTimePicker from "@react-native-community/datetimepicker";
-import { DateTime } from "luxon";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { getListTheme } from "@/constants/listTheme";
 import { createListSheetStyles } from "@/constants/listStyles";
 import { styling$, themeTokens$ } from "@/utils/stateManager";
+import CalendarDatePicker from "@/components/CalendarDatePicker";
+import { getNow } from "@/utils/timeOverride";
 
 // -------------------------------------------------------------
 // Observable state for repeat settings
@@ -165,9 +167,31 @@ const DateSelectSheet = () => {
   const pickerLine = withOpacity(colors.text, isDark ? 0.4 : 0.32);
   const pickerTextColor = isDark ? colors.text : colors.textStrong;
   const cardStyle = { backgroundColor: cardBackground, borderColor, borderWidth: 1 };
+  const [calendarMode, setCalendarMode] = useState<"start" | "end" | null>(null);
+  const [calendarDraft, setCalendarDraft] = useState<Moment | null>(null);
+  const formatDate = (date: Moment) => date.format("MMM D, YYYY");
+  const minSelectableDate = moment(getNow()).startOf("day").toDate();
 
-  // Default: repeat on current day of the week
-  repeat$.weeks[moment().day()].set(true);
+  useFocusEffect(
+    React.useCallback(() => {
+      const now = moment(getNow()).startOf("day");
+      const existing = task$.rrule.get();
+      const start = existing?.options?.dtstart ? moment(existing.options.dtstart) : now;
+      repeat$.startsOn.set(start);
+
+      if (!existing) {
+        repeat$.isRepeat.set(false);
+        repeat$.type.set("None");
+        repeat$.num.set("");
+        repeat$.isWeeks.set(false);
+        const weeks = [false, false, false, false, false, false, false];
+        weeks[start.day()] = true;
+        repeat$.weeks.set(weeks);
+        repeat$.endsOnMode.set(false);
+        repeat$.endsOn.set(start.clone().add(1, "day"));
+      }
+    }, [])
+  );
 
   useEffect(() => {
     translateY.value = withTiming(0, { duration: 260 });
@@ -198,6 +222,30 @@ const DateSelectSheet = () => {
   const sheetStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
+
+  const openCalendar = (mode: "start" | "end") => {
+    const date = mode === "start" ? repeat$.startsOn.get() : repeat$.endsOn.get();
+    setCalendarDraft(date.clone());
+    setCalendarMode(mode);
+  };
+
+  const closeCalendar = () => {
+    setCalendarMode(null);
+    setCalendarDraft(null);
+  };
+
+  const applyCalendar = () => {
+    if (!calendarDraft || !calendarMode) {
+      closeCalendar();
+      return;
+    }
+    if (calendarMode === "start") {
+      repeat$.startsOn.set(calendarDraft.clone());
+    } else {
+      repeat$.endsOn.set(calendarDraft.clone());
+    }
+    closeCalendar();
+  };
 
   return (
     <View style={sheetStyles.overlay}>
@@ -268,20 +316,18 @@ const DateSelectSheet = () => {
                   ]}
                 >
                   <Text style={[sheetStyles.menuText, { color: textColor }]}>Start Date</Text>
-                  {/* dayjs(date).startOf('day') uses startOf in order to keep up with local time zone and not get stuck on UTC */}
-                  <RNDateTimePicker
-                    mode="date"
-                    display="compact"
-                    themeVariant={isDark ? "dark" : "light"}
-                    textColor={textColor}
-                    // design="material"
-                    value={repeat$.startsOn.get().toDate()}
-                    onChange={(e, date) => {
-                      if (date) {
-                        repeat$.startsOn.set(moment(date));
-                      }
-                    }}
-                  />
+                  <Pressable
+                    style={[
+                      styles.datePill,
+                      { backgroundColor: listTheme.colors.card, borderColor },
+                    ]}
+                    onPress={() => openCalendar("start")}
+                  >
+                    <Text style={[styles.datePillText, { color: textColor }]}>
+                      {formatDate(repeat$.startsOn.get())}
+                    </Text>
+                    <AntDesign name="calendar" size={16} color={mutedText} />
+                  </Pressable>
                 </View>
               </View>
 
@@ -502,7 +548,10 @@ const DateSelectSheet = () => {
                                   sheetStyles.subMenuSquarePadding,
                                   { alignItems: "center" },
                                 ]}
-                                onPress={() => repeat$.endsOnMode.set(true)}
+                                onPress={() => {
+                                  repeat$.endsOnMode.set(true);
+                                  openCalendar("end");
+                                }}
                               >
                                 <Text style={[sheetStyles.menuText, { color: textColor }]}>On Date</Text>
                                 <View
@@ -515,19 +564,18 @@ const DateSelectSheet = () => {
                                     if={repeat$.endsOnMode}
                                     else={() => <></>}
                                   >
-                                    <RNDateTimePicker
-                                      mode="date"
-                                      display="compact"
-                                      themeVariant={isDark ? "dark" : "light"}
-                                      textColor={textColor}
-                                      // design="material"
-                                      value={repeat$.endsOn.get().toDate()}
-                                      onChange={(e, date) => {
-                                        if (date) {
-                                          repeat$.endsOn.set(moment(date));
-                                        }
-                                      }}
-                                    />
+                                    <Pressable
+                                      style={[
+                                        styles.datePill,
+                                        { backgroundColor: listTheme.colors.card, borderColor },
+                                      ]}
+                                      onPress={() => openCalendar("end")}
+                                    >
+                                      <Text style={[styles.datePillText, { color: textColor }]}>
+                                        {formatDate(repeat$.endsOn.get())}
+                                      </Text>
+                                      <AntDesign name="calendar" size={16} color={mutedText} />
+                                    </Pressable>
                                   </Show>
                                   <Memo>
                                     {() =>
@@ -554,6 +602,62 @@ const DateSelectSheet = () => {
           </View>
         </ScrollView>
       </Animated.View>
+
+      <Modal
+        transparent
+        visible={calendarMode !== null}
+        animationType="fade"
+        onRequestClose={closeCalendar}
+      >
+        <View style={[styles.calendarOverlay, { backgroundColor: overlayColor }]}>
+          {blurEnabled ? (
+            <BlurView
+              tint={isDark ? "dark" : "light"}
+              intensity={40}
+              experimentalBlurMethod={blurMethod}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+          ) : null}
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeCalendar} />
+          <View style={[styles.calendarCard, { backgroundColor: containerBackground, borderColor }]}>
+            <View style={styles.calendarHeader}>
+              <TouchableOpacity
+                style={[
+                  sheetStyles.headerIconButton,
+                  { backgroundColor: listTheme.colors.card, borderColor },
+                ]}
+                onPress={closeCalendar}
+              >
+                <AntDesign name="close" size={20} color={headerTextColor} />
+              </TouchableOpacity>
+              <Text style={[styles.calendarTitle, { color: headerTextColor }]}>
+                {calendarMode === "start" ? "Start Date" : "End Date"}
+              </Text>
+              <TouchableOpacity
+                style={[
+                  sheetStyles.headerIconButton,
+                  { backgroundColor: colors.accent, borderColor: colors.accent },
+                ]}
+                onPress={applyCalendar}
+              >
+                <AntDesign name="check" size={20} color={colors.textStrong} />
+              </TouchableOpacity>
+            </View>
+            {calendarDraft ? (
+              <CalendarDatePicker
+                date={calendarDraft}
+                onChange={setCalendarDraft}
+                minDate={
+                  calendarMode === "end"
+                    ? repeat$.startsOn.get().startOf("day").toDate()
+                    : minSelectableDate
+                }
+              />
+            ) : null}
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -573,5 +677,43 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     padding: 10,
+  },
+  datePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+  },
+  datePillText: {
+    fontWeight: "600",
+    fontSize: 16,
+  },
+  calendarOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    padding: 16,
+  },
+  calendarCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 12,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: -8 },
+    elevation: 8,
+  },
+  calendarHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  calendarTitle: {
+    fontSize: 18,
+    fontWeight: "700",
   },
 });

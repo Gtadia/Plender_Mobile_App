@@ -351,7 +351,9 @@ const create = () => {
                   >
                     <Memo>
                       {() => {
-                        if (task$.rrule.get())
+                        const currentRule = task$.rrule.get();
+                        const startDate = currentRule?.options?.dtstart;
+                        if (startDate)
                           return (
                             <>
                               {/* Catppuccin Latte Green */}
@@ -366,9 +368,7 @@ const create = () => {
                                   { color: dateAccent },
                                 ]}
                               >
-                                {moment(task$.rrule.get().DTSTART).format(
-                                  "MMM D YYYY"
-                                )}
+                                {moment(startDate).format("MMM D YYYY")}
                               </Text>
                               {(() => {
                                 return task$.isRepeating.get() ? (
