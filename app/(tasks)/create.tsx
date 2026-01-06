@@ -316,23 +316,25 @@ const create = () => {
             ]}
           >
             {/* Title */}
-            <$TextInput
-              $value={task$.title}
-              style={[styles.textInput, { color: colors.text }]}
-              autoFocus={true}
-              multiline
-              placeholder={"Task Name"}
-              placeholderTextColor={colors.subtext1}
-              ref={titleRef}
-              maxLength={TASK_NAME_MAX_LENGTH}
-            />
-            <Memo>
-              {() => (
-                <Text style={[styles.charCount, { color: colors.subtext0 }]}>
-                  {task$.title.get().length}/{TASK_NAME_MAX_LENGTH}
-                </Text>
-              )}
-            </Memo>
+            <View style={styles.textInputWrap}>
+              <$TextInput
+                $value={task$.title}
+                style={[styles.textInput, styles.textInputInline, { color: colors.text }]}
+                autoFocus={true}
+                multiline
+                placeholder={"Task Name"}
+                placeholderTextColor={colors.subtext1}
+                ref={titleRef}
+                maxLength={TASK_NAME_MAX_LENGTH}
+              />
+              <Memo>
+                {() => (
+                  <Text style={[styles.charCount, { color: colors.subtext0 }]}>
+                    {task$.title.get().length}/{TASK_NAME_MAX_LENGTH}
+                  </Text>
+                )}
+              </Memo>
+            </View>
 
             {/* Description */}
             <$TextInput
@@ -733,6 +735,15 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 500 as any, // keep as-is; typed constant as in original
   },
+  textInputWrap: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    width: "100%",
+  },
+  textInputInline: {
+    flex: 1,
+    minWidth: 0,
+  },
   fullTextInput: {
     maxWidth: 400,
     marginHorizontal: 20,
@@ -750,8 +761,10 @@ const styles = StyleSheet.create({
   charCount: {
     fontSize: 12,
     fontWeight: 600 as any,
-    alignSelf: "flex-end",
-    marginTop: 4,
+    marginLeft: 8,
+    marginTop: 2,
+    minWidth: 42,
+    textAlign: "right",
   },
 
   // Actions row (left scroll of chips + right submit button)

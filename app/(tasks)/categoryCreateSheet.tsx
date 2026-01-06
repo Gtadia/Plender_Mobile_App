@@ -255,27 +255,27 @@ export default function CategoryCreateSheet() {
         <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', paddingBottom: 96 }}>
           {/* TEXT */}
           <View style={[sheetStyles.subMenuSquare, sheetStyles.subMenuSquarePadding, cardStyle]}>
-            <View style={[sheetStyles.subMenuBar, { alignItems: 'center' }]}>
+            <View style={sheetStyles.subMenuBar}>
               <Text style={[sheetStyles.menuText, { color: textColor }]}>Name</Text>
+              <Memo>
+                {() => (
+                  <Text style={[styles.charCountInline, { color: subtextColor }]}>
+                    {newCategory$.label.get().length}/{CATEGORY_NAME_MAX_LENGTH}
+                  </Text>
+                )}
+              </Memo>
             </View>
             <View style={{ paddingVertical: 15}}>
                <$TextInput
-               $value={newCategory$.label}
-               style={[sheetStyles.textInput, { color: textColor }]}
-               autoFocus={true}
-               multiline
-               placeholder={"Category Name"}
-               placeholderTextColor={subtextColor}
+                $value={newCategory$.label}
+                style={[sheetStyles.textInput, { color: textColor }]}
+                autoFocus={true}
+                multiline
+                placeholder={"Category Name"}
+                placeholderTextColor={subtextColor}
                 maxLength={CATEGORY_NAME_MAX_LENGTH}
               />
             </View>
-            <Memo>
-              {() => (
-                <Text style={[styles.charCount, { color: subtextColor }]}>
-                  {newCategory$.label.get().length}/{CATEGORY_NAME_MAX_LENGTH}
-                </Text>
-              )}
-            </Memo>
           </View>
           {/* TEXT */}
 
@@ -384,11 +384,8 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 18,
   },
-  charCount: {
+  charCountInline: {
     fontSize: 12,
     fontWeight: "600",
-    alignSelf: "flex-end",
-    marginTop: 4,
-    marginRight: 10,
   },
 });

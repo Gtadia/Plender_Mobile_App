@@ -230,7 +230,7 @@ const TaskDetailsContent = observer(() => {
                     {isEditing ? (
                       <View style={sheetStyles.titleEdit}>
                         <TextInput
-                          style={[sheetStyles.title, sheetStyles.titleInput]}
+                          style={[sheetStyles.title, sheetStyles.titleInput, sheetStyles.titleInputInline]}
                           value={titleValue}
                           maxLength={TASK_NAME_MAX_LENGTH}
                           onChangeText={(text) => {
@@ -507,12 +507,21 @@ const createSheetStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     minWidth: "80%",
   },
   titleEdit: {
-    alignItems: "center",
-    gap: 4,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    width: "100%",
   },
   subtitle: {
     fontSize: 12,
     fontWeight: "600",
+    marginLeft: 8,
+    marginTop: 2,
+    minWidth: 42,
+    textAlign: "right",
+  },
+  titleInputInline: {
+    flex: 1,
+    minWidth: 0,
   },
   categoryRow: {
     flexDirection: "row",
