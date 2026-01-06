@@ -1,5 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ActionSheetIOS, Alert, Dimensions, Platform, StyleSheet, View } from 'react-native';
+import {
+  ActionSheetIOS,
+  Alert,
+  Dimensions,
+  Platform,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import { Text, ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -124,27 +131,53 @@ const PieChartScreen = observer(() => {
   );
   const othersRemaining = Math.max(othersGoal - othersCompletionSpent, 0);
   const othersColor = colors.subtext0;
-  const primaryBars = [
-    top1
-      ? {
+  const primaryBars = (() => {
+    const bars = [];
+    if (sortedCats.length === 0) {
+      return [];
+    }
+    if (sortedCats.length === 1) {
+      bars.push({
+        label: top1.label,
+        color: top1.color,
+        value: top1.goal > 0 ? Math.min(top1Completion / top1.goal, 1) : 0,
+      });
+      return bars;
+    }
+    if (sortedCats.length === 2) {
+      bars.push(
+        {
           label: top1.label,
           color: top1.color,
           value: top1.goal > 0 ? Math.min(top1Completion / top1.goal, 1) : 0,
-        }
-      : { label: 'Top Category', color: colors.primary, value: 0 },
-    top2
-      ? {
+        },
+        {
           label: top2.label,
           color: top2.color,
           value: top2.goal > 0 ? Math.min(top2Completion / top2.goal, 1) : 0,
-        }
-      : { label: 'Second', color: colors.secondary, value: 0 },
-    {
-      label: 'Others',
-      color: othersColor,
-      value: othersGoal > 0 ? Math.min(othersCompletionSpent / othersGoal, 1) : 0,
-    },
-  ];
+        },
+      );
+      return bars;
+    }
+    bars.push(
+      {
+        label: top1.label,
+        color: top1.color,
+        value: top1.goal > 0 ? Math.min(top1Completion / top1.goal, 1) : 0,
+      },
+      {
+        label: top2.label,
+        color: top2.color,
+        value: top2.goal > 0 ? Math.min(top2Completion / top2.goal, 1) : 0,
+      },
+      {
+        label: 'Others',
+        color: othersColor,
+        value: othersGoal > 0 ? Math.min(othersCompletionSpent / othersGoal, 1) : 0,
+      },
+    );
+    return bars;
+  })();
   const categorySegments = (
     hasGoals
       ? [
@@ -173,6 +206,7 @@ const PieChartScreen = observer(() => {
   const dayProgressSeconds = Math.max(0, now.diff(today, 'seconds'));
   const dayPercent = Math.min(dayProgressSeconds / FULL_DAY_SECONDS, 1);
   const completionPercent = hasGoals ? Math.min(totalSpent / totalGoal, 1) : dayPercent;
+  const headerPercentLabel = `${Math.round(completionPercent * 100)}%`;
 
   const stopCurrentWithSplitPrompt = () => {
     const running = activeTimer$.get();
@@ -260,13 +294,16 @@ const PieChartScreen = observer(() => {
         contentContainerStyle={{ flexGrow: 1, alignItems: 'center', paddingBottom: 32 }}
         showsVerticalScrollIndicator={false}
       >
-        <Text
-          numberOfLines={1}
-          ellipsizeMode="tail"
-          style={[styles.taskTitle]}
-        >
-          {runningTask?.title ?? today.format('ddd, MMMM D')}
-        </Text>
+        <View style={styles.titleRow}>
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={styles.taskTitle}
+          >
+            {runningTask?.title ?? today.format('ddd, MMMM D')}
+          </Text>
+          <Text style={styles.titlePercent}>({headerPercentLabel})</Text>
+        </View>
 
         <RadialProgressBar
           dayPercent={dayPercent}
@@ -280,6 +317,8 @@ const PieChartScreen = observer(() => {
           showDayRing={true}
           showStopButton={!!runningTask}
           onStopPress={confirmStop}
+          centerPercentOffset={runningTask ? -40 : 0}
+          centerSecondaryOffset={runningTask ? 40 : 0}
         />
 
         <HorizontalProgressRow
@@ -291,14 +330,11 @@ const PieChartScreen = observer(() => {
 
         <View style={[styles.listHeader, { width: contentWidth }]}>
           <Text style={[styles.listHeaderText]}>Task</Text>
-          <Text style={[styles.listHeaderText]}>Total Time</Text>
-          <Text style={[styles.listHeaderText]}>% of Day</Text>
+          <Text style={[styles.listHeaderText, styles.listHeaderRight]}>Total Time</Text>
         </View>
+        <View style={[styles.listDivider, { width: contentWidth }]} />
         {sortedCats.map((cat) => {
           const percent = totalSpent > 0 ? Math.round((cat.spent / totalSpent) * 100) : 0;
-          const completionSpent = useCappedCompletion ? cat.cappedSpent : cat.spent;
-          const taskProgress =
-            cat.goal > 0 ? Math.min(Math.round((completionSpent / cat.goal) * 100), 100) : 0;
           return (
             <View style={[styles.listRow, { width: contentWidth }]} key={cat.id}>
               <View style={styles.listRowLeft}>
@@ -306,12 +342,9 @@ const PieChartScreen = observer(() => {
                 <Text style={styles.listRowLabel} numberOfLines={1}>
                   {cat.label}
                 </Text>
-                <Text style={[styles.listRowLabel, { color: colors.subtext1 }]}>
-                  {taskProgress}%
-                </Text>
+                <Text style={styles.listRowPercent}>({percent}%)</Text>
               </View>
               <Text style={styles.listRowValue}>{formatSeconds(cat.spent)}</Text>
-              <Text style={styles.listRowValue}>{percent}%</Text>
             </View>
           );
         })}
@@ -334,7 +367,8 @@ function HorizontalProgressRow({
 }) {
   const gap = 12;
   const progressWidth = Math.max(0, width);
-  const itemWidth = Math.max(0, (progressWidth - gap * 2) / 3);
+  const items = Math.max(bars.length, 1);
+  const itemWidth = Math.max(0, (progressWidth - gap * (items - 1)) / items);
   const barWidth = Math.max(0, itemWidth - 8);
 
   return (
@@ -385,12 +419,27 @@ const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     marginLeft: 0,
     fontWeight: 'bold',
   },
-  taskTitle: {
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    paddingHorizontal: horizontalPadding,
     paddingTop: 15,
+    gap: 6,
+  },
+  taskTitle: {
     fontSize: 20,
     color: colors.textStrong,
     fontWeight: '700',
     alignContent: 'flex-end',
+    flexShrink: 1,
+    textAlign: 'center',
+  },
+  titlePercent: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.subtext1,
   },
   progressRow: {
     flexDirection: 'row',
@@ -400,15 +449,15 @@ const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     alignSelf: 'center',
   },
   progressLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
     color: colors.subtext1,
   },
   progressPercent: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '800',
     color: colors.subtext1,
-    marginBottom: 4,
+    marginBottom: 6,
   },
   listHeader: {
     flexDirection: 'row',
@@ -417,10 +466,19 @@ const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     marginBottom: 8,
     alignSelf: 'center',
   },
+  listDivider: {
+    height: 1,
+    backgroundColor: colors.surface1,
+    alignSelf: 'center',
+    marginBottom: 6,
+  },
   listHeaderText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: colors.subtext1,
+  },
+  listHeaderRight: {
+    textAlign: 'right',
   },
   listRow: {
     flexDirection: 'row',
@@ -435,20 +493,27 @@ const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     gap: 8,
   },
   listRowLabel: {
-    fontSize: 14,
+    fontSize: 16,
     color: colors.text,
     flexShrink: 1,
+    fontWeight: '600',
+  },
+  listRowPercent: {
+    fontSize: 16,
+    color: colors.subtext1,
+    fontWeight: '600',
   },
   listRowValue: {
-    width: 80,
+    width: 64,
     textAlign: 'right',
-    fontSize: 13,
+    fontSize: 14,
     color: colors.text,
+    fontWeight: '700',
   },
   dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
   },
   separator: {
     marginVertical: 30,

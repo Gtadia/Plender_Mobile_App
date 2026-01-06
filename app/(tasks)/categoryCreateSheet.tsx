@@ -22,18 +22,28 @@
 // -------------------------------------------------------------
 
 import React, { useEffect } from 'react';
-import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
+import {
+  Alert,
+  View,
+  Text,
+  Pressable,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Platform,
+} from 'react-native';
 import { task$ } from './create';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Memo, useObservable } from '@legendapp/state/react';
 import { $TextInput } from '@legendapp/state/react-native';
-import { updateEvent } from '@/utils/database';
+import { getAllEvents, updateEvent } from '@/utils/database';
 import { accentKeys, accentOpposites } from '@/constants/themes';
 import { getListTheme } from '@/constants/listTheme';
 import { createListSheetStyles } from '@/constants/listStyles';
 import {
   Category$,
   CategoryIDCount$,
+  DEFAULT_CATEGORY_ID,
   ensureCategoriesHydrated,
   taskDetailsSheet$,
   tasks$,
@@ -46,6 +56,11 @@ import { AntDesign } from "@expo/vector-icons";
 
 export default function CategoryCreateSheet() {
   const router = useRouter();
+  const params = useLocalSearchParams<{ editId?: string | string[] }>();
+  const editIdRaw = params.editId;
+  const editId =
+    typeof editIdRaw === "string" && editIdRaw.trim() !== "" ? Number(editIdRaw) : null;
+  const isEditing = Number.isFinite(editId);
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
@@ -80,6 +95,19 @@ export default function CategoryCreateSheet() {
   useEffect(() => {
     void ensureCategoriesHydrated();
   }, []);
+
+  useEffect(() => {
+    if (!isEditing || editId == null) return;
+    const entry = Category$.get()[editId];
+    if (!entry) return;
+    newCategory$.assign({
+      label: entry.label ?? "",
+      color: entry.color ?? newCategory$.color.get(),
+      accentKey: entry.accentKey ?? defaultAccentKey,
+      contrastKey: entry.contrastKey ?? defaultContrastKey,
+      contrastColor: entry.contrastColor ?? newCategory$.contrastColor.get(),
+    });
+  }, [editId, isEditing, newCategory$, defaultAccentKey, defaultContrastKey]);
 
   useEffect(() => {
     translateY.value = withTiming(0, { duration: 260 });
@@ -144,7 +172,9 @@ export default function CategoryCreateSheet() {
           >
             <AntDesign name="close" size={22} color={textColor} />
           </TouchableOpacity>
-          <Text style={[sheetStyles.title, { color: textColor }]}>New Category</Text>
+          <Text style={[sheetStyles.title, { color: textColor }]}>
+            {isEditing ? "Edit Category" : "New Category"}
+          </Text>
           <TouchableOpacity
             style={[
               sheetStyles.headerIconButton,
@@ -159,6 +189,20 @@ export default function CategoryCreateSheet() {
                 const label = cat.label.trim();
                 if (!label) {
                   console.warn("Category name required");
+                  return;
+                }
+
+                if (isEditing && editId != null) {
+                  Category$.assign({
+                    [editId]: {
+                      label,
+                      color: cat.color,
+                      accentKey: cat.accentKey,
+                      contrastKey: cat.contrastKey,
+                      contrastColor: cat.contrastColor,
+                    },
+                  });
+                  closeSheet();
                   return;
                 }
 
@@ -281,6 +325,49 @@ export default function CategoryCreateSheet() {
           </View>
           {/* COLOR */}
         </View>
+
+        {isEditing && editId != null && editId !== DEFAULT_CATEGORY_ID ? (
+          <Pressable
+            onPress={() => {
+              Alert.alert(
+                "Delete category?",
+                "Delete this category and move its tasks to General?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                      const rows = await getAllEvents();
+                      const matching = rows.filter((row) => row.category === editId);
+                      await Promise.all(
+                        matching.map((row) =>
+                          updateEvent({ id: row.id, category: DEFAULT_CATEGORY_ID }),
+                        ),
+                      );
+                      const entities = tasks$.entities.get();
+                      Object.values(entities).forEach((task) => {
+                        if (task.category === editId) {
+                          tasks$.entities[task.id].category.set(DEFAULT_CATEGORY_ID);
+                        }
+                      });
+                      Category$.set((prev) => {
+                        const next = { ...prev };
+                        delete next[editId];
+                        return next;
+                      });
+                      closeSheet();
+                    },
+                  },
+                ],
+                { cancelable: true },
+              );
+            }}
+            style={[sheetStyles.subMenuSquare, sheetStyles.subMenuSquarePadding, cardStyle]}
+          >
+            <Text style={[sheetStyles.menuText, { color: palette.red }]}>Delete Category</Text>
+          </Pressable>
+        ) : null}
       </Animated.View>
     </View>
   );

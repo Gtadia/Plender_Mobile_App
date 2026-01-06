@@ -149,6 +149,36 @@ const SettingsScreen = observer(() => {
                 />
               </View>
             </View>
+            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
+            <Pressable
+              style={listStyles.row}
+              onPress={() => router.push('/(settings)/settingsCategories')}
+            >
+              <View style={[listStyles.rowLeft, styles.indentRowLeft]}>
+                <RowIcon name="tags" />
+                <Text style={listStyles.rowLabel} fontColor="strong">
+                  Modify Categories
+                </Text>
+              </View>
+              <View style={listStyles.rowRight}>
+                <AntDesign name="right" size={14} color={subtext0} />
+              </View>
+            </Pressable>
+            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
+            <Pressable
+              style={listStyles.row}
+              onPress={() => router.push('/(settings)/settingsCategoryReassign')}
+            >
+              <View style={[listStyles.rowLeft, styles.indentRowLeft]}>
+                <RowIcon name="swap" />
+                <Text style={listStyles.rowLabel} fontColor="strong">
+                  Reassign Category Tasks
+                </Text>
+              </View>
+              <View style={listStyles.rowRight}>
+                <AntDesign name="right" size={14} color={subtext0} />
+              </View>
+            </Pressable>
           </SettingsCard>
 
           <SettingsCard style={listStyles.card}>
@@ -269,6 +299,7 @@ const SettingsScreen = observer(() => {
               />
             </View>
           </SettingsCard>
+
         </View>
 
         <View style={listStyles.section}>
@@ -308,6 +339,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 6,
+  },
+  indentRowLeft: {
+    paddingLeft: 6,
   },
   wrapLabel: {
     flexShrink: 1,

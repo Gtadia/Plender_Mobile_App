@@ -27,6 +27,8 @@ type Props = {
   showDayRing?: boolean;
   showStopButton?: boolean;
   onStopPress?: () => void;
+  centerPercentOffset?: number;
+  centerSecondaryOffset?: number;
 };
 
 const RadialProgressBar = observer(
@@ -42,6 +44,8 @@ const RadialProgressBar = observer(
     showDayRing = true,
     showStopButton,
     onStopPress,
+    centerPercentOffset = 0,
+    centerSecondaryOffset = 0,
   }: Props) => {
     const { colors, palette } = themeTokens$.get();
     const windowWidth = Dimensions.get('window').width;
@@ -215,7 +219,15 @@ const RadialProgressBar = observer(
               zIndex: 1,
             }}
           >
-            <Text style={{ fontSize: 24, fontWeight: '700', color: colors.subtext0, textAlign: 'center' }}>
+            <Text
+              style={{
+                fontSize: 24,
+                fontWeight: '700',
+                color: colors.subtext0,
+                textAlign: 'center',
+                transform: [{ translateY: centerPercentOffset }],
+              }}
+            >
               {centerPercentLabel}
             </Text>
             <Text
@@ -238,6 +250,7 @@ const RadialProgressBar = observer(
                 textAlign: 'center',
                 lineHeight: 24,
                 includeFontPadding: false as any,
+                transform: [{ translateY: centerSecondaryOffset }],
               }}
             >
               {centerSecondary}

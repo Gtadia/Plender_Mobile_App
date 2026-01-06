@@ -185,8 +185,10 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
         >
         <View style={[taskStyles.container, { backgroundColor: color }]}> 
           <View style={taskStyles.cardHeader}>
-            <Text style={taskStyles.currentTitle}>{title}</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Text style={taskStyles.currentTitle} numberOfLines={2} ellipsizeMode="tail">
+              {title}
+            </Text>
+            <View style={taskStyles.headerRight}>
               <Text style={taskStyles.cardPercent}>{Math.round(percent * 100)}%</Text>
               <TouchableOpacity onPress={stopCurrentWithSplitPrompt} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <FontAwesome5 name="stop" size={18} color={opposite} />
@@ -239,6 +241,12 @@ const taskStyles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+  },
+  headerRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    flexShrink: 0,
   },
   cardPercent: {
     fontSize: 16,
@@ -295,6 +303,8 @@ const taskStyles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "700",
     color: "#fff",
+    flex: 1,
+    marginRight: 12,
   },
   currentTime: {
     fontSize: 38,
