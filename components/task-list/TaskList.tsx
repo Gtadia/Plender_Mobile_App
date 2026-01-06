@@ -21,6 +21,7 @@ import {
   CurrentTaskID$,
   getCategoryGroupId,
   getCategoryMeta,
+  settings$,
   tasks$,
   themeTokens$,
 } from "@/utils/stateManager";
@@ -147,7 +148,7 @@ const TaskListSectionHeader = ({
         const idsForDay = tasks$.lists.byDate[dateKey]?.get?.() ?? [];
         const todayKey = moment(getNow()).format("YYYY-MM-DD");
         const isToday = dateKey === todayKey;
-        const { spent, goal } = idsForDay.reduce(
+        const { spent, goal, cappedSpent } = idsForDay.reduce(
           (acc, id) => {
             const node = tasks$.entities[id]?.get?.();
             if (!node) return acc;
@@ -176,12 +177,16 @@ const TaskListSectionHeader = ({
                 running.baseSeconds + Math.max(0, Math.floor((Date.now() - running.startedAt) / 1000));
             }
             acc.spent += spentValue;
+            acc.cappedSpent += Math.min(spentValue, goalVal);
             acc.goal += goalVal;
             return acc;
           },
-          { spent: 0, goal: 0 }
+          { spent: 0, goal: 0, cappedSpent: 0 }
         );
-        const percent = goal > 0 ? Math.round((spent / goal) * 100) : 0;
+        const useCappedCompletion = settings$.productivity.capCategoryCompletion.get();
+        const percent = goal > 0
+          ? Math.round(((useCappedCompletion ? cappedSpent : spent) / goal) * 100)
+          : 0;
         const categoryMeta = getCategoryMeta(category);
         const color = categoryMeta.color || listTheme.colors.secondaryText;
         const label = categoryMeta.label;
@@ -204,7 +209,7 @@ const TaskListSectionHeader = ({
   );
 };
 
-const TaskListItem = ({
+const TaskListItem = observer(({
   id,
   showDivider,
   variant,
@@ -220,12 +225,9 @@ const TaskListItem = ({
   styles: TaskListStyles;
 }) => {
   const showControls = variant === "home";
-  return (
-    <Memo>
-      {() => {
-        uiTick$.get();
-        const node = tasks$.entities[id];
-        if (!node) return null;
+  uiTick$.get();
+  const node = tasks$.entities[id];
+  if (!node) return null;
 
         const currentId = CurrentTaskID$.get();
         const isCurrent = currentId === id;
@@ -318,23 +320,20 @@ const TaskListItem = ({
           <View style={{ flex: 1 }}>{detailsContent}</View>
         );
 
-        return (
-          <>
-            <View style={styles.row}>
-              {showControls && (
-                <TouchableOpacity onPress={handlePress} style={styles.iconButton}>
-                  <FontAwesome5 name={isCurrent ? "pause" : "play"} size={18} color={iconColor} />
-                </TouchableOpacity>
-              )}
-              {rowDetails}
-            </View>
-            {Divider}
-          </>
-        );
-      }}
-    </Memo>
+  return (
+    <>
+      <View style={styles.row}>
+        {showControls && (
+          <TouchableOpacity onPress={handlePress} style={styles.iconButton}>
+            <FontAwesome5 name={isCurrent ? "pause" : "play"} size={18} color={iconColor} />
+          </TouchableOpacity>
+        )}
+        {rowDetails}
+      </View>
+      {Divider}
+    </>
   );
-};
+});
 
 export const TaskList = observer(({
   dateKey,
