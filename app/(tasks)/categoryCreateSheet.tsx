@@ -204,7 +204,7 @@ export default function CategoryCreateSheet() {
                     description: "Use a different name.",
                     type: "warning",
                     toggleFire: !toastShow$.toggleFire.get(),
-                    whereToDisplay: 2,
+                    whereToDisplay: 2,  // tells the toast which window to appear on (we're 2 layers deep so level 2)
                   });
                   return;
                 }
