@@ -1,9 +1,19 @@
 import { themeTokens$ } from "@/utils/stateManager";
 import { observer } from "@legendapp/state/react";
 import { Canvas, Path, Skia } from "@shopify/react-native-skia";
-import { Dimensions, View, Text } from "react-native";
+import { Dimensions, Pressable, View, Text } from "react-native";
+import { FontAwesome5 } from "@expo/vector-icons";
 
 const MAX_DIAMETER = 800;
+
+const withOpacity = (hex: string, opacity: number) => {
+  const normalized = hex.replace("#", "");
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
 type Props = {
   dayPercent: number;
@@ -14,16 +24,31 @@ type Props = {
   centerPercentLabel: string;
   centerPrimary: string;
   centerSecondary: string;
+  showDayRing?: boolean;
+  showStopButton?: boolean;
+  onStopPress?: () => void;
 };
 
 const RadialProgressBar = observer(
-  ({ dayPercent, categorySegments, currentPercent = 0, currentColor, showCurrentRing, centerPercentLabel, centerPrimary, centerSecondary }: Props) => {
+  ({
+    dayPercent,
+    categorySegments,
+    currentPercent = 0,
+    currentColor,
+    showCurrentRing,
+    centerPercentLabel,
+    centerPrimary,
+    centerSecondary,
+    showDayRing = true,
+    showStopButton,
+    onStopPress,
+  }: Props) => {
     const { colors, palette } = themeTokens$.get();
     const windowWidth = Dimensions.get('window').width;
 
     const strokeWidth = 30;
     const strokeWidth2 = 12;
-    const ringGap = 4;
+    const ringGap = 2;
 
     const diameterBase = windowWidth - 40 - (strokeWidth + strokeWidth2) / 2;
     const DIAMETER = diameterBase > MAX_DIAMETER ? MAX_DIAMETER : diameterBase;
@@ -43,14 +68,32 @@ const RadialProgressBar = observer(
     const outerPath = Skia.Path.Make();
     outerPath.addCircle(currentRadius + currentBuffer, currentRadius + currentBuffer, currentInner);
 
-    let categoryStart = Math.min(dayPercent, 1);
+    const baseSize = outerDiameter + strokeWidth;
+    const currentSize = currentDiameter + strokeWidth2;
+    const containerSize = showCurrentRing ? currentSize : baseSize;
+    const baseOffset = (containerSize - baseSize) / 2;
+    const currentOffset = (containerSize - currentSize) / 2;
+    const stopBg = withOpacity(palette.overlay0, 0.45);
+
+    let categoryStart = showDayRing ? Math.min(dayPercent, 1) : 0;
 
     return (
-      <View style={{ alignItems: 'center', marginTop: strokeWidth2, height: currentDiameter + strokeWidth2 }}>
+      <View
+        style={{
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: strokeWidth2,
+          width: containerSize,
+          height: containerSize,
+        }}
+      >
         <View
           style={{
-            width: outerDiameter + strokeWidth,
-            height: outerDiameter + strokeWidth,
+            position: 'absolute',
+            width: baseSize,
+            height: baseSize,
+            left: baseOffset,
+            top: baseOffset,
             transform: [{ rotate: '-90deg' }],
           }}
         >
@@ -64,16 +107,6 @@ const RadialProgressBar = observer(
                 strokeCap={"round"}
                 start={0}
                 end={1}
-              />
-              <Path
-                path={path}
-                strokeWidth={strokeWidth}
-                style={"stroke"}
-                color={colors.accent}
-                strokeJoin={"round"}
-                strokeCap={"round"}
-                start={0}
-                end={Math.min(dayPercent, 1)}
               />
             {categorySegments.map((segment, idx) => {
               const segValue = Math.min(segment.value, 1);
@@ -95,6 +128,18 @@ const RadialProgressBar = observer(
                 />
               );
             })}
+              {showDayRing ? (
+                <Path
+                  path={path}
+                  strokeWidth={strokeWidth}
+                  style={"stroke"}
+                  color={colors.accent}
+                  strokeJoin={"round"}
+                  strokeCap={"round"}
+                  start={0}
+                  end={Math.min(dayPercent, 1)}
+                />
+              ) : null}
           </Canvas>
         </View>
 
@@ -102,8 +147,10 @@ const RadialProgressBar = observer(
           <View
             style={{
               position: 'absolute',
-              width: currentDiameter + strokeWidth2,
-              height: currentDiameter + strokeWidth2,
+              width: currentSize,
+              height: currentSize,
+              left: currentOffset,
+              top: currentOffset,
               transform: [{ rotate: '-90deg' }],
             }}
           >
@@ -132,19 +179,71 @@ const RadialProgressBar = observer(
           </View>
         )}
 
-        <View
+        <Pressable
+          onPress={showStopButton ? onStopPress : undefined}
           style={{
             position: 'absolute',
-            width: outerDiameter,
-            height: outerDiameter,
+            width: containerSize,
+            height: containerSize,
             justifyContent: 'center',
             alignItems: 'center',
           }}
         >
-          <Text style={{ fontSize: 24, fontWeight: '700', color: '#000' }}>{centerPercentLabel}</Text>
-          <Text style={{ fontSize: 44, fontWeight: '800', color: '#000', marginTop: 4 }}>{centerPrimary}</Text>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: '#6b6d78', marginTop: 4 }}>{centerSecondary}</Text>
-        </View>
+          {showStopButton ? (
+            <View
+              pointerEvents="none"
+              style={{
+                position: 'absolute',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 0,
+              }}
+            >
+              <FontAwesome5
+                name="play"
+                size={120}
+                color={withOpacity(colors.subtext0, 0.55)}
+                style={{ transform: [{ translateX: 8 }] }}
+              />
+            </View>
+          ) : null}
+          <View
+            pointerEvents="none"
+            style={{
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1,
+            }}
+          >
+            <Text style={{ fontSize: 24, fontWeight: '700', color: colors.subtext0, textAlign: 'center' }}>
+              {centerPercentLabel}
+            </Text>
+            <Text
+              style={{
+                fontSize: 44,
+                fontWeight: '800',
+                color: colors.textStrong,
+                textAlign: 'center',
+                lineHeight: 52,
+                includeFontPadding: false as any,
+              }}
+            >
+              {centerPrimary}
+            </Text>
+            <Text
+              style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: colors.subtext1,
+                textAlign: 'center',
+                lineHeight: 24,
+                includeFontPadding: false as any,
+              }}
+            >
+              {centerSecondary}
+            </Text>
+          </View>
+        </Pressable>
       </View>
     );
   }

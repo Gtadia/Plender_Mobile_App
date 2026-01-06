@@ -9,10 +9,11 @@ interface param {
   width: number
   percentage: number
   color: string
+  trackColor?: string
 }
 
 const HorizontalProgressBar = observer(
-  ({ width, percentage, color }: param) => {
+  ({ width, percentage, color, trackColor }: param) => {
     const { colors } = themeTokens$.get();
     // const path = Skia.Path.Make();
     const strokeWidth = 15;
@@ -34,7 +35,7 @@ const HorizontalProgressBar = observer(
             path={path}
             strokeWidth={strokeWidth}
             style={"stroke"}
-            color={colors.subtext1}
+            color={trackColor ?? colors.subtext1}
             strokeJoin={"round"}
             strokeCap={"round"}
             start={0}

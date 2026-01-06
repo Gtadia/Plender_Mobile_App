@@ -369,6 +369,8 @@ interface SettingsState {
   };
   productivity: {
     notificationsEnabled: boolean;
+    hideGoalRingOnComplete: boolean;
+    capCategoryCompletion: boolean;
   };
 }
 
@@ -393,6 +395,8 @@ export const settings$ = observable<SettingsState>({
   },
   productivity: {
     notificationsEnabled: false,
+    hideGoalRingOnComplete: false,
+    capCategoryCompletion: true,
   },
 });
 

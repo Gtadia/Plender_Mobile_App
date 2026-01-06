@@ -22,7 +22,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -38,7 +37,6 @@ import { Memo, Show } from "@legendapp/state/react";
 import { observable } from "@legendapp/state";
 import { useFocusEffect } from "@react-navigation/native";
 import { Picker as WheelPicker } from "react-native-wheel-pick";
-import { Picker as NativePicker } from "@react-native-picker/picker";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { getListTheme } from "@/constants/listTheme";
@@ -46,6 +44,8 @@ import { createListSheetStyles } from "@/constants/listStyles";
 import { styling$, themeTokens$ } from "@/utils/stateManager";
 import CalendarDatePicker from "@/components/CalendarDatePicker";
 import { getNow } from "@/utils/timeOverride";
+import Picker from "@/components/TimeCarousel/Picker";
+import { ScrollView } from "react-native-gesture-handler";
 
 // -------------------------------------------------------------
 // Observable state for repeat settings
@@ -166,6 +166,12 @@ const DateSelectSheet = () => {
   const mutedText = colors.subtext0;
   const pickerLine = withOpacity(colors.text, isDark ? 0.4 : 0.32);
   const pickerTextColor = isDark ? colors.text : colors.textStrong;
+  const pickerTextStyle = {
+    primaryColor: pickerTextColor,
+    secondaryColor: mutedText,
+    fontSize: 20,
+  };
+  const pickerPill = withOpacity(palette.overlay0, isDark ? 0.4 : 0.2);
   const cardStyle = { backgroundColor: cardBackground, borderColor, borderWidth: 1 };
   const [calendarMode, setCalendarMode] = useState<"start" | "end" | null>(null);
   const [calendarDraft, setCalendarDraft] = useState<Moment | null>(null);
@@ -372,33 +378,30 @@ const DateSelectSheet = () => {
                         <View style={{ flexDirection: "row" }}>
                           {/* Number Picker */}
                           {Platform.OS === "android" ? (
-                            <NativePicker
-                              selectedValue={repeat$.num.get()}
-                              onValueChange={(value: string) => {
+                            <Picker
+                              values={values}
+                              legendState={repeat$.num}
+                              defaultValue={repeat$.num}
+                              ITEM_HEIGHT={34}
+                              VISIBLE_ITEMS={5}
+                              textStyle={pickerTextStyle}
+                              pillColor={pickerPill}
+                              enableSelectBox={true}
+                              onValueChange={(value) => {
+                                const next = String(value);
                                 repeat$.isRepeat.set(true);
-                                if (value === "") {
+                                if (next === "") {
                                   repeat$.isRepeat.set(false);
                                   repeat$.type.set("None");
                                   repeat$.num.set("");
                                 } else if (repeat$.type.get() === "None") {
                                   repeat$.type.set("Day");
-                                  repeat$.num.set(value);
+                                  repeat$.num.set(next);
                                 } else {
-                                  repeat$.num.set(value);
+                                  repeat$.num.set(next);
                                 }
                               }}
-                              style={styles.nativePicker}
-                              itemStyle={[styles.nativePickerItem, { color: pickerTextColor }]}
-                              dropdownIconColor={pickerTextColor}
-                            >
-                              {values.map((value) => (
-                                <NativePicker.Item
-                                  key={`repeat-${value || "blank"}`}
-                                  label={value === "" ? " " : String(value)}
-                                  value={value}
-                                />
-                              ))}
-                            </NativePicker>
+                            />
                           ) : (
                             <WheelPicker
                               style={[styles.picker, { backgroundColor: cardBackground }]}
@@ -423,27 +426,28 @@ const DateSelectSheet = () => {
                           )}
                           {/* Type Picker */}
                           {Platform.OS === "android" ? (
-                            <NativePicker
-                              selectedValue={repeat$.type.get()}
-                              onValueChange={(value: string) => {
-                                repeat$.type.set(value);
+                            <Picker
+                              values={types}
+                              legendState={repeat$.type}
+                              defaultValue={repeat$.type}
+                              ITEM_HEIGHT={34}
+                              VISIBLE_ITEMS={5}
+                              textStyle={pickerTextStyle}
+                              pillColor={pickerPill}
+                              enableSelectBox={true}
+                              onValueChange={(value) => {
+                                const next = String(value);
+                                repeat$.type.set(next);
                                 repeat$.isRepeat.set(true);
-                                if (value === "None") {
+                                if (next === "None") {
                                   repeat$.num.set("");
                                   repeat$.isRepeat.set(false);
                                 } else if (repeat$.num.get() === "") {
                                   repeat$.num.set("1");
                                 }
-                                repeat$.isWeeks.set(value === "Week");
+                                repeat$.isWeeks.set(next === "Week");
                               }}
-                              style={styles.nativePicker}
-                              itemStyle={[styles.nativePickerItem, { color: pickerTextColor }]}
-                              dropdownIconColor={pickerTextColor}
-                            >
-                              {types.map((value) => (
-                                <NativePicker.Item key={`type-${value}`} label={value} value={value} />
-                              ))}
-                            </NativePicker>
+                            />
                           ) : (
                             <WheelPicker
                               isShowSelectLine={false}
@@ -670,8 +674,6 @@ export default DateSelectSheet;
 const styles = StyleSheet.create({
   picker: { width: "50%", height: 215 },
   pickerItem: { fontSize: 20 },
-  nativePicker: { width: "50%", height: 215 },
-  nativePickerItem: { fontSize: 20 },
   weekDayButton: {
     flex: 1,
     alignItems: "center",

@@ -1,20 +1,33 @@
-import React, { useEffect, useRef } from 'react';
-import { Dimensions, StyleSheet, View, ScrollView } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActionSheetIOS, Alert, Dimensions, Platform, StyleSheet, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { Text, ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { tasks$, Category$, CurrentTaskID$, themeTokens$ } from '@/utils/stateManager';
+import {
+  CurrentTaskID$,
+  getCategoryGroupId,
+  getCategoryMeta,
+  NO_CATEGORY_ID,
+  tasks$,
+  themeTokens$,
+} from '@/utils/stateManager';
 import RadialProgressBar from '@/components/custom_ui/RadialProgressBar';
 import HorizontalProgressBar from '@/components/custom_ui/HorizontalProgressBar';
-import { horizontalPadding } from '@/constants/globalThemeVar';
+import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
 import moment from 'moment';
 import { loadDay } from '@/utils/stateManager';
 import { observer } from '@legendapp/state/react';
+import { activeTimer$ } from '@/utils/activeTimerStore';
+import { stopTaskTimer, uiTick$ } from '@/utils/timerService';
+import { settings$ } from '@/utils/stateManager';
+import { getNow } from '@/utils/timeOverride';
 
 type CatSummary = {
   id: number;
   label: string;
   color: string;
   spent: number;
+  cappedSpent: number;
   goal: number;
 };
 
@@ -22,40 +35,65 @@ const FULL_DAY_SECONDS = 24 * 3600;
 
 const PieChartScreen = observer(() => {
   const insets = useSafeAreaInsets();
-  const { colors } = themeTokens$.get();
+  const { colors, palette } = themeTokens$.get();
   const styles = createStyles(colors);
-  const todayRef = useRef(moment().startOf('day'));
-  const today = todayRef.current;
+  const contentWidth = Math.max(
+    0,
+    Math.min(
+      Dimensions.get('window').width - horizontalPadding * 2,
+      500,
+    ),
+  );
+  const [now, setNow] = useState(moment(getNow()));
+  const todayRef = useRef(moment(getNow()).startOf('day'));
+  const today = now.clone().startOf('day');
   const dateKey = today.format('YYYY-MM-DD');
 
   useEffect(() => {
     void loadDay(today.toDate());
-  }, [today]);
+  }, [dateKey, today]);
+
+  useEffect(() => {
+    const tick = setInterval(() => {
+      setNow(moment(getNow()));
+    }, 1000);
+    return () => clearInterval(tick);
+  }, []);
+
+  useEffect(() => {
+    const sub = uiTick$?.onChange?.(({ value }) => setNow((prev) => prev.clone()));
+    return () => sub?.();
+  }, []);
 
   const byDate = tasks$.lists.byDate.get();
   const ids = byDate[dateKey] ?? [];
-  const entities = tasks$.entities.get();
   const tasksForDay = ids
-    .map((id: number) => entities[id])
+    .map((id: number) => tasks$.entities[id]?.get?.())
     .filter(Boolean) as { category: number; timeSpent: number; timeGoal: number; title: string }[];
 
   const totalsByCat: Record<number, CatSummary> = {};
   let totalSpent = 0;
   tasksForDay.forEach((t) => {
-    const catId = t.category ?? 0;
+    const catId = getCategoryGroupId(t.category);
+    const meta = getCategoryMeta(catId);
+    const isUnknown = catId === NO_CATEGORY_ID;
+    const timeSpent = t.timeSpent ?? 0;
+    const timeGoal = t.timeGoal ?? 0;
+    const cappedSpent = timeGoal > 0 ? Math.min(timeSpent, timeGoal) : timeSpent;
     if (!totalsByCat[catId]) {
-      const node = (Category$ as any)[catId];
       totalsByCat[catId] = {
         id: catId,
-        label: node?.label?.get?.() ?? `Category ${catId}`,
-        color: node?.color?.get?.() ?? colors.subtext0,
+        label: isUnknown ? 'Unknown' : meta.label,
+        color: isUnknown ? colors.subtext1 : meta.color,
         spent: 0,
+        cappedSpent: 0,
         goal: 0,
       };
     }
-    totalsByCat[catId].spent += t.timeSpent ?? 0;
-    totalsByCat[catId].goal += t.timeGoal ?? 0;
-    totalSpent += t.timeSpent ?? 0;
+    totalsByCat[catId].spent += timeSpent;
+    totalsByCat[catId].cappedSpent += cappedSpent;
+    totalsByCat[catId].goal += timeGoal;
+    totalSpent += timeSpent;
   });
 
   const sortedCats = Object.values(totalsByCat).sort((a, b) => b.spent - a.spent);
@@ -65,34 +103,152 @@ const PieChartScreen = observer(() => {
     totalSpent - (top1?.spent ?? 0) - (top2?.spent ?? 0),
     0,
   );
+  const totalGoal = sortedCats.reduce((sum, cat) => sum + (cat.goal ?? 0), 0);
+  const totalCappedSpent = sortedCats.reduce((sum, cat) => sum + (cat.cappedSpent ?? 0), 0);
+  const useCappedCompletion = settings$.productivity.capCategoryCompletion.get();
+  const totalRemaining = sortedCats.reduce((sum, cat) => {
+    const completionSpent = useCappedCompletion ? cat.cappedSpent : cat.spent;
+    return sum + Math.max((cat.goal ?? 0) - completionSpent, 0);
+  }, 0);
+  const hasGoals = totalGoal > 0;
+  const hideGoalRingOnComplete = settings$.productivity.hideGoalRingOnComplete.get();
+  const shouldHideGoalRing = hideGoalRingOnComplete && hasGoals && totalRemaining <= 0;
+  const top1Completion = useCappedCompletion ? (top1?.cappedSpent ?? 0) : (top1?.spent ?? 0);
+  const top2Completion = useCappedCompletion ? (top2?.cappedSpent ?? 0) : (top2?.spent ?? 0);
+  const top1Remaining = Math.max((top1?.goal ?? 0) - top1Completion, 0);
+  const top2Remaining = Math.max((top2?.goal ?? 0) - top2Completion, 0);
+  const othersGoal = Math.max(totalGoal - (top1?.goal ?? 0) - (top2?.goal ?? 0), 0);
+  const othersCompletionSpent = Math.max(
+    (useCappedCompletion ? totalCappedSpent : totalSpent) - top1Completion - top2Completion,
+    0,
+  );
+  const othersRemaining = Math.max(othersGoal - othersCompletionSpent, 0);
   const othersColor = colors.subtext0;
   const primaryBars = [
     top1
-      ? { label: top1.label, color: top1.color, value: top1.spent / FULL_DAY_SECONDS }
+      ? {
+          label: top1.label,
+          color: top1.color,
+          value: top1.goal > 0 ? Math.min(top1Completion / top1.goal, 1) : 0,
+        }
       : { label: 'Top Category', color: colors.primary, value: 0 },
     top2
-      ? { label: top2.label, color: top2.color, value: top2.spent / FULL_DAY_SECONDS }
+      ? {
+          label: top2.label,
+          color: top2.color,
+          value: top2.goal > 0 ? Math.min(top2Completion / top2.goal, 1) : 0,
+        }
       : { label: 'Second', color: colors.secondary, value: 0 },
-    { label: 'Others', color: othersColor, value: othersSpent / FULL_DAY_SECONDS },
+    {
+      label: 'Others',
+      color: othersColor,
+      value: othersGoal > 0 ? Math.min(othersCompletionSpent / othersGoal, 1) : 0,
+    },
   ];
-  const categorySegments = [
-    top1 ? { color: top1.color, value: (top1.spent ?? 0) / FULL_DAY_SECONDS } : null,
-    top2 ? { color: top2.color, value: (top2.spent ?? 0) / FULL_DAY_SECONDS } : null,
-    othersSpent > 0 ? { color: othersColor, value: othersSpent / FULL_DAY_SECONDS } : null,
-  ].filter(Boolean) as { color: string; value: number }[];
+  const categorySegments = (
+    hasGoals
+      ? [
+          top1Remaining > 0 ? { color: top1?.color ?? colors.primary, value: top1Remaining / FULL_DAY_SECONDS } : null,
+          top2Remaining > 0 ? { color: top2?.color ?? colors.secondary, value: top2Remaining / FULL_DAY_SECONDS } : null,
+          othersRemaining > 0 ? { color: othersColor, value: othersRemaining / FULL_DAY_SECONDS } : null,
+        ]
+      : [
+          top1 ? { color: top1.color, value: (top1.spent ?? 0) / FULL_DAY_SECONDS } : null,
+          top2 ? { color: top2.color, value: (top2.spent ?? 0) / FULL_DAY_SECONDS } : null,
+          othersSpent > 0 ? { color: othersColor, value: othersSpent / FULL_DAY_SECONDS } : null,
+        ]
+  ).filter(Boolean) as { color: string; value: number }[];
+  const visibleCategorySegments = shouldHideGoalRing ? [] : categorySegments;
 
   const runningTaskId = CurrentTaskID$.get();
   const runningTask =
     runningTaskId !== -1 ? tasks$.entities[runningTaskId]?.get?.() : undefined;
-  const runningCatColor =
-    runningTask && (Category$ as any)[runningTask.category]?.color?.get?.()
-      ? (Category$ as any)[runningTask.category].color.get()
-      : colors.secondary;
+  const runningCatColor = runningTask
+    ? getCategoryMeta(runningTask.category ?? 0).color || colors.secondary
+    : colors.secondary;
   const runningGoal = runningTask?.timeGoal ?? 0;
   const runningSpent = runningTask?.timeSpent ?? 0;
 
   const runningPercent = runningGoal > 0 ? Math.min(runningSpent / runningGoal, 1) : 0;
-  const dayPercent = Math.min(totalSpent / FULL_DAY_SECONDS, 1);
+  const dayProgressSeconds = Math.max(0, now.diff(today, 'seconds'));
+  const dayPercent = Math.min(dayProgressSeconds / FULL_DAY_SECONDS, 1);
+  const completionPercent = hasGoals ? Math.min(totalSpent / totalGoal, 1) : dayPercent;
+
+  const stopCurrentWithSplitPrompt = () => {
+    const running = activeTimer$.get();
+    if (!running) {
+      void stopTaskTimer();
+      return;
+    }
+    const startKey = moment(running.startedAt).format('YYYY-MM-DD');
+    const todayKey = moment().format('YYYY-MM-DD');
+    const spans = startKey !== todayKey;
+    const todayIds = tasks$.lists.byDate[todayKey]?.get?.() ?? [];
+    const appearsToday = todayIds.includes(running.taskId);
+    const doStop = (splitAcrossDays: boolean) => {
+      void stopTaskTimer({ splitAcrossDays });
+    };
+    if (!spans || !appearsToday) {
+      doStop(false);
+      return;
+    }
+    const message = 'This task started yesterday. Split time between yesterday and today?';
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title: message,
+          options: ['Split across days', 'Keep on previous day', 'Cancel'],
+          cancelButtonIndex: 2,
+        },
+        (index) => {
+          if (index === 0) doStop(true);
+          else if (index === 1) doStop(false);
+        },
+      );
+    } else {
+      Alert.alert(
+        'Split time?',
+        message,
+        [
+          { text: 'Split', onPress: () => doStop(true) },
+          { text: 'Keep on previous day', onPress: () => doStop(false) },
+          { text: 'Cancel', style: 'cancel' },
+        ],
+        { cancelable: true },
+      );
+    }
+  };
+
+  const confirmStop = () => {
+    const title = 'Stop task?';
+    const message = 'Do you want to stop the current task?';
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          title,
+          message,
+          options: ['Stop', 'Cancel'],
+          destructiveButtonIndex: 0,
+          cancelButtonIndex: 1,
+        },
+        (index) => {
+          if (index === 0) {
+            stopCurrentWithSplitPrompt();
+          }
+        },
+      );
+    } else {
+      Alert.alert(
+        title,
+        message,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Stop', style: 'destructive', onPress: stopCurrentWithSplitPrompt },
+        ],
+        { cancelable: true },
+      );
+    }
+  };
 
   return (
     <ScreenView style={styles.container}>
@@ -114,30 +270,44 @@ const PieChartScreen = observer(() => {
 
         <RadialProgressBar
           dayPercent={dayPercent}
-          categorySegments={categorySegments}
+          categorySegments={visibleCategorySegments}
           currentPercent={runningPercent}
           showCurrentRing={!!runningTask}
           currentColor={runningTask ? runningCatColor : undefined}
           centerPercentLabel={`${Math.round(dayPercent * 100)}%`}
-          centerPrimary={runningTask ? formatSeconds(runningSpent) : today.format('hh:mm')}
-          centerSecondary={runningTask ? formatSeconds(runningGoal) : today.format('A')}
+          centerPrimary={runningTask ? formatSeconds(runningSpent) : now.format('hh:mm')}
+          centerSecondary={runningTask ? formatSeconds(runningGoal) : now.format('A')}
+          showDayRing={true}
+          showStopButton={!!runningTask}
+          onStopPress={confirmStop}
         />
 
-        <HorizontalProgressRow bars={primaryBars} styles={styles} />
+        <HorizontalProgressRow
+          bars={primaryBars}
+          styles={styles}
+          width={contentWidth}
+          trackColor={palette.surface1}
+        />
 
-        <View style={styles.listHeader}>
+        <View style={[styles.listHeader, { width: contentWidth }]}>
           <Text style={[styles.listHeaderText]}>Task</Text>
           <Text style={[styles.listHeaderText]}>Total Time</Text>
           <Text style={[styles.listHeaderText]}>% of Day</Text>
         </View>
         {sortedCats.map((cat) => {
           const percent = totalSpent > 0 ? Math.round((cat.spent / totalSpent) * 100) : 0;
+          const completionSpent = useCappedCompletion ? cat.cappedSpent : cat.spent;
+          const taskProgress =
+            cat.goal > 0 ? Math.min(Math.round((completionSpent / cat.goal) * 100), 100) : 0;
           return (
-            <View style={styles.listRow} key={cat.id}>
+            <View style={[styles.listRow, { width: contentWidth }]} key={cat.id}>
               <View style={styles.listRowLeft}>
                 <View style={[styles.dot, { backgroundColor: cat.color }]} />
                 <Text style={styles.listRowLabel} numberOfLines={1}>
                   {cat.label}
+                </Text>
+                <Text style={[styles.listRowLabel, { color: colors.subtext1 }]}>
+                  {taskProgress}%
                 </Text>
               </View>
               <Text style={styles.listRowValue}>{formatSeconds(cat.spent)}</Text>
@@ -145,6 +315,7 @@ const PieChartScreen = observer(() => {
             </View>
           );
         })}
+        <View style={globalTheme.tabBarAvoidingPadding} />
       </ScrollView>
     </ScreenView>
   );
@@ -153,15 +324,18 @@ const PieChartScreen = observer(() => {
 function HorizontalProgressRow({
   bars,
   styles,
+  width,
+  trackColor,
 }: {
   bars: { label: string; color: string; value: number }[];
   styles: ReturnType<typeof createStyles>;
+  width: number;
+  trackColor: string;
 }) {
-  const windowWidth = Dimensions.get('window').width;
-  const MAX_WIDTH = 500;
-  const padding = 20;
-  const progressWidth = windowWidth - padding * 2 > 800 ? MAX_WIDTH : windowWidth - padding * 2;
-  const itemWidth = (progressWidth - padding * 2) / 3;
+  const gap = 12;
+  const progressWidth = Math.max(0, width);
+  const itemWidth = Math.max(0, (progressWidth - gap * 2) / 3);
+  const barWidth = Math.max(0, itemWidth - 8);
 
   return (
     <View style={[styles.progressRow, { width: progressWidth }]}>
@@ -171,7 +345,12 @@ function HorizontalProgressRow({
             {bar.label}
           </Text>
           <Text style={styles.progressPercent}>{Math.round(bar.value * 100)}%</Text>
-          <HorizontalProgressBar width={itemWidth} percentage={Math.min(bar.value, 1)} color={bar.color} />
+          <HorizontalProgressBar
+            width={barWidth}
+            percentage={Math.min(bar.value, 1)}
+            color={bar.color}
+            trackColor={trackColor}
+          />
         </View>
       ))}
     </View>
@@ -218,6 +397,7 @@ const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: 16,
     gap: 12,
+    alignSelf: 'center',
   },
   progressLabel: {
     fontSize: 12,
@@ -233,9 +413,9 @@ const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
   listHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    width: '90%',
     marginTop: 20,
     marginBottom: 8,
+    alignSelf: 'center',
   },
   listHeaderText: {
     fontSize: 13,
@@ -245,8 +425,8 @@ const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
   listRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '90%',
     paddingVertical: 8,
+    alignSelf: 'center',
   },
   listRowLeft: {
     flex: 1,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, ScrollView, Switch, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { observer } from '@legendapp/state/react';
 import { AntDesign } from '@expo/vector-icons';
@@ -52,6 +52,10 @@ const SettingsScreen = observer(() => {
       <AntDesign name={name} size={16} color={accent} />
     </View>
   );
+
+  const openInfo = (title: string, body: string) => {
+    router.push({ pathname: "/(overlays)/settingsInfoSheet", params: { title, body } });
+  };
 
   return (
     <ScreenView style={listStyles.container}>
@@ -120,16 +124,95 @@ const SettingsScreen = observer(() => {
             <View style={listStyles.row}>
               <View style={listStyles.rowLeft}>
                 <RowIcon name="rocket1" />
-                <Text style={listStyles.rowLabel} fontColor="strong">
+                <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
                   Allow "Quick Tasks"
                 </Text>
               </View>
-              <Switch
-                value={settings$.general.allowQuickTasks.get()}
-                onValueChange={(value) => settings$.general.allowQuickTasks.set(value)}
-                trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
-                thumbColor={settings$.general.allowQuickTasks.get() ? accent : palette.surface0}
-              />
+              <View style={listStyles.rowRight}>
+                <Pressable
+                  onPress={() =>
+                    openInfo(
+                      "Quick Tasks",
+                      "Quick Tasks let you start tracking without filling out details. You can add the title, category, and goal later.",
+                    )
+                  }
+                  hitSlop={8}
+                  style={styles.infoButton}
+                >
+                  <AntDesign name="infocirlceo" size={14} color={subtext0} />
+                </Pressable>
+                <Switch
+                  value={settings$.general.allowQuickTasks.get()}
+                  onValueChange={(value) => settings$.general.allowQuickTasks.set(value)}
+                  trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                  thumbColor={settings$.general.allowQuickTasks.get() ? accent : palette.surface0}
+                />
+              </View>
+            </View>
+          </SettingsCard>
+
+          <SettingsCard style={listStyles.card}>
+            <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Behavior</Text>
+            <View style={listStyles.row}>
+              <View style={listStyles.rowLeft}>
+                <RowIcon name="piechart" />
+                <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
+                  Hide Goal Ring When Complete
+                </Text>
+              </View>
+              <View style={listStyles.rowRight}>
+                <Pressable
+                  onPress={() =>
+                    openInfo(
+                      "Hide Goal Ring When Complete",
+                      "When enabled, the goal ring disappears once all category goals for the day are complete.",
+                    )
+                  }
+                  hitSlop={8}
+                  style={styles.infoButton}
+                >
+                  <AntDesign name="infocirlceo" size={14} color={subtext0} />
+                </Pressable>
+                <Switch
+                  value={settings$.productivity.hideGoalRingOnComplete.get()}
+                  onValueChange={(value) => settings$.productivity.hideGoalRingOnComplete.set(value)}
+                  trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                  thumbColor={
+                    settings$.productivity.hideGoalRingOnComplete.get() ? accent : palette.surface0
+                  }
+                />
+              </View>
+            </View>
+            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
+            <View style={listStyles.row}>
+              <View style={listStyles.rowLeft}>
+                <RowIcon name="dashboard" />
+                <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
+                  Cap Category Completion
+                </Text>
+              </View>
+              <View style={listStyles.rowRight}>
+                <Pressable
+                  onPress={() =>
+                    openInfo(
+                      "Cap Category Completion",
+                      "Counts completion per task up to its time goal. Example: two 1‑hour tasks means the category reaches 50% when one task hits 1 hour, even if you keep working on it.",
+                    )
+                  }
+                  hitSlop={8}
+                  style={styles.infoButton}
+                >
+                  <AntDesign name="infocirlceo" size={14} color={subtext0} />
+                </Pressable>
+                <Switch
+                  value={settings$.productivity.capCategoryCompletion.get()}
+                  onValueChange={(value) => settings$.productivity.capCategoryCompletion.set(value)}
+                  trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                  thumbColor={
+                    settings$.productivity.capCategoryCompletion.get() ? accent : palette.surface0
+                  }
+                />
+              </View>
             </View>
           </SettingsCard>
         </View>
@@ -213,8 +296,21 @@ const SettingsScreen = observer(() => {
 
         <View style={globalTheme.tabBarAvoidingPadding} />
       </ScrollView>
+
     </ScreenView>
   );
 });
 
 export default SettingsScreen;
+
+const styles = StyleSheet.create({
+  infoButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 6,
+  },
+  wrapLabel: {
+    flexShrink: 1,
+    flexWrap: "wrap",
+  },
+});

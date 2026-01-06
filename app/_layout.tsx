@@ -67,6 +67,14 @@ const RootLayout = observer(() => {
           name="(settings)"
           options={{ presentation: "card", animation: "slide_from_right" }}
         />
+        <Stack.Screen
+          name="(overlays)"
+          options={{
+            presentation: "transparentModal",
+            animation: "fade",
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        />
       </Stack>
 
       {/* Toast Menu */}

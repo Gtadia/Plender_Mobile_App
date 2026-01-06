@@ -21,6 +21,7 @@ interface PickerProps {
   values: PickerValue[];
   legendState: Observable;
   defaultValue: Observable;
+  onValueChange?: (value: PickerValue) => void;
   unit?: string;
   unitWidth?: number;
   VISIBLE_ITEMS?: number;
@@ -81,6 +82,7 @@ const Picker = ({
   pillOffsetY = 0,
   pillColor = "rgba(0, 0, 0, 0.22)",
   pillBorderColor = "rgba(0, 0, 0, 0.22)",
+  onValueChange,
 }: PickerProps) => {
   const perspective = viewStyle.perspective;
   const RADIUS_REL = VISIBLE_ITEMS * viewStyle.RADIUS_REL_Factor;
@@ -111,7 +113,9 @@ const Picker = ({
 
   const updateJS = (idx: number) => {
     const safe = Math.min(Math.max(idx, 0), values.length - 1);
-    legendState.set(values[safe]);
+    const nextValue = values[safe];
+    legendState.set(nextValue);
+    onValueChange?.(nextValue);
   };
 
   const context = useSharedValue({ y: 0 });
