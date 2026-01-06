@@ -27,7 +27,8 @@ import { activeTimer$ } from '@/utils/activeTimerStore';
 import { uiTick$ } from '@/utils/timerService';
 import { getNow } from '@/utils/timeOverride';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
-import { loadDay, tasks$ } from '@/utils/stateManager';
+import { loadDay, settings$, tasks$ } from '@/utils/stateManager';
+import { accentOpposites } from '@/constants/themes';
 import { ensureDirtyTasksHydrated, flushDirtyTasksToDB, getDirtySnapshot } from '@/utils/dirtyTaskStore';
 import { TaskList } from '@/components/task-list/TaskList';
 import { observer } from '@legendapp/state/react';
@@ -56,14 +57,21 @@ const withOpacity = (hex: string, opacity: number) => {
 
 type ThemeTokens = ReturnType<typeof themeTokens$.get>;
 
-const buildPane = (start: Moment, offsetWeeks: number): WeekPane => {
-  const paneStart = start.clone().add(offsetWeeks, 'week').startOf('week');
+const getWeekStart = (date: Moment, startWeekOn: string) => {
+  const startIndex = startWeekOn === "Monday" ? 1 : 0;
+  const dayIndex = date.day();
+  const diff = (dayIndex - startIndex + 7) % 7;
+  return date.clone().subtract(diff, "day").startOf("day");
+};
+
+const buildPane = (start: Moment, offsetWeeks: number, startWeekOn: string): WeekPane => {
+  const paneStart = getWeekStart(start.clone().add(offsetWeeks, 'week'), startWeekOn);
   return { key: paneStart.toISOString(), start: paneStart };
 };
 
-const generatePaneSet = (center: Moment): WeekPane[] => {
-  const base = center.clone().startOf('week').subtract(CENTER_INDEX, 'week');
-  return Array.from({ length: PANES }).map((_, idx) => buildPane(base, idx));
+const generatePaneSet = (center: Moment, startWeekOn: string): WeekPane[] => {
+  const base = getWeekStart(center.clone(), startWeekOn).subtract(CENTER_INDEX, 'week');
+  return Array.from({ length: PANES }).map((_, idx) => buildPane(base, idx, startWeekOn));
 };
 
 export default observer(function FlatListSwiperExample() {
@@ -72,12 +80,17 @@ export default observer(function FlatListSwiperExample() {
   const followTodayRef = useRef(true);
   const todayKeyRef = useRef(moment(getNow()).format('YYYY-MM-DD'));
   const { palette, colors } = themeTokens$.get();
+  const accentKey = settings$.personalization.accent.get();
+  const startWeekOn = settings$.general.startWeekOn.get();
+  const capCategoryCompletion = settings$.productivity.capCategoryCompletion.get();
+  const oppositeAccentKey = accentOpposites[accentKey];
+  const oppositeAccent = (palette as Record<string, string>)[oppositeAccentKey] ?? palette.surface1;
   const accentSoft = withOpacity(colors.accent, 0.14);
   const accentBorder = withOpacity(colors.accent, 0.28);
   const styles = createStyles({ palette, colors, accentSoft, accentBorder });
 
   const [selectedDate, setSelectedDate] = useState(moment(getNow()));
-  const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(moment(getNow())));
+  const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(moment(getNow()), startWeekOn));
   const [isSnapping, setIsSnapping] = useState(false);
   const [isDaySnapping, setIsDaySnapping] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
@@ -87,12 +100,12 @@ export default observer(function FlatListSwiperExample() {
   useEffect(() => {
     const unsubscribe = selectedDate$.onChange(({ value }) => {
       setSelectedDate(value.clone());
-      setPanes(generatePaneSet(value));
+      setPanes(generatePaneSet(value, startWeekOn));
       followTodayRef.current = value.isSame(moment(getNow()), 'day');
     });
     const initial = selectedDate$.get().clone();
     setSelectedDate(initial);
-    setPanes(generatePaneSet(initial));
+    setPanes(generatePaneSet(initial, startWeekOn));
     followTodayRef.current = initial.isSame(moment(getNow()), 'day');
     return () => {
       if (typeof unsubscribe === 'function') {
@@ -101,7 +114,11 @@ export default observer(function FlatListSwiperExample() {
         unsubscribe?.off?.();
       }
     };
-  }, []);
+  }, [startWeekOn]);
+
+  useEffect(() => {
+    setPanes(generatePaneSet(selectedDate, startWeekOn));
+  }, [selectedDate, startWeekOn]);
 
   const days = useMemo(() => {
     const center = selectedDate.clone();
@@ -153,12 +170,12 @@ export default observer(function FlatListSwiperExample() {
       const next = moment(getNow()).startOf('day');
       selectedDate$.set(next);
       setSelectedDate(next);
-      setPanes(generatePaneSet(next));
+      setPanes(generatePaneSet(next, startWeekOn));
       followTodayRef.current = true;
       void ensureDateCached(next);
     }, 30000);
     return () => clearInterval(interval);
-  }, [ensureDateCached]);
+  }, [ensureDateCached, startWeekOn]);
 
   // Only prefetch current week's days; debounce to avoid hammering JS thread
   useEffect(() => {
@@ -206,11 +223,11 @@ export default observer(function FlatListSwiperExample() {
       if (followTodayRef.current && !now.isSame(current, 'day')) {
         selectedDate$.set(now);
         setSelectedDate(now);
-        setPanes(generatePaneSet(now));
+        setPanes(generatePaneSet(now, startWeekOn));
         ensureDateCached(now);
       }
       return () => {};
-    }, [ensureDateCached])
+    }, [ensureDateCached, startWeekOn])
   );
 
   const finalizeSnap = useCallback(() => {
@@ -228,17 +245,17 @@ export default observer(function FlatListSwiperExample() {
         setIsSnapping(true);
         setSelectedDate((prev) => {
           const nextDate = prev.clone().add(direction, 'week');
-          setPanes(generatePaneSet(nextDate));
-          selectedDate$.set(nextDate);
-          followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-          return nextDate;
+        setPanes(generatePaneSet(nextDate, startWeekOn));
+        selectedDate$.set(nextDate);
+        followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
+        return nextDate;
         });
         finalizeSnap();
       } else {
         finalizeSnap();
       }
     },
-    [finalizeSnap],
+    [finalizeSnap, startWeekOn],
   );
 
   const handleDaySwipe = useCallback(
@@ -248,7 +265,7 @@ export default observer(function FlatListSwiperExample() {
       if (direction !== 0) {
         const nextDate = selectedDate.clone().add(direction, 'day');
         setSelectedDate(nextDate);
-        setPanes(generatePaneSet(nextDate));
+        setPanes(generatePaneSet(nextDate, startWeekOn));
         selectedDate$.set(nextDate);
         followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
         setIsSnapping(true);
@@ -260,20 +277,20 @@ export default observer(function FlatListSwiperExample() {
         setTimeout(() => setIsDaySnapping(false), 150);
       });
     },
-    [finalizeSnap, scrollDayListToCenter, selectedDate],
+    [finalizeSnap, scrollDayListToCenter, selectedDate, startWeekOn],
   );
 
   const handleSelectWeekDay = useCallback(
     (day: Moment) => {
       const normalized = day.clone();
       setSelectedDate(normalized);
-      setPanes(generatePaneSet(normalized));
+      setPanes(generatePaneSet(normalized, startWeekOn));
       selectedDate$.set(normalized);
       followTodayRef.current = normalized.isSame(moment(getNow()), 'day');
       setIsSnapping(true);
       finalizeSnap();
     },
-    [finalizeSnap],
+    [finalizeSnap, startWeekOn],
   );
 
   const getTasksForDate = useCallback(
@@ -308,7 +325,12 @@ export default observer(function FlatListSwiperExample() {
       const tasksForDay = getTasksForDate(date);
       const taskCount = tasksForDay.length;
       const goalTasks = tasksForDay.filter((t) => (t.timeGoal ?? 0) > 0);
-      const timeSpent = goalTasks.reduce((sum, t) => sum + (t.timeSpent ?? 0), 0);
+      const timeSpent = goalTasks.reduce((sum, t) => {
+        const spent = t.timeSpent ?? 0;
+        const goal = t.timeGoal ?? 0;
+        if (!capCategoryCompletion || goal <= 0) return sum + spent;
+        return sum + Math.min(spent, goal);
+      }, 0);
       const timeGoal = goalTasks.reduce((sum, t) => sum + (t.timeGoal ?? 0), 0);
 
       return {
@@ -317,7 +339,7 @@ export default observer(function FlatListSwiperExample() {
         hasGoal: timeGoal > 0,
       };
     },
-    [getTasksForDate],
+    [capCategoryCompletion, getTasksForDate],
   );
 
   const renderWeek = useCallback(
@@ -330,12 +352,15 @@ export default observer(function FlatListSwiperExample() {
               const isActive = day.isSame(selectedDate, 'day');
               const { taskCount, spentRatio, hasGoal } = getDayProgress(day);
               const inactiveGoalColor = withOpacity(colors.accent, 0.4);
+              const inactiveTrackColor = withOpacity(oppositeAccent, 0.4);
               const hasTasks = hasGoal;
               const goalColor = isActive ? colors.accent : inactiveGoalColor;
-              const trackColor = hasTasks ? goalColor : palette.surface1;
+              const trackColor = hasTasks
+                ? (isActive ? withOpacity(oppositeAccent, 0.5) : inactiveTrackColor)
+                : palette.surface1;
               const segments = [];
               if (taskCount > 0 && spentRatio > 0) {
-                segments.push({ value: spentRatio, color: palette.green });
+                segments.push({ value: spentRatio, color: goalColor });
               }
               const taskLabel = taskCount > 99 ? "99+" : `${taskCount}`;
               return (
@@ -347,6 +372,7 @@ export default observer(function FlatListSwiperExample() {
                       strokeWidth={7}
                       trackColor={trackColor}
                       segments={segments}
+                      rotation={-90}
                       centerLabel={taskLabel}
                       centerLabelStyle={{ color: isActive ? colors.text : colors.subtext1 }}
                     />
@@ -359,7 +385,7 @@ export default observer(function FlatListSwiperExample() {
         </View>
       );
     },
-    [getDayProgress, handleSelectWeekDay, selectedDate],
+    [getDayProgress, handleSelectWeekDay, selectedDate, colors, oppositeAccent],
   );
 
   const insets = useSafeAreaInsets();
@@ -379,10 +405,10 @@ export default observer(function FlatListSwiperExample() {
     const today = moment(getNow()).startOf('day');
     selectedDate$.set(today);
     setSelectedDate(today);
-    setPanes(generatePaneSet(today));
+    setPanes(generatePaneSet(today, startWeekOn));
     followTodayRef.current = true;
     void ensureDateCached(today);
-  }, [ensureDateCached]);
+  }, [ensureDateCached, startWeekOn]);
 
   useFocusEffect(
     useCallback(() => {

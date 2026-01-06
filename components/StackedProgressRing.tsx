@@ -15,6 +15,7 @@ type StackedProgressRingProps = {
   segments: RingSegment[];
   centerLabel?: string;
   centerLabelStyle?: TextStyle;
+  rotation?: number;
   style?: ViewStyle;
 };
 
@@ -28,17 +29,21 @@ const StackedProgressRing = observer(
     segments,
     centerLabel,
     centerLabelStyle,
+    rotation = 0,
     style,
   }: StackedProgressRingProps) => {
     const radius = size / 2;
     const innerRadius = radius - strokeWidth / 2;
+    const canvasStyle = rotation
+      ? { width: size, height: size, transform: [{ rotate: `${rotation}deg` }] }
+      : { width: size, height: size };
 
     const path = Skia.Path.Make();
     path.addCircle(radius, radius, innerRadius);
 
     return (
       <View style={[styles.container, { width: size, height: size }, style]}>
-        <Canvas style={{ width: size, height: size }}>
+        <Canvas style={canvasStyle}>
           <Path
             path={path}
             strokeWidth={strokeWidth}
