@@ -509,7 +509,7 @@ const create = () => {
                 style={[styles.submitButton, { backgroundColor: submitBackground }]}
                 onPress={async () => {
                   const ok = await addToDatabase();
-                  if (ok && toastShow$.whereToDisplay.get() === 0) {
+                  if (ok) {
                     navigation.goBack();
                   }
                 }}
@@ -523,9 +523,6 @@ const create = () => {
         {/* Floating category selector */}
         <CategoryPopup />
       </KeyboardAvoidingView>
-      {/* Toast Menu */}
-      {/* { toastShow$.whereToDisplay.get() == 1 && <Toast />} */}
-      <Toast />
     </View>
   );
 };
@@ -555,7 +552,6 @@ const addToDatabase = async () => {
       title: "Name is missing",
       description: "Please enter a task name.",
       toggleFire: !toggleFire,
-      whereToDisplay: 1,
     }));
     return;
   }
@@ -597,7 +593,6 @@ const addToDatabase = async () => {
       title: "Not enough time left",
       description: `Only ${remainingLabel} remaining on ${moment(targetDate).format("MMM D")}.`,
       toggleFire: !toggleFire,
-      whereToDisplay: 1,
     }));
     return false;
   }
@@ -608,7 +603,6 @@ const addToDatabase = async () => {
       title: "Time left today",
       description: `${remainingLabel} remaining for today.`,
       toggleFire: !toggleFire,
-      whereToDisplay: 1,
     }));
   }
 
@@ -645,7 +639,6 @@ const addToDatabase = async () => {
       title: "Task Created",
       description: "",
       toggleFire: !toggleFire,
-      whereToDisplay: 0,
     }));
     return true;
   } catch (err) {
@@ -655,7 +648,6 @@ const addToDatabase = async () => {
       title: "Create failed",
       description: "Could not save task.",
       toggleFire: !toggleFire,
-      whereToDisplay: 1,
     }));
     return false;
   }

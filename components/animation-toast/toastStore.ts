@@ -5,11 +5,5 @@ export const toastShow$ = observable({
   description: '',
   type: '',
   toggleFire: false,
-  whereToDisplay: 0,
 })
 
-/**
- * whereToDisplay
- * 0 — app/_layout.tsx
- * 1 — app/(tasks)/create.tsx
- */

@@ -40,6 +40,7 @@ const RootLayout = observer(() => {
   return (
     <GestureHandlerRootView>
       <StatusBar style={isDark ? "light" : "dark"} />
+
       <Stack
         screenOptions={{
           headerShown: false,
@@ -76,9 +77,12 @@ const RootLayout = observer(() => {
           }}
         />
       </Stack>
-
       {/* Toast Menu */}
+      <Toast />
+{/* >>>>>>> theirs
+=======
       { toastShow$.whereToDisplay.get() == 0 && <Toast />}
+>>>>>>> theirs */}
     </GestureHandlerRootView>
   );
 });

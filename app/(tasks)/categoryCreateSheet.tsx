@@ -54,6 +54,8 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 import { BlurView } from 'expo-blur';
 import { AntDesign } from "@expo/vector-icons";
 import { CATEGORY_NAME_MAX_LENGTH } from "@/constants/limits";
+import { toastShow$ } from "@/components/animation-toast/toastStore";
+import { Toast } from "@/components/animation-toast/components";
 
 export default function CategoryCreateSheet() {
   const router = useRouter();
@@ -156,6 +158,7 @@ export default function CategoryCreateSheet() {
         style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
       />
       <Pressable onPress={closeSheet} style={sheetStyles.background} />
+      {toastShow$.whereToDisplay.get() === 1 ? <Toast /> : null}
       <Animated.View
         style={[
           sheetStyles.container,
@@ -190,6 +193,19 @@ export default function CategoryCreateSheet() {
                 const label = cat.label.trim();
                 if (!label) {
                   console.warn("Category name required");
+                  return;
+                }
+                const existing = Object.values(Category$.get()).find(
+                  (entry) => entry.label?.trim().toLowerCase() === label.toLowerCase(),
+                );
+                if (existing && (!isEditing || editId == null || Category$.get()[editId]?.label !== existing.label)) {
+                  toastShow$.set({
+                    title: "Category already exists",
+                    description: "Use a different name.",
+                    type: "warning",
+                    toggleFire: !toastShow$.toggleFire.get(),
+                    whereToDisplay: 2,
+                  });
                   return;
                 }
 

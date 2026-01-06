@@ -304,7 +304,9 @@ const PieChartScreen = observer(() => {
           >
             {runningTask?.title ?? today.format('ddd, MMMM D')}
           </Text>
-          <Text style={styles.titlePercent}>({headerPercentLabel})</Text>
+          {runningTask ? (
+            <Text style={styles.titlePercent}>({headerPercentLabel})</Text>
+          ) : null}
         </View>
 
         <RadialProgressBar
