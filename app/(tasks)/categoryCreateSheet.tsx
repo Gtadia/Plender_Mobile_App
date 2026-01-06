@@ -36,7 +36,7 @@ import { task$ } from './create';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Memo, useObservable } from '@legendapp/state/react';
 import { $TextInput } from '@legendapp/state/react-native';
-import { getAllEvents, updateEvent } from '@/utils/database';
+import { updateEvent } from '@/utils/database';
 import { accentKeys, accentOpposites } from '@/constants/themes';
 import { getListTheme } from '@/constants/listTheme';
 import { createListSheetStyles } from '@/constants/listStyles';
@@ -44,9 +44,9 @@ import {
   Category$,
   CategoryIDCount$,
   DEFAULT_CATEGORY_ID,
+  DeletedCategories$,
   ensureCategoriesHydrated,
   taskDetailsSheet$,
-  tasks$,
   styling$,
   themeTokens$,
 } from '@/utils/stateManager';
@@ -251,7 +251,7 @@ export default function CategoryCreateSheet() {
         </View>
 
 
-        <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', }}>
+        <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', paddingBottom: 72 }}>
           {/* TEXT */}
           <View style={[sheetStyles.subMenuSquare, sheetStyles.subMenuSquarePadding, cardStyle]}>
             <View style={[sheetStyles.subMenuBar, { alignItems: 'center' }]}>
@@ -331,26 +331,14 @@ export default function CategoryCreateSheet() {
             onPress={() => {
               Alert.alert(
                 "Delete category?",
-                "Delete this category and move its tasks to General?",
+                "Delete this category? You can reassign its tasks later.",
                 [
                   { text: "Cancel", style: "cancel" },
                   {
                     text: "Delete",
                     style: "destructive",
                     onPress: async () => {
-                      const rows = await getAllEvents();
-                      const matching = rows.filter((row) => row.category === editId);
-                      await Promise.all(
-                        matching.map((row) =>
-                          updateEvent({ id: row.id, category: DEFAULT_CATEGORY_ID }),
-                        ),
-                      );
-                      const entities = tasks$.entities.get();
-                      Object.values(entities).forEach((task) => {
-                        if (task.category === editId) {
-                          tasks$.entities[task.id].category.set(DEFAULT_CATEGORY_ID);
-                        }
-                      });
+                      DeletedCategories$.assign({ [editId]: { label: newCategory$.label.get() } });
                       Category$.set((prev) => {
                         const next = { ...prev };
                         delete next[editId];
@@ -363,7 +351,10 @@ export default function CategoryCreateSheet() {
                 { cancelable: true },
               );
             }}
-            style={[sheetStyles.subMenuSquare, sheetStyles.subMenuSquarePadding, cardStyle]}
+            style={[
+              styles.deleteBar,
+              { backgroundColor: listTheme.colors.card, borderColor: dividerColor },
+            ]}
           >
             <Text style={[sheetStyles.menuText, { color: palette.red }]}>Delete Category</Text>
           </Pressable>
@@ -379,5 +370,15 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: 10,
     paddingHorizontal: 18,
+  },
+  deleteBar: {
+    position: "absolute",
+    left: 18,
+    right: 18,
+    bottom: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 14,
+    alignItems: "center",
   },
 });

@@ -19,6 +19,10 @@ interface categoryItem {
   contrastColor?: string;
 }
 
+type DeletedCategory = {
+  label: string;
+};
+
 type Palette = typeof colorTheme.catppuccin.latte;
 
 const DEFAULT_CATEGORY_ACCENT: AccentKey = "sapphire";
@@ -48,6 +52,7 @@ export const NO_CATEGORY_ID = -1;
 export const Category$ = observable<Record<number, categoryItem>>({
   [DEFAULT_CATEGORY_ID]: DEFAULT_CATEGORY_META,
 });
+export const DeletedCategories$ = observable<Record<number, DeletedCategory>>({});
 // max numeric key + 1 (handles empty object)
 const nextId =
   Object.keys(Category$.get()).length === 0
@@ -118,10 +123,14 @@ async function hydrateCategoriesInternal() {
     if (raw) {
       const parsed = JSON.parse(raw) as {
         categories?: Record<number, categoryItem>;
+        deletedCategories?: Record<number, DeletedCategory>;
         nextId?: number;
       };
       if (parsed.categories && Object.keys(parsed.categories).length) {
         Category$.set(parsed.categories);
+      }
+      if (parsed.deletedCategories && Object.keys(parsed.deletedCategories).length) {
+        DeletedCategories$.set(parsed.deletedCategories);
       }
       ensureDefaultCategory();
       if (parsed.nextId !== undefined) {
@@ -139,6 +148,7 @@ async function hydrateCategoriesInternal() {
     categoriesReady = true;
     const snapshot = {
       categories: Category$.get(),
+      deletedCategories: DeletedCategories$.get(),
       nextId: CategoryIDCount$.get(),
     };
     AsyncStorage.setItem(CATEGORY_STORAGE_KEY, JSON.stringify(snapshot)).catch((err) => {
@@ -156,6 +166,7 @@ export async function ensureCategoriesHydrated() {
 observe(() => {
   const payload = JSON.stringify({
     categories: Category$.get(),
+    deletedCategories: DeletedCategories$.get(),
     nextId: CategoryIDCount$.get(),
   });
   if (!categoriesReady) return;

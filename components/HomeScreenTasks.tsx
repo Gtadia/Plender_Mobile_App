@@ -185,7 +185,13 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
         >
         <View style={[taskStyles.container, { backgroundColor: color }]}> 
           <View style={taskStyles.cardHeader}>
-            <Text style={taskStyles.currentTitle} numberOfLines={2} ellipsizeMode="tail">
+            <Text
+              style={taskStyles.currentTitle}
+              numberOfLines={2}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              ellipsizeMode="tail"
+            >
               {title}
             </Text>
             <View style={taskStyles.headerRight}>

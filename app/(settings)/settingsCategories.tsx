@@ -10,12 +10,11 @@ import { getListTheme } from "@/constants/listTheme";
 import { createSettingsListStyles } from "@/constants/listStyles";
 import {
   Category$,
+  DeletedCategories$,
   DEFAULT_CATEGORY_ID,
   ensureCategoriesHydrated,
-  tasks$,
   themeTokens$,
 } from "@/utils/stateManager";
-import { updateEvent, getAllEvents } from "@/utils/database";
 
 const withOpacity = (hex: string, opacity: number) => {
   const normalized = hex.replace("#", "");
@@ -43,33 +42,17 @@ const SettingsCategoriesScreen = observer(() => {
     .map(([id, item]) => ({ id: Number(id), ...item }))
     .sort((a, b) => a.id - b.id);
 
-  const reassignTasksToDefault = async (categoryId: number) => {
-    const rows = await getAllEvents();
-    const matching = rows.filter((row) => row.category === categoryId);
-    const updates = matching.map((row) =>
-      updateEvent({ id: row.id, category: DEFAULT_CATEGORY_ID }),
-    );
-    await Promise.all(updates);
-
-    const entities = tasks$.entities.get();
-    Object.values(entities).forEach((task) => {
-      if (task.category === categoryId) {
-        tasks$.entities[task.id].category.set(DEFAULT_CATEGORY_ID);
-      }
-    });
-  };
-
   const handleDelete = (categoryId: number, label: string) => {
     Alert.alert(
       "Delete category?",
-      `Delete "${label}" and move its tasks to General?`,
+      `Delete "${label}"? You can reassign its tasks later.`,
       [
         { text: "Cancel", style: "cancel" },
         {
           text: "Delete",
           style: "destructive",
           onPress: async () => {
-            await reassignTasksToDefault(categoryId);
+            DeletedCategories$.assign({ [categoryId]: { label } });
             Category$.set((prev) => {
               const next = { ...prev };
               delete next[categoryId];

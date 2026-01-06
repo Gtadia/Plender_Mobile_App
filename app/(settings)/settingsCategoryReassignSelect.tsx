@@ -11,6 +11,7 @@ import { createSettingsListStyles } from "@/constants/listStyles";
 import {
   Category$,
   DEFAULT_CATEGORY_ID,
+  DeletedCategories$,
   ensureCategoriesHydrated,
   tasks$,
   themeTokens$,
@@ -56,6 +57,12 @@ const SettingsCategoryReassignSelectScreen = observer(() => {
           if (task.category === sourceId) {
             tasks$.entities[task.id].category.set(targetId);
           }
+        });
+        DeletedCategories$.set((prev) => {
+          if (!Object.prototype.hasOwnProperty.call(prev, sourceId)) return prev;
+          const next = { ...prev };
+          delete next[sourceId];
+          return next;
         });
         router.back();
       } finally {

@@ -21,14 +21,6 @@ const withOpacity = (hex: string, opacity: number) => {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 };
 
-const resolveSystemTimezone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local Timezone';
-  } catch (err) {
-    return 'Local Timezone';
-  }
-};
-
 const SettingsScreen = observer(() => {
   const router = useRouter();
   const themeKey = settings$.personalization.theme.get();
@@ -42,10 +34,6 @@ const SettingsScreen = observer(() => {
   const listTheme = getListTheme(palette, isDark);
   const listStyles = createSettingsListStyles(listTheme);
   const dividerColor = listTheme.colors.divider;
-  const systemTimezone = resolveSystemTimezone();
-  const timezoneMode = settings$.general.timezoneMode.get();
-  const isAutoTimezone = timezoneMode === 'auto';
-  const timezoneLabel = isAutoTimezone ? systemTimezone : settings$.general.timezone.get();
 
   const RowIcon = ({ name }: { name: keyof typeof AntDesign.glyphMap }) => (
     <View style={[listStyles.iconBadge, { backgroundColor: withOpacity(accent, 0.14) }]}>
@@ -68,41 +56,6 @@ const SettingsScreen = observer(() => {
           </Text>
           <SettingsCard style={listStyles.card}>
             <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Date &amp; Time</Text>
-            <View style={listStyles.row}>
-              <View style={listStyles.rowLeft}>
-                <RowIcon name="clockcircleo" />
-                <Text style={listStyles.rowLabel} fontColor="strong">
-                  Automatic Timezone
-                </Text>
-              </View>
-              <Switch
-                value={isAutoTimezone}
-                onValueChange={(value) =>
-                  settings$.general.timezoneMode.set(value ? 'auto' : 'manual')
-                }
-                trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
-                thumbColor={isAutoTimezone ? accent : palette.surface0}
-              />
-            </View>
-            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
-            <Pressable
-              style={[listStyles.row, isAutoTimezone && listStyles.rowDisabled]}
-              onPress={() => {
-                if (!isAutoTimezone) router.push('/settingsTimezoneSelect');
-              }}
-            >
-              <View style={listStyles.rowLeft}>
-                <RowIcon name="earth" />
-                <Text style={listStyles.rowLabel} fontColor="strong">
-                  Timezone
-                </Text>
-              </View>
-              <View style={listStyles.rowRight}>
-                <Text style={[listStyles.rowValue, { color: subtext0 }]}>{timezoneLabel}</Text>
-                <AntDesign name="right" size={14} color={subtext0} />
-              </View>
-            </Pressable>
-            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
             <Pressable style={listStyles.row} onPress={() => router.push('/settingsWeekStartSelect')}>
               <View style={listStyles.rowLeft}>
                 <RowIcon name="calendar" />
@@ -154,7 +107,7 @@ const SettingsScreen = observer(() => {
               style={listStyles.row}
               onPress={() => router.push('/(settings)/settingsCategories')}
             >
-              <View style={[listStyles.rowLeft, styles.indentRowLeft]}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="tags" />
                 <Text style={listStyles.rowLabel} fontColor="strong">
                   Modify Categories
@@ -169,7 +122,7 @@ const SettingsScreen = observer(() => {
               style={listStyles.row}
               onPress={() => router.push('/(settings)/settingsCategoryReassign')}
             >
-              <View style={[listStyles.rowLeft, styles.indentRowLeft]}>
+              <View style={listStyles.rowLeft}>
                 <RowIcon name="swap" />
                 <Text style={listStyles.rowLabel} fontColor="strong">
                   Reassign Category Tasks
@@ -312,15 +265,9 @@ const SettingsScreen = observer(() => {
               <View style={listStyles.rowLeft}>
                 <RowIcon name="bells" />
                 <Text style={listStyles.rowLabel} fontColor="strong">
-                  Enable Notifications
+                  Notifications coming soon!
                 </Text>
               </View>
-              <Switch
-                value={settings$.productivity.notificationsEnabled.get()}
-                onValueChange={(value) => settings$.productivity.notificationsEnabled.set(value)}
-                trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
-                thumbColor={settings$.productivity.notificationsEnabled.get() ? accent : palette.surface0}
-              />
             </View>
           </SettingsCard>
         </View>
@@ -339,9 +286,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginRight: 6,
-  },
-  indentRowLeft: {
-    paddingLeft: 6,
   },
   wrapLabel: {
     flexShrink: 1,

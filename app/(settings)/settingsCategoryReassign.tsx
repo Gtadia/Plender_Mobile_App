@@ -12,6 +12,7 @@ import { createSettingsListStyles } from "@/constants/listStyles";
 import {
   Category$,
   DEFAULT_CATEGORY_ID,
+  DeletedCategories$,
   NO_CATEGORY_ID,
   ensureCategoriesHydrated,
   themeTokens$,
@@ -60,14 +61,21 @@ const SettingsCategoryReassignScreen = observer(() => {
     }))
     .sort((a, b) => a.id - b.id);
 
+  const deletedMap = DeletedCategories$.get();
   const deletedIds = Object.keys(counts)
     .map(Number)
-    .filter((id) => !Object.prototype.hasOwnProperty.call(categories, id));
-  const deletedEntries: CategoryCount[] = deletedIds.map((id) => ({
-    id,
-    label: id === NO_CATEGORY_ID ? "Unknown" : `Unknown (ID ${id})`,
-    count: counts[id] ?? 0,
-  }));
+    .filter((id) => !Object.prototype.hasOwnProperty.call(categories, id))
+    .filter((id) => (counts[id] ?? 0) > 0);
+  const deletedEntries: CategoryCount[] = deletedIds.map((id) => {
+    const deletedLabel = deletedMap[id]?.label;
+    const label =
+      id === NO_CATEGORY_ID
+        ? "Unknown"
+        : deletedLabel
+        ? `Formerly "${deletedLabel}"`
+        : `Unknown (ID ${id})`;
+    return { id, label, count: counts[id] ?? 0 };
+  });
 
   const renderRow = (entry: CategoryCount, showDivider: boolean) => (
     <React.Fragment key={entry.id}>

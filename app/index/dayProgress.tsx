@@ -296,7 +296,9 @@ const PieChartScreen = observer(() => {
       >
         <View style={styles.titleRow}>
           <Text
-            numberOfLines={1}
+            numberOfLines={2}
+            adjustsFontSizeToFit
+            minimumFontScale={0.75}
             ellipsizeMode="tail"
             style={styles.taskTitle}
           >
@@ -424,6 +426,7 @@ const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
+    maxWidth: '100%',
     paddingHorizontal: horizontalPadding,
     paddingTop: 15,
     gap: 6,
@@ -434,6 +437,7 @@ const createStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     fontWeight: '700',
     alignContent: 'flex-end',
     flexShrink: 1,
+    maxWidth: '100%',
     textAlign: 'center',
   },
   titlePercent: {
