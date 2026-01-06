@@ -433,7 +433,32 @@ const applyTimezoneFromSettings = () => {
 const applyThemeFromSettings = () => {
   const themeKey = settings$.personalization.theme.get();
   const accentKey = settings$.personalization.accent.get();
-  themeTokens$.assign(buildThemeTokens(themeKey, accentKey));
+  const tokens = buildThemeTokens(themeKey, accentKey);
+  themeTokens$.assign(tokens);
+  refreshCategoryColors(tokens.palette);
+};
+
+const refreshCategoryColors = (palette: Palette) => {
+  const categories = Category$.get();
+  const next: Record<number, categoryItem> = {};
+  Object.entries(categories).forEach(([id, entry]) => {
+    if (!entry) return;
+    if (!entry.accentKey) {
+      next[Number(id)] = entry;
+      return;
+    }
+    const accent = (palette as Record<string, string>)[entry.accentKey] ?? entry.color;
+    const contrastKey = entry.contrastKey ?? accentOpposites[entry.accentKey];
+    const contrast =
+      (palette as Record<string, string>)[contrastKey] ?? entry.contrastColor ?? accent;
+    next[Number(id)] = {
+      ...entry,
+      color: accent,
+      contrastKey,
+      contrastColor: contrast,
+    };
+  });
+  Category$.set(next);
 };
 
 const SETTINGS_STORAGE_KEY = "settingsStore";

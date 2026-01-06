@@ -57,6 +57,7 @@ import { toastShow$ } from "@/components/animation-toast/toastStore";
 import { clearEvents, createEvent, getEventsForDate } from "@/utils/database";
 import { useFocusEffect } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
+import { TASK_NAME_MAX_LENGTH } from "@/constants/limits";
 
 interface categoryItem {
   label: string;
@@ -323,7 +324,15 @@ const create = () => {
               placeholder={"Task Name"}
               placeholderTextColor={colors.subtext1}
               ref={titleRef}
+              maxLength={TASK_NAME_MAX_LENGTH}
             />
+            <Memo>
+              {() => (
+                <Text style={[styles.charCount, { color: colors.subtext0 }]}>
+                  {task$.title.get().length}/{TASK_NAME_MAX_LENGTH}
+                </Text>
+              )}
+            </Memo>
 
             {/* Description */}
             <$TextInput
@@ -737,6 +746,12 @@ const styles = StyleSheet.create({
     fontWeight: 400 as any,
     minHeight: 35,
     marginBottom: 15,
+  },
+  charCount: {
+    fontSize: 12,
+    fontWeight: 600 as any,
+    alignSelf: "flex-end",
+    marginTop: 4,
   },
 
   // Actions row (left scroll of chips + right submit button)

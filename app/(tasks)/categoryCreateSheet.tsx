@@ -53,6 +53,7 @@ import {
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { AntDesign } from "@expo/vector-icons";
+import { CATEGORY_NAME_MAX_LENGTH } from "@/constants/limits";
 
 export default function CategoryCreateSheet() {
   const router = useRouter();
@@ -251,7 +252,7 @@ export default function CategoryCreateSheet() {
         </View>
 
 
-        <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', paddingBottom: 72 }}>
+        <View style={{ maxWidth: 400, paddingHorizontal: 0, alignSelf: 'center', paddingBottom: 96 }}>
           {/* TEXT */}
           <View style={[sheetStyles.subMenuSquare, sheetStyles.subMenuSquarePadding, cardStyle]}>
             <View style={[sheetStyles.subMenuBar, { alignItems: 'center' }]}>
@@ -259,14 +260,22 @@ export default function CategoryCreateSheet() {
             </View>
             <View style={{ paddingVertical: 15}}>
                <$TextInput
-                $value={newCategory$.label}
-                style={[sheetStyles.textInput, { color: textColor }]}
-                autoFocus={true}
-                multiline
-                placeholder={"Category Name"}
-                placeholderTextColor={subtextColor}
+               $value={newCategory$.label}
+               style={[sheetStyles.textInput, { color: textColor }]}
+               autoFocus={true}
+               multiline
+               placeholder={"Category Name"}
+               placeholderTextColor={subtextColor}
+                maxLength={CATEGORY_NAME_MAX_LENGTH}
               />
             </View>
+            <Memo>
+              {() => (
+                <Text style={[styles.charCount, { color: subtextColor }]}>
+                  {newCategory$.label.get().length}/{CATEGORY_NAME_MAX_LENGTH}
+                </Text>
+              )}
+            </Memo>
           </View>
           {/* TEXT */}
 
@@ -327,37 +336,41 @@ export default function CategoryCreateSheet() {
         </View>
 
         {isEditing && editId != null && editId !== DEFAULT_CATEGORY_ID ? (
-          <Pressable
-            onPress={() => {
-              Alert.alert(
-                "Delete category?",
-                "Delete this category? You can reassign its tasks later.",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                      DeletedCategories$.assign({ [editId]: { label: newCategory$.label.get() } });
-                      Category$.set((prev) => {
-                        const next = { ...prev };
-                        delete next[editId];
-                        return next;
-                      });
-                      closeSheet();
+          <View style={sheetStyles.bottomActionBar}>
+            <Pressable
+              onPress={() => {
+                Alert.alert(
+                  "Delete category?",
+                  "Delete this category? You can reassign its tasks later.",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    {
+                      text: "Delete",
+                      style: "destructive",
+                      onPress: async () => {
+                        DeletedCategories$.assign({ [editId]: { label: newCategory$.label.get() } });
+                        Category$.set((prev) => {
+                          const next = { ...prev };
+                          delete next[editId];
+                          return next;
+                        });
+                        closeSheet();
+                      },
                     },
-                  },
-                ],
-                { cancelable: true },
-              );
-            }}
-            style={[
-              styles.deleteBar,
-              { backgroundColor: listTheme.colors.card, borderColor: dividerColor },
-            ]}
-          >
-            <Text style={[sheetStyles.menuText, { color: palette.red }]}>Delete Category</Text>
-          </Pressable>
+                  ],
+                  { cancelable: true },
+                );
+              }}
+              style={[
+                sheetStyles.bottomActionButton,
+                { backgroundColor: listTheme.colors.card, borderColor: dividerColor },
+              ]}
+            >
+              <Text style={[sheetStyles.bottomActionText, { color: palette.red }]}>
+                Delete Category
+              </Text>
+            </Pressable>
+          </View>
         ) : null}
       </Animated.View>
     </View>
@@ -371,14 +384,11 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 18,
   },
-  deleteBar: {
-    position: "absolute",
-    left: 18,
-    right: 18,
-    bottom: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingVertical: 14,
-    alignItems: "center",
+  charCount: {
+    fontSize: 12,
+    fontWeight: "600",
+    alignSelf: "flex-end",
+    marginTop: 4,
+    marginRight: 10,
   },
 });

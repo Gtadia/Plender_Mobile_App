@@ -27,7 +27,7 @@ import { activeTimer$ } from '@/utils/activeTimerStore';
 import { uiTick$ } from '@/utils/timerService';
 import { getNow } from '@/utils/timeOverride';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
-import { loadDay, settings$, tasks$ } from '@/utils/stateManager';
+import { loadDay, settings$, taskDetailsSheet$, tasks$ } from '@/utils/stateManager';
 import { accentOpposites } from '@/constants/themes';
 import { ensureDirtyTasksHydrated, flushDirtyTasksToDB, getDirtySnapshot } from '@/utils/dirtyTaskStore';
 import { TaskList } from '@/components/task-list/TaskList';
@@ -504,6 +504,10 @@ export default observer(function FlatListSwiperExample() {
                           key={dateKey}
                           dateKey={dateKey}
                           variant="calendar"
+                          onPressItem={(id) => {
+                            taskDetailsSheet$.taskId.set(id);
+                            router.push("/taskDetailsSheet");
+                          }}
                           emptyText="No tasks for this day"
                           emptyContainerStyle={[
                             styles.placeholderInset,

@@ -16,7 +16,6 @@ import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view
 import { useNavigation, useRouter } from "expo-router";
 import { Memo, Show, observer, useObservable } from "@legendapp/state/react";
 import moment from "moment";
-import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
@@ -38,6 +37,9 @@ import {
   themeTokens$,
 } from "@/utils/stateManager";
 import { clearDirtyTask } from "@/utils/dirtyTaskStore";
+import { TASK_NAME_MAX_LENGTH } from "@/constants/limits";
+import { getListTheme } from "@/constants/listTheme";
+import { createListSheetStyles } from "@/constants/listStyles";
 
 export default function TaskDetailsSheet() {
   const navigation = useNavigation();
@@ -104,8 +106,10 @@ const TaskDetailsContent = observer(() => {
   const router = useRouter();
   const screenWidth = Dimensions.get("window").width;
   const barWidth = screenWidth - 60;
-  const { colors } = themeTokens$.get();
+  const { colors, palette, isDark } = themeTokens$.get();
   const sheetStyles = createSheetStyles(colors);
+  const listTheme = getListTheme(palette, isDark);
+  const sheetListStyles = createListSheetStyles(listTheme);
 
   return (
     <Memo>
@@ -224,51 +228,35 @@ const TaskDetailsContent = observer(() => {
               >
                   <View style={sheetStyles.header}>
                     {isEditing ? (
-                    <TextInput
-                      style={[sheetStyles.title, sheetStyles.titleInput]}
-                      value={titleValue}
-                      onChangeText={(text) => {
-                        tasks$.entities[id].title.set(text);
-                        scheduleSave("title", text.trim());
-                      }}
-                      onEndEditing={(e) => {
-                        const next = e.nativeEvent.text.trim();
-                        tasks$.entities[id].title.set(next);
-                        if (saveTimers.current.title) {
-                          clearTimeout(saveTimers.current.title);
-                        }
-                        void updateEvent({ id, title: next });
-                      }}
-                        placeholder="Task title"
-                        placeholderTextColor={colors.subtext0}
-                      />
+                      <View style={sheetStyles.titleEdit}>
+                        <TextInput
+                          style={[sheetStyles.title, sheetStyles.titleInput]}
+                          value={titleValue}
+                          maxLength={TASK_NAME_MAX_LENGTH}
+                          onChangeText={(text) => {
+                            tasks$.entities[id].title.set(text);
+                            scheduleSave("title", text.trim());
+                          }}
+                          onEndEditing={(e) => {
+                            const next = e.nativeEvent.text.trim();
+                            tasks$.entities[id].title.set(next);
+                            if (saveTimers.current.title) {
+                              clearTimeout(saveTimers.current.title);
+                            }
+                            void updateEvent({ id, title: next });
+                          }}
+                          placeholder="Task title"
+                          placeholderTextColor={colors.subtext0}
+                        />
+                        <Text style={[sheetStyles.subtitle, { color: colors.subtext0 }]}>
+                          {titleValue.length}/{TASK_NAME_MAX_LENGTH}
+                        </Text>
+                      </View>
                     ) : (
                       <Text style={sheetStyles.title} numberOfLines={2}>
                         {titleValue || "Untitled Task"}
                       </Text>
                     )}
-                    <View style={sheetStyles.headerActions}>
-                      <TouchableOpacity
-                        onPress={() => {
-                          const next = !isEditing;
-                          local$.editing.set(next);
-                          if (!next) {
-                            categoryPopup$.set(false);
-                          }
-                        }}
-                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        style={sheetStyles.iconButton}
-                      >
-                        <FontAwesome5 name="edit" size={18} color={catColor} />
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={confirmDelete}
-                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-                        style={sheetStyles.iconButton}
-                      >
-                        <FontAwesome5 name="trash" size={18} color={colors.secondary} />
-                      </TouchableOpacity>
-                    </View>
                     {isEditing ? (
                       <TouchableOpacity
                         style={sheetStyles.categoryRow}
@@ -370,6 +358,42 @@ const TaskDetailsContent = observer(() => {
                     )}
                   </View>
               </KeyboardAwareScrollView>
+              <View style={sheetListStyles.bottomActionBar}>
+                <Pressable
+                  style={[
+                    sheetListStyles.bottomActionButton,
+                    {
+                      backgroundColor: listTheme.colors.card,
+                      borderColor: listTheme.colors.divider,
+                    },
+                  ]}
+                  onPress={() => {
+                    const next = !isEditing;
+                    local$.editing.set(next);
+                    if (!next) {
+                      categoryPopup$.set(false);
+                    }
+                  }}
+                >
+                  <Text style={[sheetListStyles.bottomActionText, { color: colors.textStrong }]}>
+                    {isEditing ? "Done" : "Edit"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[
+                    sheetListStyles.bottomActionButton,
+                    {
+                      backgroundColor: listTheme.colors.card,
+                      borderColor: listTheme.colors.divider,
+                    },
+                  ]}
+                  onPress={confirmDelete}
+                >
+                  <Text style={[sheetListStyles.bottomActionText, { color: palette.red }]}>
+                    Delete
+                  </Text>
+                </Pressable>
+              </View>
             </View>
 
             <Show if={categoryPopup$} else={<></>}>
@@ -455,7 +479,7 @@ const createSheetStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 14,
-    paddingBottom: 40,
+    paddingBottom: 130,
   },
   card: {
     backgroundColor: colors.background,
@@ -470,16 +494,6 @@ const createSheetStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     marginBottom: 10,
     position: "relative",
   },
-  headerActions: {
-    position: "absolute",
-    right: 0,
-    top: 0,
-    flexDirection: "row",
-    gap: 6,
-  },
-  iconButton: {
-    padding: 6,
-  },
   title: {
     fontSize: 22,
     fontWeight: "800",
@@ -491,6 +505,14 @@ const createSheetStyles = (colors: ThemeTokens["colors"]) => StyleSheet.create({
     borderBottomColor: colors.surface0,
     paddingBottom: 6,
     minWidth: "80%",
+  },
+  titleEdit: {
+    alignItems: "center",
+    gap: 4,
+  },
+  subtitle: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   categoryRow: {
     flexDirection: "row",
