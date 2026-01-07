@@ -361,6 +361,7 @@ export default observer(function FlatListSwiperExample() {
         <View style={styles.itemRowContainer}>
           <View style={styles.itemRow}>
             {weekDays.map((day) => {
+              const isToday = day.isSame(moment(getNow()), 'day');
               const isActive = day.isSame(selectedDate, 'day');
               const { taskCount, spentRatio, hasGoal } = getDayProgress(day);
               const inactiveGoalColor = withOpacity(colors.accent, 0.4);
@@ -378,7 +379,7 @@ export default observer(function FlatListSwiperExample() {
               return (
                 <TouchableWithoutFeedback key={day.toISOString()} onPress={() => handleSelectWeekDay(day)}>
                   <View style={[styles.item, !isActive && styles.itemInactive]}>
-                    <Text style={[styles.itemWeekday]}>{day.format('ddd')}</Text>
+                    <Text style={[styles.itemWeekday, { color: isToday ? colors.accent : colors.text }]}>{day.format('ddd')}</Text>
                     <StackedProgressRing
                       size={46}
                       strokeWidth={7}
@@ -388,7 +389,9 @@ export default observer(function FlatListSwiperExample() {
                       centerLabel={taskLabel}
                       centerLabelStyle={{ color: isActive ? colors.text : colors.subtext1 }}
                     />
-                    <Text style={styles.itemDate}>{day.date()}</Text>
+                    <Text style={[styles.itemDate, { color: isToday ? colors.accent : colors.text }]}>
+                      {day.date()}
+                    </Text>
                   </View>
                 </TouchableWithoutFeedback>
               );
