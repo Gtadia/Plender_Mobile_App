@@ -7,7 +7,8 @@ import { useBackNavOverride } from '@/utils/useBackNavOverride';
 import { Toast } from '@/components/animation-toast/components';
 import { Host } from 'react-native-portalize';
 import { dayKey$, ensureCategoriesHydrated, ensureSettingsHydrated, ensureStylingHydrated, loadDay, tasks$, themeTokens$ } from '@/utils/stateManager';
-import { getNow } from '@/utils/timeOverride';
+import { fakeNow$, getNow } from '@/utils/timeOverride';
+import { AppState } from 'react-native';
 import { observer } from '@legendapp/state/react';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -43,20 +44,49 @@ const RootLayout = observer(() => {
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
+    const syncDayKey = async () => {
+      const now = moment(getNow());
+      const nextKey = now.format("YYYY-MM-DD");
+      if (dayKey$.get() !== nextKey) {
+        dayKey$.set(nextKey);
+        await loadDay(now.startOf("day").toDate());
+      }
+    };
+
     const scheduleNext = () => {
+      if (timeoutId) clearTimeout(timeoutId);
       const now = moment(getNow());
       const nextMidnight = now.clone().add(1, "day").startOf("day");
       const msUntil = Math.max(nextMidnight.diff(now), 1000);
       timeoutId = setTimeout(async () => {
-        dayKey$.set(moment(getNow()).format("YYYY-MM-DD"));
-        await loadDay(new Date());
+        await syncDayKey();
         scheduleNext();
       }, msUntil);
     };
 
+    void syncDayKey();
     scheduleNext();
+
+    const appStateSub = AppState.addEventListener("change", (state) => {
+      if (state === "active") {
+        void syncDayKey();
+        scheduleNext();
+      }
+    });
+
+    const fakeSub = fakeNow$.onChange(() => {
+      void syncDayKey();
+      scheduleNext();
+    });
+
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
+      appStateSub?.remove?.();
+      if (typeof fakeSub === "function") {
+        fakeSub();
+      } else {
+        fakeSub?.off?.();
+      }
     };
   }, []);
 

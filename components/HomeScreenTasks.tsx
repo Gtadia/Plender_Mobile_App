@@ -11,6 +11,7 @@ import {
 import { Text } from "@/components/Themed";
 import {
   CurrentTaskID$,
+  dayKey$,
   tasks$,
   getCategoryContrastColor,
   getCategoryMeta,
@@ -28,6 +29,7 @@ import { activeTimer$ } from "@/utils/activeTimerStore";
 import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { TaskList } from "@/components/task-list/TaskList";
+import { getNow } from "@/utils/timeOverride";
 
 export const homePageInfo$ = observable({
   reload: false,
@@ -40,7 +42,7 @@ const stopCurrentWithSplitPrompt = () => {
     return;
   }
   const startKey = moment(running.startedAt).format("YYYY-MM-DD");
-  const todayKey = moment().format("YYYY-MM-DD");
+  const todayKey = moment(getNow()).format("YYYY-MM-DD");
   const spans = startKey !== todayKey;
   const todayIds = tasks$.lists.byDate[todayKey]?.get?.() ?? [];
   const appearsToday = todayIds.includes(running.taskId);
@@ -221,8 +223,21 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
 };
 
 export const TodayTaskView = ({ onPressItem }: { onPressItem?: (id: number) => void }) => {
-  const key = moment().format("YYYY-MM-DD");
-  return <TaskList dateKey={key} variant="home" onPressItem={onPressItem} emptyText="No tasks for today!" />;
+  const [dateKey, setDateKey] = useState(dayKey$.get());
+
+  useEffect(() => {
+    const dispose = dayKey$.onChange(({ value }) => setDateKey(value));
+    return () => dispose();
+  }, []);
+
+  return (
+    <TaskList
+      dateKey={dateKey}
+      variant="home"
+      onPressItem={onPressItem}
+      emptyText="No tasks for today!"
+    />
+  );
 };
 
 const taskStyles = StyleSheet.create({

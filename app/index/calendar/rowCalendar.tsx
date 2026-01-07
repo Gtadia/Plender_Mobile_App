@@ -405,13 +405,21 @@ export default observer(function FlatListSwiperExample() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
+      const now = moment(getNow());
+      const today = now.startOf('day');
+      dayKey$.set(today.format('YYYY-MM-DD'));
+      selectedDate$.set(today);
+      setSelectedDate(today);
+      setPanes(generatePaneSet(today, startWeekOn));
+      followTodayRef.current = true;
+      todayKeyRef.current = today.format('YYYY-MM-DD');
+      await loadDay(today.toDate());
       await flushDirtyTasksToDB();
       await ensureDirtyTasksHydrated();
-      await loadDay(selectedDate.toDate());
     } finally {
       setRefreshing(false);
     }
-  }, [selectedDate]);
+  }, [startWeekOn]);
 
   const handleJumpToday = useCallback(() => {
     const today = moment(getNow()).startOf('day');

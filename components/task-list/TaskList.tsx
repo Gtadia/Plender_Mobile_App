@@ -46,7 +46,7 @@ const stopCurrentWithSplitPrompt = () => {
     return;
   }
   const startKey = moment(running.startedAt).format("YYYY-MM-DD");
-  const todayKey = moment().format("YYYY-MM-DD");
+  const todayKey = moment(getNow()).format("YYYY-MM-DD");
   const spans = startKey !== todayKey;
   const todayIds = tasks$.lists.byDate[todayKey]?.get?.() ?? [];
   const appearsToday = todayIds.includes(running.taskId);
@@ -141,8 +141,8 @@ const TaskListSectionHeader = ({
   listTheme: ReturnType<typeof getListTheme>;
 }) => {
   return (
-    <Memo>
-      {() => {
+    <>
+      {(() => {
         uiTick$.get();
         const running = activeTimer$.get();
         const idsForDay = tasks$.lists.byDate[dateKey]?.get?.() ?? [];
@@ -204,8 +204,8 @@ const TaskListSectionHeader = ({
             </Text>
           </View>
         );
-      }}
-    </Memo>
+      })()}
+    </>
   );
 };
 
@@ -352,7 +352,7 @@ export const TaskList = observer(({
   );
   const styles = createStyles(listTheme);
   return (
-    <Memo key={themeKey}>
+    <Memo key={`${themeKey}-${dateKey}`}>
       {() => {
         const ids = tasks$.lists.byDate[dateKey]?.get?.() ?? [];
         const grouped = ids.reduce((acc, id) => {

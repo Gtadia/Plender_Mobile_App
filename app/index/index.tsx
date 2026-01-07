@@ -3,16 +3,18 @@ import { Text, ScreenView } from "@/components/Themed";
 import { globalTheme, horizontalPadding } from "@/constants/globalThemeVar";
 import { dayKey$, taskDetailsSheet$, loadDay } from "@/utils/stateManager";
 import { Memo, useObservable } from "@legendapp/state/react";
+import { observer } from "@legendapp/state/react";
 import { CurrentTaskView, TodayTaskView } from "@/components/HomeScreenTasks";
 import { useCallback, useEffect, useState } from "react";
 import { flushDirtyTasksToDB } from "@/utils/dirtyTaskStore";
 import { useRouter } from "expo-router";
 import { getNow } from "@/utils/timeOverride";
+import moment from "moment";
 import { ScreenHeader } from "@/components/ScreenHeader";
 
 // TODO — for drag down to reload
 
-export default function TabOneScreen() {
+export default observer(function TabOneScreen() {
   const homePageInfo$ = useObservable({
     reload: false
   })
@@ -31,8 +33,10 @@ export default function TabOneScreen() {
     // show spinner immediately
     homePageInfo$.reload.set(true);
     try {
+      const now = moment(getNow());
+      dayKey$.set(now.format("YYYY-MM-DD"));
       await flushDirtyTasksToDB();
-      await loadDay(new Date());
+      await loadDay(now.toDate());
     } finally {
       // hide spinner
       homePageInfo$.reload.set(false);
@@ -67,16 +71,11 @@ export default function TabOneScreen() {
           <Text style={styles.sectionTitle} fontColor="strong">
             Today
           </Text>
-          <Memo>
-            {() => {
-              const todayLabel = getNow().toLocaleDateString("en-US", { dateStyle: "medium" });
-              return (
-                <Text fontColor="subtext1" style={styles.todayDate}>
-                  {todayLabel}
-                </Text>
-              );
-            }}
-          </Memo>
+          <Text fontColor="subtext1" style={styles.todayDate}>
+            {moment(todayKey, "YYYY-MM-DD")
+              .toDate()
+              .toLocaleDateString("en-US", { dateStyle: "medium" })}
+          </Text>
         </View>
         <TodayTaskView
           onPressItem={(id) => {
@@ -91,7 +90,7 @@ export default function TabOneScreen() {
 
     </ScreenView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   todayHeader: {
