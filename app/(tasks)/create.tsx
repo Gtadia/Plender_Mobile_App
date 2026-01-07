@@ -43,7 +43,7 @@ import {
 import { Memo, Show } from "@legendapp/state/react";
 import moment from "moment";
 import { RRule } from "rrule";
-import { Category$, loadDay, styling$, tasks$, themeTokens$ } from "@/utils/stateManager";
+import { Category$, dayKey$, loadDay, settings$, styling$, tasks$, themeTokens$ } from "@/utils/stateManager";
 import { getListTheme } from "@/constants/listTheme";
 import Animated, {
   useAnimatedKeyboard,
@@ -58,6 +58,7 @@ import { clearEvents, createEvent, getEventsForDate } from "@/utils/database";
 import { useFocusEffect } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
 import { TASK_NAME_MAX_LENGTH } from "@/constants/limits";
+import { getNow } from "@/utils/timeOverride";
 
 interface categoryItem {
   label: string;
@@ -79,7 +80,7 @@ const withOpacity = (hex: string, opacity: number) => {
 // No defaults; we apply fallbacks on submit if fields are empty
 // -------------------------------------------------------------
 const todayRRule = () => {
-  const dtstart = moment().startOf("day").toDate();
+  const dtstart = moment(getNow()).startOf("day").toDate();
   return new RRule({
     freq: RRule.DAILY,
     count: 1,
@@ -257,10 +258,40 @@ const create = () => {
   const cardBackground = listTheme.colors.card;
   const sheetRadius = listTheme.layout.sheet.topRadius;
   const submitBackground = colors.accent;
-  const submitIconColor = colors.textStrong;
+  const useButtonTint = settings$.personalization.buttonTintEnabled.get();
+  const submitIconColor = useButtonTint ? colors.textStrong : isDark ? palette.crust : palette.base;
   const dateAccent = palette.green;
   const quickAddAccent = palette.green;
   const timeAccent = palette.red;
+  const defaultActionOrder = ["date", "time", "category", "quick"] as const;
+
+  const ensureCreateDateFresh = React.useCallback(() => {
+    const currentRule = task$.rrule.get();
+    if (task$.isRepeating.get()) return;
+    const today = moment(getNow()).startOf("day");
+    const startDate = currentRule?.options?.dtstart;
+    if (!startDate) return;
+    const startMoment = moment(startDate).startOf("day");
+    if (startMoment.isBefore(today, "day")) {
+      const nextRule = new RRule({
+        ...currentRule.options,
+        dtstart: today.toDate(),
+      });
+      task$.rrule.set(nextRule);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    const dispose = dayKey$.onChange(() => {
+      ensureCreateDateFresh();
+    });
+    return () => dispose();
+  }, [ensureCreateDateFresh]);
+
+  const setCreateDateToToday = React.useCallback(() => {
+    if (task$.isRepeating.get()) return;
+    task$.rrule.set(todayRRule());
+  }, []);
 
   // Keep keyboard visible by refocusing the title when it hides
   React.useEffect(() => {
@@ -355,12 +386,12 @@ const create = () => {
                 keyboardShouldPersistTaps={"always"}
               >
                 <View style={styles.actions}>
-                  {/* Date / Recurrence */}
                   <Memo>
                     {() => {
                       const quickAddEnabled = quickAdd$.get();
                       const disabledColor = colors.subtext1;
-                      return (
+                      const actionMap = {
+                      date: (
                         <TouchableOpacity
                           style={[
                             styles.actionButton,
@@ -382,7 +413,6 @@ const create = () => {
                               if (startDate)
                                 return (
                                   <>
-                                    {/* Catppuccin Latte Green */}
                                     <AntDesign
                                       name="calendar"
                                       size={15}
@@ -408,7 +438,6 @@ const create = () => {
                                   </>
                                 );
 
-                              // else (no date set)
                               return (
                                 <>
                                   <AntDesign
@@ -429,16 +458,8 @@ const create = () => {
                             }}
                           </Memo>
                         </TouchableOpacity>
-                      );
-                    }}
-                  </Memo>
-
-                  {/* Time Goal */}
-                  <Memo>
-                    {() => {
-                      const quickAddEnabled = quickAdd$.get();
-                      const disabledColor = colors.subtext1;
-                      return (
+                      ),
+                      time: (
                         <TouchableOpacity
                           style={[
                             styles.actionButton,
@@ -493,92 +514,105 @@ const create = () => {
                             }}
                           </Memo>
                         </TouchableOpacity>
-                      );
-                    }}
-                  </Memo>
-
-                  {/* Category */}
-                  <TouchableOpacity
-                    style={[styles.actionButton, { borderColor: actionBorder }]}
-                    onPress={() => {
-                      categoryPopup$.set((prev) => !prev);
-                      console.log(categoryPopup$.get());
-                    }}
-                  >
-                    <Memo>
-                      {() => {
-                        const categoryId = task$.category.get();
-                        if (categoryId !== null && categoryId !== undefined && categoryId >= 0) {
-                          return (
-                            <>
-                              <AntDesign
-                                name="flag"
-                                size={15}
-                                color={Category$[categoryId].color.get()}
-                              />
-                              <Text
-                                style={[
-                                  styles.actionText,
-                                  {
-                                    color: Category$[categoryId].color.get(),
-                                    maxWidth: 120,
-                                  },
-                                ]}
-                                numberOfLines={1}
-                                ellipsizeMode="tail"
-                              >
-                                {Category$[categoryId].label.get()}
-                              </Text>
-                            </>
-                          );
-                        }
-                        return (
-                          <>
-                            <AntDesign
-                              name="flag"
-                              size={15}
-                              color={actionTextColor}
-                            />
-                            <Text style={[styles.actionText, { color: actionTextColor }]}>Category</Text>
-                          </>
-                        );
-                      }}
-                    </Memo>
-                  </TouchableOpacity>
-
-                  {/* Quick Add */}
-                  <Memo>
-                    {() => {
-                      const enabled = quickAdd$.get();
-                      const accent = quickAddAccent;
-                      return (
+                      ),
+                      category: (
                         <TouchableOpacity
-                          style={[
-                            styles.actionButton,
-                            {
-                              borderColor: enabled ? accent : actionBorder,
-                              backgroundColor: enabled ? withOpacity(accent, 0.2) : "transparent",
-                            },
-                          ]}
+                          style={[styles.actionButton, { borderColor: actionBorder }]}
                           onPress={() => {
-                            quickAdd$.set((prev) => !prev);
+                            categoryPopup$.set((prev) => !prev);
+                            console.log(categoryPopup$.get());
                           }}
                         >
-                          <MaterialIcons
-                            name="flash-on"
-                            size={16}
-                            color={enabled ? accent : actionTextColor}
-                          />
-                          <Text
-                            style={[
-                              styles.actionText,
-                              { color: enabled ? accent : actionTextColor },
-                            ]}
-                          >
-                            Quick Add
-                          </Text>
+                          <Memo>
+                            {() => {
+                              const categoryId = task$.category.get();
+                              if (categoryId !== null && categoryId !== undefined && categoryId >= 0) {
+                                return (
+                                  <>
+                                    <AntDesign
+                                      name="flag"
+                                      size={15}
+                                      color={Category$[categoryId].color.get()}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.actionText,
+                                        {
+                                          color: Category$[categoryId].color.get(),
+                                          maxWidth: 120,
+                                        },
+                                      ]}
+                                      numberOfLines={1}
+                                      ellipsizeMode="tail"
+                                    >
+                                      {Category$[categoryId].label.get()}
+                                    </Text>
+                                  </>
+                                );
+                              }
+                              return (
+                                <>
+                                  <AntDesign
+                                    name="flag"
+                                    size={15}
+                                    color={actionTextColor}
+                                  />
+                                  <Text style={[styles.actionText, { color: actionTextColor }]}>Category</Text>
+                                </>
+                              );
+                            }}
+                          </Memo>
                         </TouchableOpacity>
-                      );
+                      ),
+                      quick: (
+                        <Memo>
+                          {() => {
+                            const enabled = quickAdd$.get();
+                            const accent = quickAddAccent;
+                            return (
+                              <TouchableOpacity
+                                style={[
+                                  styles.actionButton,
+                                  {
+                                    borderColor: enabled ? accent : actionBorder,
+                                    backgroundColor: enabled ? withOpacity(accent, 0.2) : "transparent",
+                                  },
+                                ]}
+                                onPress={() => {
+                                  quickAdd$.set((prev) => !prev);
+                                }}
+                              >
+                                <MaterialIcons
+                                  name="flash-on"
+                                  size={16}
+                                  color={enabled ? accent : actionTextColor}
+                                />
+                                <Text
+                                  style={[
+                                    styles.actionText,
+                                    { color: enabled ? accent : actionTextColor },
+                                  ]}
+                                >
+                                  Quick Task
+                                </Text>
+                              </TouchableOpacity>
+                            );
+                          }}
+                        </Memo>
+                      ),
+                    } as const;
+
+                    const rawOrder = settings$.personalization.createActionOrder.get();
+                    const order = (rawOrder ?? []).filter((item): item is typeof defaultActionOrder[number] =>
+                      (defaultActionOrder as readonly string[]).includes(item)
+                    );
+                    const mergedOrder = order.length
+                      ? [...order, ...defaultActionOrder.filter((item) => !order.includes(item))]
+                      : [...defaultActionOrder];
+
+                      return mergedOrder.map((key) => (
+                        <React.Fragment key={key}>{actionMap[key]}</React.Fragment>
+                      ));
                     }}
                   </Memo>
 
@@ -665,7 +699,7 @@ const addToDatabase = async () => {
     }));
     return false;
   }
-  if (!quickAddEnabled && !isRepeatingRule(rrule) && moment(targetDate).isSame(moment(), "day")) {
+  if (!quickAddEnabled && !isRepeatingRule(rrule) && moment(targetDate).isSame(moment(getNow()), "day")) {
     const remainingLabel = formatRemaining(remainingSeconds);
     toastShow$.set(({ toggleFire }) => ({
       type: "warning",

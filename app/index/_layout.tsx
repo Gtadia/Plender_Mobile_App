@@ -5,8 +5,8 @@ import { TouchableOpacity, View, StyleSheet, Keyboard } from 'react-native';
 
 // import { useColorScheme } from '@/components/useColorScheme';
 // import { useClientOnlyValue } from '@/components/useClientOnlyValue';
-import { AntDesign, Ionicons } from '@expo/vector-icons';
-import { themeTokens$ } from '@/utils/stateManager';
+import { FontAwesome6 } from '@expo/vector-icons';
+import { settings$, themeTokens$ } from '@/utils/stateManager';
 import TabBar from '@/components/TabBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -24,8 +24,10 @@ export default observer(function TabLayout() {
   // const colorScheme = useColorScheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const accent = themeTokens$.colors.accent.get();
-  const textStrong = themeTokens$.colors.textStrong.get();
+  const { colors, palette, isDark } = themeTokens$.get();
+  const accent = colors.accent;
+  const useButtonTint = settings$.personalization.buttonTintEnabled.get();
+  const plusColor = useButtonTint ? colors.textStrong : isDark ? palette.crust : palette.base;
 
   return (
     <GestureHandlerRootView>
@@ -47,7 +49,7 @@ export default observer(function TabLayout() {
           router.push("/create");
         }}
       >
-        <AntDesign name="plus" size={26} color={textStrong} />
+        <FontAwesome6 name="plus" size={24} color={plusColor} />
       </TouchableOpacity>
     </GestureHandlerRootView>
   );

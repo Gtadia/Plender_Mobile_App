@@ -12,6 +12,7 @@ import { Text } from "@/components/Themed";
 import {
   CurrentTaskID$,
   dayKey$,
+  settings$,
   tasks$,
   getCategoryContrastColor,
   getCategoryMeta,
@@ -30,6 +31,15 @@ import { useRouter } from "expo-router";
 import { useFocusEffect } from "@react-navigation/native";
 import { TaskList } from "@/components/task-list/TaskList";
 import { getNow } from "@/utils/timeOverride";
+
+const withOpacity = (hex: string, opacity: number) => {
+  const normalized = hex.replace("#", "");
+  const bigint = parseInt(normalized, 16);
+  const r = (bigint >> 16) & 255;
+  const g = (bigint >> 8) & 255;
+  const b = bigint & 255;
+  return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
 
 export const homePageInfo$ = observable({
   reload: false,
@@ -115,7 +125,7 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
       {() => {
       // consume tick to force re-render when timerService heartbeat updates
       void nowTick;
-      const { colors, palette } = themeTokens$.get();
+      const { colors, palette, isDark } = themeTokens$.get();
       const currentId = CurrentTaskID$.get();
       if (currentId === -1) {
         return (
@@ -166,6 +176,15 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
       const categoryMeta = getCategoryMeta(catId);
       const color = categoryMeta.color || colors.primary;
       const opposite = getCategoryContrastColor(catId, colors.textStrong);
+      const useBannerTint = settings$.personalization.bannerTintEnabled.get();
+      const bannerTextColor = useBannerTint
+        ? colors.textStrong
+        : isDark
+          ? palette.crust
+          : palette.base;
+      const bannerSubtextColor = withOpacity(bannerTextColor, 0.9);
+      const bannerTintColor = isDark ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.22)";
+      const bannerTint = isDark ? "rgba(0,0,0,0.18)" : "rgba(255,255,255,0.22)";
       const progressWidth = Math.min(
         Dimensions.get("window").width - 140,
         360,
@@ -185,10 +204,16 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
             }
           }}
         >
-        <View style={[taskStyles.container, { backgroundColor: color }]}> 
+        <View style={[taskStyles.container, { backgroundColor: color }]}>
+          {useBannerTint ? (
+            <View
+              pointerEvents="none"
+              style={[taskStyles.bannerTint, { backgroundColor: bannerTintColor }]}
+            />
+          ) : null}
           <View style={taskStyles.cardHeader}>
             <Text
-              style={taskStyles.currentTitle}
+              style={[taskStyles.currentTitle, { color: bannerTextColor }]}
               numberOfLines={2}
               adjustsFontSizeToFit
               minimumFontScale={0.75}
@@ -197,21 +222,23 @@ export const CurrentTaskView = ({ onPressDetails }: { onPressDetails?: (id: numb
               {title}
             </Text>
             <View style={taskStyles.headerRight}>
-              <Text style={taskStyles.cardPercent}>{Math.round(percent * 100)}%</Text>
+              <Text style={[taskStyles.cardPercent, { color: bannerTextColor }]}>
+                {Math.round(percent * 100)}%
+              </Text>
               <TouchableOpacity onPress={stopCurrentWithSplitPrompt} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <FontAwesome5 name="stop" size={18} color={opposite} />
               </TouchableOpacity>
             </View>
           </View>
-          <Text style={taskStyles.currentTime}>{fmt(liveSpent)}</Text>
-          {!!goal && <Text style={taskStyles.currentGoal}>{fmt(goal)}</Text>}
+          <Text style={[taskStyles.currentTime, { color: bannerTextColor }]}>{fmt(liveSpent)}</Text>
+          {!!goal && <Text style={[taskStyles.currentGoal, { color: bannerSubtextColor }]}>{fmt(goal)}</Text>}
           <View style={taskStyles.progressWrapper}>
             <HorizontalProgressBarPercentage
               width={progressWidth}
               percentage={percent}
               color={opposite}
               trackColor="rgba(255,255,255,0.35)"
-              textColor="#fff"
+              textColor={bannerTextColor}
             />
           </View>
         </View>
@@ -343,5 +370,9 @@ const taskStyles = StyleSheet.create({
   progressWrapper: {
     marginTop: 20,
     alignItems: "center",
+  },
+  bannerTint: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 20,
   },
 });

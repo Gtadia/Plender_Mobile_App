@@ -21,7 +21,7 @@ import { task$ } from './create'
 import { Memo } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
 import { BlurView } from 'expo-blur';
-import { styling$, themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateManager';
+import { settings$, styling$, themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateManager';
 import { getListTheme } from '@/constants/listTheme';
 import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import { createListSheetStyles } from '@/constants/listStyles';
@@ -69,6 +69,8 @@ const TimeGoalSelectSheet = () => {
   const { width, height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
+  const useButtonTint = settings$.personalization.buttonTintEnabled.get();
+  const accentButtonIcon = useButtonTint ? colors.textStrong : isDark ? palette.crust : palette.base;
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
@@ -206,7 +208,7 @@ const TimeGoalSelectSheet = () => {
               }
             }}
           >
-            <AntDesign name="check" size={22} color={colors.textStrong} />
+            <AntDesign name="check" size={22} color={accentButtonIcon} />
           </TouchableOpacity>
         </View>
 

@@ -7,7 +7,7 @@ import { BlurView } from 'expo-blur';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import { styling$, themeTokens$ } from '@/utils/stateManager';
-import { AntDesign } from '@expo/vector-icons';
+import { FontAwesome6 } from '@expo/vector-icons';
 
 const itemSize = 20;
 const itemWidth = 66;
@@ -66,13 +66,13 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
   const glowRadius = cornerRadius * 1.35;
 
   const icons = {
-    index: (props: any) => <AntDesign name="home" size={itemSize} {...props} />,
-    calendar: (props: any) => <AntDesign name="calendar" size={itemSize} {...props} />,
-    dayProgress: (props: any) => <AntDesign name="piechart" size={itemSize} {...props} />,
-    testPanel: (props: any) => <AntDesign name="tool" size={itemSize} {...props} />,
-    test: (props: any) => <AntDesign name="linechart" size={itemSize} {...props} />,
-    test2: (props: any) => <AntDesign name="linechart" size={itemSize} {...props} />,
-    settings: (props: any) => <AntDesign name="setting" size={itemSize} {...props} />,
+    index: (props: any) => <FontAwesome6 name="house" size={itemSize} {...props} />,
+    calendar: (props: any) => <FontAwesome6 name="calendar" size={itemSize} {...props} />,
+    dayProgress: (props: any) => <FontAwesome6 name="chart-pie" size={itemSize} {...props} />,
+    testPanel: (props: any) => <FontAwesome6 name="flask" size={itemSize} {...props} />,
+    test: (props: any) => <FontAwesome6 name="chart-line" size={itemSize} {...props} />,
+    test2: (props: any) => <FontAwesome6 name="chart-line" size={itemSize} {...props} />,
+    settings: (props: any) => <FontAwesome6 name="gear" size={itemSize} {...props} />,
   };
 
   const labelMap: Record<string, string> = {

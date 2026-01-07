@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { observer } from '@legendapp/state/react';
-import { AntDesign } from '@expo/vector-icons';
+import { FontAwesome6 } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { settings$, styling$, themeTokens$ } from '@/utils/stateManager';
 import { themeOptions } from '@/constants/themes';
@@ -35,9 +35,9 @@ const SettingsScreen = observer(() => {
   const listStyles = createSettingsListStyles(listTheme);
   const dividerColor = listTheme.colors.divider;
 
-  const RowIcon = ({ name }: { name: keyof typeof AntDesign.glyphMap }) => (
+  const RowIcon = ({ name }: { name: React.ComponentProps<typeof FontAwesome6>["name"] }) => (
     <View style={[listStyles.iconBadge, { backgroundColor: withOpacity(accent, 0.14) }]}>
-      <AntDesign name={name} size={16} color={accent} />
+      <FontAwesome6 name={name} size={14} color={accent} />
     </View>
   );
 
@@ -67,7 +67,7 @@ const SettingsScreen = observer(() => {
                 <Text style={[listStyles.rowValue, { color: subtext0 }]}>
                   {settings$.general.startWeekOn.get()}
                 </Text>
-                <AntDesign name="right" size={14} color={subtext0} />
+                <FontAwesome6 name="chevron-right" size={12} color={subtext0} />
               </View>
             </Pressable>
           </SettingsCard>
@@ -76,7 +76,7 @@ const SettingsScreen = observer(() => {
             <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Tasks</Text>
             <View style={listStyles.row}>
               <View style={listStyles.rowLeft}>
-                <RowIcon name="rocket1" />
+                <RowIcon name="bolt" />
                 <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
                   Allow "Quick Tasks"
                 </Text>
@@ -92,7 +92,7 @@ const SettingsScreen = observer(() => {
                   hitSlop={8}
                   style={styles.infoButton}
                 >
-                  <AntDesign name="infocirlceo" size={14} color={subtext0} />
+                  <FontAwesome6 name="circle-info" size={14} color={subtext0} />
                 </Pressable>
                 <Switch
                   value={settings$.general.allowQuickTasks.get()}
@@ -114,7 +114,7 @@ const SettingsScreen = observer(() => {
                 </Text>
               </View>
               <View style={listStyles.rowRight}>
-                <AntDesign name="right" size={14} color={subtext0} />
+                <FontAwesome6 name="chevron-right" size={12} color={subtext0} />
               </View>
             </Pressable>
             <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
@@ -123,13 +123,13 @@ const SettingsScreen = observer(() => {
               onPress={() => router.push('/(settings)/settingsCategoryReassign')}
             >
               <View style={listStyles.rowLeft}>
-                <RowIcon name="swap" />
+                <RowIcon name="right-left" />
                 <Text style={listStyles.rowLabel} fontColor="strong">
                   Reassign Category Tasks
                 </Text>
               </View>
               <View style={listStyles.rowRight}>
-                <AntDesign name="right" size={14} color={subtext0} />
+                <FontAwesome6 name="chevron-right" size={12} color={subtext0} />
               </View>
             </Pressable>
           </SettingsCard>
@@ -138,7 +138,7 @@ const SettingsScreen = observer(() => {
             <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Behavior</Text>
             <View style={listStyles.row}>
               <View style={listStyles.rowLeft}>
-                <RowIcon name="piechart" />
+                <RowIcon name="chart-pie" />
                 <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
                   Hide Goal Ring When Complete
                 </Text>
@@ -154,7 +154,7 @@ const SettingsScreen = observer(() => {
                   hitSlop={8}
                   style={styles.infoButton}
                 >
-                  <AntDesign name="infocirlceo" size={14} color={subtext0} />
+                  <FontAwesome6 name="circle-info" size={14} color={subtext0} />
                 </Pressable>
                 <Switch
                   value={settings$.productivity.hideGoalRingOnComplete.get()}
@@ -169,7 +169,7 @@ const SettingsScreen = observer(() => {
             <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
             <View style={listStyles.row}>
               <View style={listStyles.rowLeft}>
-                <RowIcon name="dashboard" />
+                <RowIcon name="gauge" />
                 <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
                   Cap Category Completion
                 </Text>
@@ -185,7 +185,7 @@ const SettingsScreen = observer(() => {
                   hitSlop={8}
                   style={styles.infoButton}
                 >
-                  <AntDesign name="infocirlceo" size={14} color={subtext0} />
+                  <FontAwesome6 name="circle-info" size={14} color={subtext0} />
                 </Pressable>
                 <Switch
                   value={settings$.productivity.capCategoryCompletion.get()}
@@ -208,20 +208,20 @@ const SettingsScreen = observer(() => {
             <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Theme</Text>
             <Pressable style={listStyles.row} onPress={() => router.push('/settingsThemeSelect')}>
               <View style={listStyles.rowLeft}>
-                <RowIcon name="skin" />
+                <RowIcon name="paintbrush" />
                 <Text style={listStyles.rowLabel} fontColor="strong">
                   Select Theme
                 </Text>
               </View>
               <View style={listStyles.rowRight}>
                 <Text style={[listStyles.rowValue, { color: subtext0 }]}>{themeLabel}</Text>
-                <AntDesign name="right" size={14} color={subtext0} />
+                <FontAwesome6 name="chevron-right" size={12} color={subtext0} />
               </View>
             </Pressable>
             <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
             <Pressable style={listStyles.row} onPress={() => router.push('/settingsAccentSelect')}>
               <View style={listStyles.rowLeft}>
-                <RowIcon name="star" />
+                <RowIcon name="palette" />
                 <Text style={listStyles.rowLabel} fontColor="strong">
                   Accent Color
                 </Text>
@@ -230,7 +230,97 @@ const SettingsScreen = observer(() => {
                 <View
                   style={[listStyles.accentPreview, { backgroundColor: accent, borderColor: dividerColor }]}
                 />
-                <AntDesign name="right" size={14} color={subtext0} />
+                <FontAwesome6 name="chevron-right" size={12} color={subtext0} />
+              </View>
+            </Pressable>
+
+            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
+            <View style={listStyles.row}>
+              <View style={listStyles.rowLeft}>
+                <RowIcon name="image" />
+                <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
+                  Apply Tint to Banner
+                </Text>
+              </View>
+              <View style={listStyles.rowRight}>
+                <Pressable
+                  onPress={() =>
+                    openInfo(
+                      "Banner Tint",
+                      "Adds a subtle tint overlay to the home banner for better readability.",
+                    )
+                  }
+                  hitSlop={8}
+                  style={styles.infoButton}
+                >
+                  <FontAwesome6 name="circle-info" size={14} color={subtext0} />
+                </Pressable>
+                <Switch
+                  value={settings$.personalization.bannerTintEnabled.get()}
+                  onValueChange={(value) => settings$.personalization.bannerTintEnabled.set(value)}
+                  trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                  thumbColor={
+                    settings$.personalization.bannerTintEnabled.get() ? accent : palette.surface0
+                  }
+                />
+              </View>
+            </View>
+            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
+            <View style={listStyles.row}>
+              <View style={listStyles.rowLeft}>
+                <RowIcon name="circle" />
+                <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
+                  Apply Tint to Buttons
+                </Text>
+              </View>
+              <View style={listStyles.rowRight}>
+                <Pressable
+                  onPress={() =>
+                    openInfo(
+                      "Button Tint",
+                      "Uses a high-contrast icon color for circular accent buttons like the create button, submit button, and header check buttons.",
+                    )
+                  }
+                  hitSlop={8}
+                  style={styles.infoButton}
+                >
+                  <FontAwesome6 name="circle-info" size={14} color={subtext0} />
+                </Pressable>
+                <Switch
+                  value={settings$.personalization.buttonTintEnabled.get()}
+                  onValueChange={(value) => settings$.personalization.buttonTintEnabled.set(value)}
+                  trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                  thumbColor={
+                    settings$.personalization.buttonTintEnabled.get() ? accent : palette.surface0
+                  }
+                />
+              </View>
+            </View>
+          </SettingsCard>
+
+          <SettingsCard style={listStyles.card}>
+            <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Layout</Text>
+            <Pressable style={listStyles.row} onPress={() => router.push('/(settings)/settingsCreateActionOrder')}>
+              <View style={listStyles.rowLeft}>
+                <RowIcon name="bars-staggered" />
+                <Text style={listStyles.rowLabel} fontColor="strong">
+                  Reorder Create Buttons
+                </Text>
+              </View>
+              <View style={listStyles.rowRight}>
+                <Pressable
+                  onPress={() =>
+                    openInfo(
+                      "Reorder Create Buttons",
+                      "Customize the order of the Date, Time Goal, Category, and Quick Task buttons in the create sheet.",
+                    )
+                  }
+                  hitSlop={8}
+                  style={styles.infoButton}
+                >
+                  <FontAwesome6 name="circle-info" size={14} color={subtext0} />
+                </Pressable>
+                <FontAwesome6 name="chevron-right" size={12} color={subtext0} />
               </View>
             </Pressable>
           </SettingsCard>
@@ -239,7 +329,7 @@ const SettingsScreen = observer(() => {
             <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Extra Features</Text>
             <View style={listStyles.row}>
               <View style={listStyles.rowLeft}>
-                <RowIcon name="filter" />
+                <RowIcon name="wand-magic-sparkles" />
                 <Text style={listStyles.rowLabel} fontColor="strong">
                   Blur Backgrounds
                 </Text>

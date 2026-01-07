@@ -3,14 +3,19 @@ import { Text, ScreenView } from "@/components/Themed";
 import React, { useCallback, useState } from "react";
 import moment from "moment";
 import { clearEvents, createEvent } from "@/utils/database";
-import { loadDay, tasks$ } from "@/utils/stateManager";
+import { loadDay, tasks$, themeTokens$ } from "@/utils/stateManager";
 import { clearActiveTimerState } from "@/utils/activeTimerStore";
 import { dirtyTasks$ } from "@/utils/dirtyTaskStore";
 import { clearFakeNow, setFakeNow, fakeNow$ } from "@/utils/timeOverride";
 import DateTimePicker, { useDefaultStyles } from "react-native-ui-datepicker";
-import AnimationToast from "@/components/animation-toast/animation-toast";
+import { ScreenHeader } from "@/components/ScreenHeader";
+import { getListTheme } from "@/constants/listTheme";
+import { globalTheme, horizontalPadding } from "@/constants/globalThemeVar";
+import { observer } from "@legendapp/state/react";
 
-export default function TestPanelScreen() {
+export default observer(function TestPanelScreen() {
+  const { palette, isDark } = themeTokens$.get();
+  const listTheme = getListTheme(palette, isDark);
   const refreshToday = useCallback(async () => {
     await loadDay(new Date());
   }, []);
@@ -73,7 +78,7 @@ export default function TestPanelScreen() {
 
   const handleSetFakeNowTomorrow = useCallback(() => {
     const d = moment()
-      .add(1, "day")
+      // .add(1, "day")
       .startOf("day")
       .add(23, "hours")
       .add(59, "minutes")
@@ -88,12 +93,19 @@ export default function TestPanelScreen() {
   }, []);
 
   return (
-    <ScreenView style={styles.container}>
+    <ScreenView style={[styles.container, globalTheme.container]}>
+      <ScreenHeader title="Test Panel" />
       <SafeAreaView>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          <Text style={styles.title}>Test Panel</Text>
-          <AnimationToast />
-          <View style={styles.devPanel}>
+          <View
+            style={[
+              styles.devPanel,
+              {
+                backgroundColor: listTheme.colors.card,
+                borderColor: listTheme.colors.divider,
+              },
+            ]}
+          >
             <Text style={styles.panelTitle}>Debug Tasks</Text>
             <View style={styles.panelButton}>
               <Button title="Clear Database" onPress={handleClearDb} />
@@ -108,7 +120,7 @@ export default function TestPanelScreen() {
               <Button title="Clear Tasks Cache" onPress={handleClearCache} />
             </View>
             <View style={styles.panelButton}>
-              <Button title="Set Fake Now (Tomorrow 11:59:50pm)" onPress={handleSetFakeNowTomorrow} />
+              <Button title="Set Fake Now (Today 11:59:50pm)" onPress={handleSetFakeNowTomorrow} />
             </View>
             <View style={styles.panelButton}>
               <Button
@@ -120,7 +132,12 @@ export default function TestPanelScreen() {
               />
             </View>
             {showPicker && (
-              <View style={styles.pickerCard}>
+              <View
+                style={[
+                  styles.pickerCard,
+                  { backgroundColor: listTheme.colors.card, borderColor: listTheme.colors.divider },
+                ]}
+              >
                 <DateTimePicker
                   mode="single"
                   date={pickerDate}
@@ -149,7 +166,7 @@ export default function TestPanelScreen() {
             <View style={styles.panelButton}>
               <Button title="Clear Fake Now" onPress={handleClearFakeNow} />
             </View>
-            <Text style={styles.fakeLabel}>
+            <Text style={[styles.fakeLabel, { color: listTheme.colors.secondaryText }]}>
               {fakeNow$.get() ? `Fake now: ${moment(fakeNow$.get()).format("LLLL")}` : "Fake now: off"}
             </Text>
           </View>
@@ -158,7 +175,7 @@ export default function TestPanelScreen() {
       </SafeAreaView>
     </ScreenView>
   );
-}
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -166,20 +183,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingVertical: 16,
-    paddingHorizontal: 12,
+    paddingHorizontal: horizontalPadding,
     gap: 12,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
   },
   devPanel: {
-    marginTop: 30,
-    width: "90%",
+    marginTop: 16,
+    width: "100%",
     padding: 16,
     borderRadius: 16,
-    backgroundColor: "#f1f1f5",
     gap: 12,
+    borderWidth: 1,
   },
   panelTitle: {
     fontSize: 16,
@@ -193,6 +206,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 8,
     backgroundColor: "#fff",
+    borderWidth: 1,
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 8,

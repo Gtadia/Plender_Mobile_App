@@ -3,7 +3,7 @@ import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions, Platfo
 import { useNavigation, useRouter } from 'expo-router';
 import { $TextInput } from '@legendapp/state/react-native';
 import { BlurView } from 'expo-blur';
-import { styling$, themeTokens$ } from '@/utils/stateManager';
+import { settings$, styling$, themeTokens$ } from '@/utils/stateManager';
 import { getListTheme } from '@/constants/listTheme';
 import { createListSheetStyles } from '@/constants/listStyles';
 import ToastOverlay from "@/components/animation-toast/ToastOverlay";
@@ -16,6 +16,8 @@ export default function TaskEditView() {
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
+  const useButtonTint = settings$.personalization.buttonTintEnabled.get();
+  const accentButtonIcon = useButtonTint ? colors.textStrong : isDark ? palette.crust : palette.base;
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
@@ -102,7 +104,7 @@ export default function TaskEditView() {
               closeSheet();
             }}
           >
-            <AntDesign name="check" size={22} color={colors.textStrong} />
+            <AntDesign name="check" size={22} color={accentButtonIcon} />
           </TouchableOpacity>
         </View>
 

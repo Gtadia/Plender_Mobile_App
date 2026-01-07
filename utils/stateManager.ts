@@ -372,66 +372,39 @@ observe(() => {
 
 interface SettingsState {
   general: {
-    timezoneMode: "auto" | "manual";
-    timezone: string;
     startWeekOn: string;
     allowQuickTasks: boolean;
   };
   personalization: {
     theme: ThemeKey;
     accent: AccentKey;
+    bannerTintEnabled: boolean;
+    buttonTintEnabled: boolean;
+    createActionOrder: string[];
   };
   productivity: {
-    notificationsEnabled: boolean;
     hideGoalRingOnComplete: boolean;
     capCategoryCompletion: boolean;
   };
 }
 
-const defaultTimezone = (() => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Local Timezone";
-  } catch (err) {
-    return "Local Timezone";
-  }
-})();
-
 export const settings$ = observable<SettingsState>({
   general: {
-    timezoneMode: "auto",
-    timezone: defaultTimezone,
     startWeekOn: "Sunday",
     allowQuickTasks: true,
   },
   personalization: {
     theme: "light",
     accent: "peach",
+    bannerTintEnabled: false,
+    buttonTintEnabled: false,
+    createActionOrder: ["date", "time", "category", "quick"],
   },
   productivity: {
-    notificationsEnabled: false,
     hideGoalRingOnComplete: false,
     capCategoryCompletion: true,
   },
 });
-
-const getSystemTimezone = () => {
-  try {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone || "Local Timezone";
-  } catch (err) {
-    return "Local Timezone";
-  }
-};
-
-const applyTimezoneFromSettings = () => {
-  const mode = settings$.general.timezoneMode.get();
-  const timezoneValue = mode === "manual" ? settings$.general.timezone.get() : getSystemTimezone();
-  if (!timezoneValue) return;
-  try {
-    dayjs.tz.setDefault(timezoneValue);
-  } catch (err) {
-    console.warn("Failed to apply timezone", err);
-  }
-};
 
 const applyThemeFromSettings = () => {
   const themeKey = settings$.personalization.theme.get();
@@ -488,7 +461,6 @@ async function hydrateSettingsInternal() {
       console.warn("Failed to persist settings store", err);
     });
     applyThemeFromSettings();
-    applyTimezoneFromSettings();
   }
 }
 
@@ -501,11 +473,15 @@ export async function ensureSettingsHydrated() {
 observe(() => {
   settings$.personalization.theme.get();
   settings$.personalization.accent.get();
-  settings$.general.timezoneMode.get();
-  settings$.general.timezone.get();
+  settings$.personalization.bannerTintEnabled.get();
+  settings$.personalization.buttonTintEnabled.get();
+  settings$.personalization.createActionOrder.get();
+  settings$.general.allowQuickTasks.get();
+  settings$.general.startWeekOn.get();
+  settings$.productivity.hideGoalRingOnComplete.get();
+  settings$.productivity.capCategoryCompletion.get();
   if (!settingsReady) return;
   applyThemeFromSettings();
-  applyTimezoneFromSettings();
   const snapshot = settings$.get();
   AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(snapshot)).catch((err) => {
     console.warn("Failed to persist settings store", err);

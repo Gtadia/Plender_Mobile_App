@@ -42,7 +42,7 @@ import { BlurView } from "expo-blur";
 import { getListTheme } from "@/constants/listTheme";
 import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import { createListSheetStyles } from "@/constants/listStyles";
-import { styling$, themeTokens$ } from "@/utils/stateManager";
+import { settings$, styling$, themeTokens$ } from "@/utils/stateManager";
 import CalendarDatePicker from "@/components/CalendarDatePicker";
 import { getNow } from "@/utils/timeOverride";
 import Picker from "@/components/TimeCarousel/Picker";
@@ -165,6 +165,8 @@ const DateSelectSheet = () => {
   const textColor = colors.text;
   const headerTextColor = colors.textStrong;
   const mutedText = colors.subtext0;
+  const useButtonTint = settings$.personalization.buttonTintEnabled.get();
+  const accentButtonIcon = useButtonTint ? colors.textStrong : isDark ? palette.crust : palette.base;
   const pickerLine = withOpacity(colors.text, isDark ? 0.4 : 0.32);
   const pickerTextColor = isDark ? colors.text : colors.textStrong;
   const pickerTextStyle = {
@@ -299,13 +301,17 @@ const DateSelectSheet = () => {
             onPress={() => {
               try {
                 AddRrule();
+                if (!task$.rrule.get()) {
+                  const dtstart = moment(getNow()).startOf("day").toDate();
+                  task$.rrule.set(new RRule({ dtstart, freq: RRule.DAILY, interval: 1, until: dtstart }));
+                }
                 closeSheet();
               } catch (err) {
                 console.warn("Failed to apply date rule", err);
               }
             }}
           >
-            <AntDesign name="check" size={22} color={colors.textStrong} />
+            <AntDesign name="check" size={22} color={accentButtonIcon} />
           </TouchableOpacity>
         </View>
 
@@ -646,7 +652,7 @@ const DateSelectSheet = () => {
                 ]}
                 onPress={applyCalendar}
               >
-                <AntDesign name="check" size={20} color={colors.textStrong} />
+                <AntDesign name="check" size={20} color={accentButtonIcon} />
               </TouchableOpacity>
             </View>
             {calendarDraft ? (

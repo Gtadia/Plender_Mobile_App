@@ -46,6 +46,7 @@ import {
   DEFAULT_CATEGORY_ID,
   DeletedCategories$,
   ensureCategoriesHydrated,
+  settings$,
   taskDetailsSheet$,
   styling$,
   themeTokens$,
@@ -67,6 +68,8 @@ export default function CategoryCreateSheet() {
   const { height } = Dimensions.get("window");
   const translateY = useSharedValue(height);
   const { palette, colors, isDark } = themeTokens$.get();
+  const useButtonTint = settings$.personalization.buttonTintEnabled.get();
+  const accentButtonIcon = useButtonTint ? colors.textStrong : isDark ? palette.crust : palette.base;
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
@@ -261,7 +264,7 @@ export default function CategoryCreateSheet() {
               }
             }}
           >
-            <AntDesign name="check" size={22} color={colors.textStrong} />
+            <AntDesign name="check" size={22} color={accentButtonIcon} />
           </TouchableOpacity>
         </View>
 
