@@ -6,6 +6,7 @@ import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
 import { dbEvents, eventsType, getEventsForDate } from "./database";
+import { getNow } from "./timeOverride";
 import moment from "moment";
 
 dayjs.extend(utc);
@@ -214,6 +215,8 @@ export const SelectedDate$ = observable<TaskType>({
 });
 
 import { ensureDirtyTasksHydrated, getDirtySnapshot } from "./dirtyTaskStore";
+
+export const dayKey$ = observable(moment(getNow()).format('YYYY-MM-DD'));
 
 // Task Observable
 export const tasks$ = observable({

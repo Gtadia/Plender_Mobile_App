@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -6,7 +6,8 @@ import { clearEvents, eventsType, getEventsForDate, initializeDB } from '@/utils
 import { useBackNavOverride } from '@/utils/useBackNavOverride';
 import { Toast } from '@/components/animation-toast/components';
 import { Host } from 'react-native-portalize';
-import { ensureCategoriesHydrated, ensureSettingsHydrated, ensureStylingHydrated, loadDay, tasks$, themeTokens$ } from '@/utils/stateManager';
+import { dayKey$, ensureCategoriesHydrated, ensureSettingsHydrated, ensureStylingHydrated, loadDay, tasks$, themeTokens$ } from '@/utils/stateManager';
+import { getNow } from '@/utils/timeOverride';
 import { observer } from '@legendapp/state/react';
 import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
@@ -38,6 +39,26 @@ const RootLayout = observer(() => {
   const isDark = themeTokens$.isDark.get();
   const segments = useSegments();
   const isModalGroup = segments[0] === '(tasks)' || segments[0] === '(calendar)' || segments[0] === '(overlays)';
+
+  useEffect(() => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleNext = () => {
+      const now = moment(getNow());
+      const nextMidnight = now.clone().add(1, "day").startOf("day");
+      const msUntil = Math.max(nextMidnight.diff(now), 1000);
+      timeoutId = setTimeout(async () => {
+        dayKey$.set(moment(getNow()).format("YYYY-MM-DD"));
+        await loadDay(new Date());
+        scheduleNext();
+      }, msUntil);
+    };
+
+    scheduleNext();
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

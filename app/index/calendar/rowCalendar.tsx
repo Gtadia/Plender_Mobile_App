@@ -27,7 +27,7 @@ import { activeTimer$ } from '@/utils/activeTimerStore';
 import { uiTick$ } from '@/utils/timerService';
 import { getNow } from '@/utils/timeOverride';
 import { globalTheme, horizontalPadding } from '@/constants/globalThemeVar';
-import { loadDay, settings$, taskDetailsSheet$, tasks$ } from '@/utils/stateManager';
+import { dayKey$, loadDay, settings$, taskDetailsSheet$, tasks$ } from '@/utils/stateManager';
 import { accentOpposites } from '@/constants/themes';
 import { ensureDirtyTasksHydrated, flushDirtyTasksToDB, getDirtySnapshot } from '@/utils/dirtyTaskStore';
 import { TaskList } from '@/components/task-list/TaskList';
@@ -115,6 +115,18 @@ export default observer(function FlatListSwiperExample() {
       }
     };
   }, [startWeekOn]);
+
+  useEffect(() => {
+    const dispose = dayKey$.onChange(async ({ value }) => {
+      const nextToday = moment(getNow());
+      todayKeyRef.current = value;
+      if (followTodayRef.current) {
+        selectedDate$.set(nextToday);
+        await loadDay(nextToday.toDate());
+      }
+    });
+    return () => dispose();
+  }, []);
 
   useEffect(() => {
     setPanes(generatePaneSet(selectedDate, startWeekOn));

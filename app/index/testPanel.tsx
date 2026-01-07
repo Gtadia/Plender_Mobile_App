@@ -72,7 +72,13 @@ export default function TestPanelScreen() {
   }, []);
 
   const handleSetFakeNowTomorrow = useCallback(() => {
-    const d = moment().add(1, "day").startOf("day").add(9, "hours").toDate();
+    const d = moment()
+      .add(1, "day")
+      .startOf("day")
+      .add(23, "hours")
+      .add(59, "minutes")
+      .add(50, "seconds")
+      .toDate();
     handleSetFakeNow(d);
   }, [handleSetFakeNow]);
 
@@ -102,7 +108,7 @@ export default function TestPanelScreen() {
               <Button title="Clear Tasks Cache" onPress={handleClearCache} />
             </View>
             <View style={styles.panelButton}>
-              <Button title="Set Fake Now (Tomorrow 9am)" onPress={handleSetFakeNowTomorrow} />
+              <Button title="Set Fake Now (Tomorrow 11:59:50pm)" onPress={handleSetFakeNowTomorrow} />
             </View>
             <View style={styles.panelButton}>
               <Button

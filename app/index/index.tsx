@@ -1,10 +1,10 @@
 import { StyleSheet, View, ScrollView, RefreshControl } from "react-native";
 import { Text, ScreenView } from "@/components/Themed";
 import { globalTheme, horizontalPadding } from "@/constants/globalThemeVar";
-import { taskDetailsSheet$, loadDay } from "@/utils/stateManager";
+import { dayKey$, taskDetailsSheet$, loadDay } from "@/utils/stateManager";
 import { Memo, useObservable } from "@legendapp/state/react";
 import { CurrentTaskView, TodayTaskView } from "@/components/HomeScreenTasks";
-import { useCallback } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { flushDirtyTasksToDB } from "@/utils/dirtyTaskStore";
 import { useRouter } from "expo-router";
 import { getNow } from "@/utils/timeOverride";
@@ -17,6 +17,15 @@ export default function TabOneScreen() {
     reload: false
   })
   const router = useRouter();
+  const [todayKey, setTodayKey] = useState(dayKey$.get());
+
+  useEffect(() => {
+    const dispose = dayKey$.onChange(({ value }) => {
+      setTodayKey(value);
+      void loadDay(new Date());
+    });
+    return () => dispose();
+  }, []);
 
   const Refreshing = useCallback(async () => {
     // show spinner immediately
