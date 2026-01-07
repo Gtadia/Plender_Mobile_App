@@ -39,6 +39,7 @@ import {
 import { clearDirtyTask } from "@/utils/dirtyTaskStore";
 import { TASK_NAME_MAX_LENGTH } from "@/constants/limits";
 import { getListTheme } from "@/constants/listTheme";
+import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import { createListSheetStyles } from "@/constants/listStyles";
 
 export default function TaskDetailsSheet() {
@@ -90,6 +91,7 @@ export default function TaskDetailsSheet() {
         <Animated.View style={[styles.container, { height: height * 6 / 8, minHeight: 500 }, sheetStyle]}>
           <TaskDetailsContent />
         </Animated.View>
+        <ToastOverlay />
       </View>
     </View>
   );

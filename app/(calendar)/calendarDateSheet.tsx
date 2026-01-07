@@ -13,6 +13,7 @@ import { getNow } from "@/utils/timeOverride";
 import { BlurView } from "expo-blur";
 import { styling$, themeTokens$ } from "@/utils/stateManager";
 import CalendarDatePicker from "@/components/CalendarDatePicker";
+import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 
 const pickerDate$ = observable<Moment>(selectedDate$.get());
 
@@ -123,6 +124,7 @@ const CalendarDateSheet = observer(() => {
           <Text style={styles.confirmText}>Select Date</Text>
         </TouchableOpacity>
       </Animated.View>
+      <ToastOverlay />
     </View>
   );
 });

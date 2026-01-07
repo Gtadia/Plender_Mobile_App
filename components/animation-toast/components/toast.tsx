@@ -1,5 +1,6 @@
 import {StyleSheet, Text, View} from 'react-native';
 import React, {
+  useEffect,
   useState,
 } from 'react';
 import Animated, {
@@ -11,6 +12,7 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { Portal } from 'react-native-portalize';
 import LottiesView from './lottiesView';
 import {getStyles} from '../utils';
 import { toastShow$ } from '../toastStore';
@@ -43,31 +45,35 @@ const Toast = () => {
   const {backgroundColor, titleColor, descriptionColor, animationSource} =
     getStyles(state.type);
 
-  toastShow$.onChange(({ value }) => {
-    updateState({
-      isShow: true,
-      title: value.title,
-      description: value.description,
-      type: value.type
+  useEffect(() => {
+    const dispose = toastShow$.onChange(({ value }) => {
+      updateState({
+        isShow: true,
+        title: value.title,
+        description: value.description,
+        type: value.type
+      });
+
+      const duration = 2000;
+      toastTopAnimation.value = withSequence(
+          withTiming(Math.max(Number(insets?.top), 15)),
+          withDelay(
+            duration,
+            withTiming(-100, undefined, finish => {
+              if (finish) {
+                runOnJS(() => {
+                  updateState({
+                    isShow: false,
+                  });
+                });
+              }
+            }),
+          ),
+        );
     });
 
-    const duration = 2000;
-    toastTopAnimation.value = withSequence(
-        withTiming(Math.max(Number(insets?.top), 15)),
-        withDelay(
-          duration,
-          withTiming(-100, undefined, finish => {
-            if (finish) {
-              runOnJS(() => {
-                updateState({
-                  isShow: false,
-                });
-              });
-            }
-          }),
-        ),
-      );
-  })
+    return () => dispose();
+  }, [insets?.top, toastTopAnimation]);
 
   const animatedTopStyles = useAnimatedStyle(() => {
     return {
@@ -76,7 +82,7 @@ const Toast = () => {
   });
 
   return (
-    <>
+    <Portal>
       {state.isShow && (
         <Animated.View
           style={[styles.toastContainer, {backgroundColor}, animatedTopStyles]}>
@@ -101,7 +107,7 @@ const Toast = () => {
           </View>
         </Animated.View>
       )}
-    </>
+    </Portal>
   );
 };
 

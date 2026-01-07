@@ -40,6 +40,7 @@ import { Picker as WheelPicker } from "react-native-wheel-pick";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { BlurView } from "expo-blur";
 import { getListTheme } from "@/constants/listTheme";
+import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import { createListSheetStyles } from "@/constants/listStyles";
 import { styling$, themeTokens$ } from "@/utils/stateManager";
 import CalendarDatePicker from "@/components/CalendarDatePicker";
@@ -662,6 +663,7 @@ const DateSelectSheet = () => {
           </View>
         </View>
       </Modal>
+      <ToastOverlay />
     </View>
   );
 };

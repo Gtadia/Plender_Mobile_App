@@ -23,6 +23,7 @@ import { observable } from '@legendapp/state';
 import { BlurView } from 'expo-blur';
 import { styling$, themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateManager';
 import { getListTheme } from '@/constants/listTheme';
+import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import { createListSheetStyles } from '@/constants/listStyles';
 import { updateEvent } from '@/utils/database';
 import { AntDesign } from "@expo/vector-icons";
@@ -280,6 +281,7 @@ const TimeGoalSelectSheet = () => {
         </View>
 
       </Animated.View>
+      <ToastOverlay />
     </View>
   )
 }

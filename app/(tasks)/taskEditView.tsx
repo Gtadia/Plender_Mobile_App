@@ -6,6 +6,7 @@ import { BlurView } from 'expo-blur';
 import { styling$, themeTokens$ } from '@/utils/stateManager';
 import { getListTheme } from '@/constants/listTheme';
 import { createListSheetStyles } from '@/constants/listStyles';
+import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { AntDesign } from "@expo/vector-icons";
 
@@ -127,6 +128,7 @@ export default function TaskEditView() {
 
         </View>
       </Animated.View>
+      <ToastOverlay />
     </View>
   );
 }

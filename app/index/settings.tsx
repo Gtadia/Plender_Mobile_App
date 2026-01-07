@@ -86,7 +86,7 @@ const SettingsScreen = observer(() => {
                   onPress={() =>
                     openInfo(
                       "Quick Tasks",
-                      "Quick Tasks let you start tracking without filling out details. You can add the title, category, and goal later.",
+                      "Quick Tasks can be created with no title or time goal. They run only today, default to General, and can be assigned to any category.",
                     )
                   }
                   hitSlop={8}

@@ -52,8 +52,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { time$ } from "./timeGoalSelectSheet";
-import { Toast } from "@/components/animation-toast/components";
 import { toastShow$ } from "@/components/animation-toast/toastStore";
+import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import { clearEvents, createEvent, getEventsForDate } from "@/utils/database";
 import { useFocusEffect } from "@react-navigation/native";
 import { BlurView } from "expo-blur";
@@ -98,6 +98,7 @@ export const task$ = observable({
 
 // Popup open/close flag for category selector
 const categoryPopup$ = observable(false);
+const quickAdd$ = observable(false);
 
 // -------------------------------------------------------------
 // CategoryPopup
@@ -258,6 +259,7 @@ const create = () => {
   const submitBackground = colors.accent;
   const submitIconColor = colors.textStrong;
   const dateAccent = palette.green;
+  const quickAddAccent = palette.green;
   const timeAccent = palette.red;
 
   // Keep keyboard visible by refocusing the title when it hides
@@ -354,100 +356,146 @@ const create = () => {
               >
                 <View style={styles.actions}>
                   {/* Date / Recurrence */}
-                  <TouchableOpacity
-                    style={[styles.actionButton, { borderColor: actionBorder }]}
-                    onPress={() => {
-                      router.push("/(tasks)/dateSelectSheet");
-                    }}
-                  >
-                    <Memo>
-                      {() => {
-                        const currentRule = task$.rrule.get();
-                        const startDate = currentRule?.options?.dtstart;
-                        if (startDate)
-                          return (
-                            <>
-                              {/* Catppuccin Latte Green */}
-                              <AntDesign
-                                name="calendar"
-                                size={15}
-                                color={dateAccent}
-                              />
-                              <Text
-                                style={[
-                                  styles.actionText,
-                                  { color: dateAccent },
-                                ]}
-                              >
-                                {moment(startDate).format("MMM D YYYY")}
-                              </Text>
-                              {(() => {
-                                return task$.isRepeating.get() ? (
-                                  <AntDesign
-                                    name="retweet"
-                                    size={15}
-                                    color={dateAccent}
-                                  />
-                                ) : null;
-                              })()}
-                            </>
-                          );
+                  <Memo>
+                    {() => {
+                      const quickAddEnabled = quickAdd$.get();
+                      const disabledColor = colors.subtext1;
+                      return (
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            {
+                              borderColor: quickAddEnabled ? withOpacity(actionBorder, 0.35) : actionBorder,
+                              backgroundColor: quickAddEnabled ? withOpacity(colors.subtext0, 0.12) : "transparent",
+                            },
+                          ]}
+                          onPress={() => {
+                            if (quickAddEnabled) return;
+                            router.push("/(tasks)/dateSelectSheet");
+                          }}
+                          disabled={quickAddEnabled}
+                        >
+                          <Memo>
+                            {() => {
+                              const currentRule = task$.rrule.get();
+                              const startDate = currentRule?.options?.dtstart;
+                              if (startDate)
+                                return (
+                                  <>
+                                    {/* Catppuccin Latte Green */}
+                                    <AntDesign
+                                      name="calendar"
+                                      size={15}
+                                      color={quickAddEnabled ? disabledColor : dateAccent}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.actionText,
+                                        { color: quickAddEnabled ? disabledColor : dateAccent },
+                                      ]}
+                                    >
+                                      {moment(startDate).format("MMM D YYYY")}
+                                    </Text>
+                                    {(() => {
+                                      return task$.isRepeating.get() ? (
+                                        <AntDesign
+                                          name="retweet"
+                                          size={15}
+                                          color={quickAddEnabled ? disabledColor : dateAccent}
+                                        />
+                                      ) : null;
+                                    })()}
+                                  </>
+                                );
 
-                        // else (no date set)
-                        return (
-                          <>
-                            <AntDesign
-                              name="calendar"
-                              size={15}
-                              color={actionTextColor}
-                            />
-                            <Text style={[styles.actionText, { color: actionTextColor }]}>Date</Text>
-                          </>
-                        );
-                      }}
-                    </Memo>
-                  </TouchableOpacity>
+                              // else (no date set)
+                              return (
+                                <>
+                                  <AntDesign
+                                    name="calendar"
+                                    size={15}
+                                    color={quickAddEnabled ? disabledColor : actionTextColor}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.actionText,
+                                      { color: quickAddEnabled ? disabledColor : actionTextColor },
+                                    ]}
+                                  >
+                                    Date
+                                  </Text>
+                                </>
+                              );
+                            }}
+                          </Memo>
+                        </TouchableOpacity>
+                      );
+                    }}
+                  </Memo>
 
                   {/* Time Goal */}
-                  <TouchableOpacity
-                    style={[styles.actionButton, { borderColor: actionBorder }]}
-                    onPress={() => {
-                      router.push("/(tasks)/timeGoalSelectSheet");
+                  <Memo>
+                    {() => {
+                      const quickAddEnabled = quickAdd$.get();
+                      const disabledColor = colors.subtext1;
+                      return (
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            {
+                              borderColor: quickAddEnabled ? withOpacity(actionBorder, 0.35) : actionBorder,
+                              backgroundColor: quickAddEnabled ? withOpacity(colors.subtext0, 0.12) : "transparent",
+                            },
+                          ]}
+                          onPress={() => {
+                            if (quickAddEnabled) return;
+                            router.push("/(tasks)/timeGoalSelectSheet");
+                          }}
+                          disabled={quickAddEnabled}
+                        >
+                          <Memo>
+                            {() => {
+                              if (task$.timeGoal.get())
+                                return (
+                                  <>
+                                    <AntDesign
+                                      name="clockcircleo"
+                                      size={15}
+                                      color={quickAddEnabled ? disabledColor : timeAccent}
+                                    />
+                                    <Text
+                                      style={[
+                                        styles.actionText,
+                                        { color: quickAddEnabled ? disabledColor : timeAccent },
+                                      ]}
+                                    >{`${time$.hours.get()}:${
+                                      time$.minutes.get() < 10 ? "0" : ""
+                                    }${time$.minutes.get()}`}</Text>
+                                  </>
+                                );
+                              return (
+                                <>
+                                  <AntDesign
+                                    name="clockcircleo"
+                                    size={15}
+                                    color={quickAddEnabled ? disabledColor : actionTextColor}
+                                  />
+                                  <Text
+                                    style={[
+                                      styles.actionText,
+                                      { color: quickAddEnabled ? disabledColor : actionTextColor },
+                                    ]}
+                                  >
+                                    Time Goal
+                                  </Text>
+                                </>
+                              );
+                            }}
+                          </Memo>
+                        </TouchableOpacity>
+                      );
                     }}
-                  >
-                    <Memo>
-                      {() => {
-                        if (task$.timeGoal.get())
-                          return (
-                            <>
-                              <AntDesign
-                                name="clockcircleo"
-                                size={15}
-                                color={timeAccent}
-                              />
-                              <Text
-                                style={[
-                                  styles.actionText,
-                                  { color: timeAccent },
-                                ]}
-                              >{`${time$.hours.get()}:${
-                                time$.minutes.get() < 10 ? "0" : ""
-                              }${time$.minutes.get()}`}</Text>
-                            </>
-                          );
-                        return (
-                          <>
-                            <AntDesign
-                              name="clockcircleo"
-                              size={15}
-                              color={actionTextColor}
-                            />
-                            <Text style={[styles.actionText, { color: actionTextColor }]}>Time Goal</Text>
-                          </>
-                        );
-                      }}
-                    </Memo>
-                  </TouchableOpacity>
+                  </Memo>
 
                   {/* Category */}
                   <TouchableOpacity
@@ -459,26 +507,27 @@ const create = () => {
                   >
                     <Memo>
                       {() => {
-                        if (task$.category.get()) {
+                        const categoryId = task$.category.get();
+                        if (categoryId !== null && categoryId !== undefined && categoryId >= 0) {
                           return (
                             <>
                               <AntDesign
                                 name="flag"
                                 size={15}
-                                color={Category$[task$.category.get()].color.get()}
+                                color={Category$[categoryId].color.get()}
                               />
                               <Text
                                 style={[
                                   styles.actionText,
                                   {
-                                    color: Category$[task$.category.get()].color.get(),
+                                    color: Category$[categoryId].color.get(),
                                     maxWidth: 120,
                                   },
                                 ]}
                                 numberOfLines={1}
                                 ellipsizeMode="tail"
                               >
-                                {Category$[task$.category.get()].label.get()}
+                                {Category$[categoryId].label.get()}
                               </Text>
                             </>
                           );
@@ -496,6 +545,42 @@ const create = () => {
                       }}
                     </Memo>
                   </TouchableOpacity>
+
+                  {/* Quick Add */}
+                  <Memo>
+                    {() => {
+                      const enabled = quickAdd$.get();
+                      const accent = quickAddAccent;
+                      return (
+                        <TouchableOpacity
+                          style={[
+                            styles.actionButton,
+                            {
+                              borderColor: enabled ? accent : actionBorder,
+                              backgroundColor: enabled ? withOpacity(accent, 0.2) : "transparent",
+                            },
+                          ]}
+                          onPress={() => {
+                            quickAdd$.set((prev) => !prev);
+                          }}
+                        >
+                          <MaterialIcons
+                            name="flash-on"
+                            size={16}
+                            color={enabled ? accent : actionTextColor}
+                          />
+                          <Text
+                            style={[
+                              styles.actionText,
+                              { color: enabled ? accent : actionTextColor },
+                            ]}
+                          >
+                            Quick Add
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    }}
+                  </Memo>
 
                   {/* Placeholder for "More" options in future */}
                   {/* <TouchableOpacity style={styles.actionButton} onPress={() => {}}>
@@ -523,38 +608,22 @@ const create = () => {
         {/* Floating category selector */}
         <CategoryPopup />
       </KeyboardAvoidingView>
+      <ToastOverlay />
     </View>
   );
 };
 
 const addToDatabase = async () => {
-  // Apply defaults only when empty
-  let rrule = task$.rrule.get();
-  if (!rrule) {
-    rrule = todayRRule();
-    task$.rrule.set(rrule);
-  }
-  let timeGoal = task$.timeGoal.get();
-  if (!timeGoal || timeGoal <= 0) {
-    timeGoal = 3600;
-    task$.timeGoal.set(3600);
-  }
-  let category = task$.category.get();
-  if (category === undefined || category === null || category < 0) {
-    category = 0;
-    task$.category.set(0);
-  }
+  const quickAddEnabled = quickAdd$.get();
+  const rawTitle = task$.title.get()?.trim() ?? "";
 
-  const title = task$.title.get()?.trim() ?? "";
-  if (!title) {
-    toastShow$.set(({ toggleFire }) => ({
-      type: "error",
-      title: "Name is missing",
-      description: "Please enter a task name.",
-      toggleFire: !toggleFire,
-    }));
-    return;
-  }
+  // Apply defaults only for the submit payload
+  const rrule = quickAddEnabled ? todayRRule() : task$.rrule.get() ?? todayRRule();
+  const rawGoal = task$.timeGoal.get() ?? 0;
+  const timeGoal = quickAddEnabled ? 0 : rawGoal > 0 ? rawGoal : 3600;
+  const category = task$.category.get();
+  const resolvedCategory =
+    category === undefined || category === null || category < 0 ? 0 : category;
 
   const formatRemaining = (seconds: number) => {
     const safe = Math.max(0, Math.floor(seconds));
@@ -586,7 +655,7 @@ const addToDatabase = async () => {
   const existingGoal = existing.reduce((sum, task) => sum + (task.timeGoal ?? 0), 0);
   const daySeconds = 24 * 60 * 60;
   const remainingSeconds = daySeconds - existingGoal;
-  if (timeGoal > remainingSeconds) {
+  if (!quickAddEnabled && timeGoal > remainingSeconds) {
     const remainingLabel = formatRemaining(remainingSeconds);
     toastShow$.set(({ toggleFire }) => ({
       type: "error",
@@ -596,7 +665,7 @@ const addToDatabase = async () => {
     }));
     return false;
   }
-  if (!isRepeatingRule(rrule) && moment(targetDate).isSame(moment(), "day")) {
+  if (!quickAddEnabled && !isRepeatingRule(rrule) && moment(targetDate).isSame(moment(), "day")) {
     const remainingLabel = formatRemaining(remainingSeconds);
     toastShow$.set(({ toggleFire }) => ({
       type: "warning",
@@ -606,10 +675,24 @@ const addToDatabase = async () => {
     }));
   }
 
+  let title = rawTitle;
+  if (!title && quickAddEnabled) {
+    title = `Quick Task #${existing.length + 1}`;
+  }
+  if (!title) {
+    toastShow$.set(({ toggleFire }) => ({
+      type: "error",
+      title: "Name is missing",
+      description: "Please enter a task name.",
+      toggleFire: !toggleFire,
+    }));
+    return false;
+  }
+
   const submitTask = {
     title,
     description: task$.description.get(),
-    category,
+    category: resolvedCategory,
     rrule,
     timeGoal,
   };
@@ -634,6 +717,7 @@ const addToDatabase = async () => {
       isRepeating: false,
       timeGoal: 0,
     });
+    quickAdd$.set(false);
     toastShow$.set(({ toggleFire }) => ({
       type: "success",
       title: "Task Created",

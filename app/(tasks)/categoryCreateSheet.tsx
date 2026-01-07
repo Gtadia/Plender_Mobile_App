@@ -55,7 +55,7 @@ import { BlurView } from 'expo-blur';
 import { AntDesign } from "@expo/vector-icons";
 import { CATEGORY_NAME_MAX_LENGTH } from "@/constants/limits";
 import { toastShow$ } from "@/components/animation-toast/toastStore";
-import { Toast } from "@/components/animation-toast/components";
+import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 
 export default function CategoryCreateSheet() {
   const router = useRouter();
@@ -158,7 +158,6 @@ export default function CategoryCreateSheet() {
         style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
       />
       <Pressable onPress={closeSheet} style={sheetStyles.background} />
-      {toastShow$.whereToDisplay.get() === 1 ? <Toast /> : null}
       <Animated.View
         style={[
           sheetStyles.container,
@@ -204,7 +203,6 @@ export default function CategoryCreateSheet() {
                     description: "Use a different name.",
                     type: "warning",
                     toggleFire: !toastShow$.toggleFire.get(),
-                    whereToDisplay: 2,  // tells the toast which window to appear on (we're 2 layers deep so level 2)
                   });
                   return;
                 }
@@ -389,6 +387,7 @@ export default function CategoryCreateSheet() {
           </View>
         ) : null}
       </Animated.View>
+      <ToastOverlay />
     </View>
   );
 }
