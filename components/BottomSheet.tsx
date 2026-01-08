@@ -25,7 +25,7 @@ const MAX_TRANSLATE_Y = -height;
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { observable } from "@legendapp/state";
 
-import { BlurView } from 'expo-blur';
+import { PlatformBlurView } from '@/components/PlatformBlurView';
 
 const gestureOffset = 10;
 const lineMargin = 15;
@@ -143,7 +143,7 @@ const BottomSheet = ({
       style={[styles.container, rBottomSheetStyle, { overflow: "hidden" }]}
     >
       <GestureDetector gesture={gesture}>
-        <BlurView intensity={90} tint="light" style={{ flex: 1, backgroundColor: "white" }}>
+        <PlatformBlurView intensity={90} tint="light" style={{ flex: 1, backgroundColor: "white" }}>
           <View style={[styles.gestureArea]}>
             <View style={styles.line} />
           </View>
@@ -164,7 +164,7 @@ const BottomSheet = ({
             </Animated.View>
           </View>
           <View style={{ flex: 1 }}>{children}</View>
-        </BlurView>
+        </PlatformBlurView>
       </GestureDetector>
     </Animated.View>
   );

@@ -18,7 +18,7 @@ import { Memo, Show, observer, useObservable } from "@legendapp/state/react";
 import moment from "moment";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
-import { BlurView } from "expo-blur";
+import { PlatformBlurView } from "@/components/PlatformBlurView";
 
 import { Text } from "@/components/Themed";
 import { fmt } from "@/helpers/fmt";
@@ -74,7 +74,7 @@ export default function TaskDetailsSheet() {
   return (
     <View style={styles.overlay}>
       {blurEnabled ? (
-        <BlurView
+        <PlatformBlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
           style={StyleSheet.absoluteFill}

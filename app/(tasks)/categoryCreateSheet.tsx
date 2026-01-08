@@ -52,7 +52,7 @@ import {
   themeTokens$,
 } from '@/utils/stateManager';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
+import { PlatformBlurView } from "@/components/PlatformBlurView";
 import { AntDesign } from "@expo/vector-icons";
 import { CATEGORY_NAME_MAX_LENGTH } from "@/constants/limits";
 import { toastShow$ } from "@/components/animation-toast/toastStore";
@@ -73,7 +73,6 @@ export default function CategoryCreateSheet() {
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
-  const blurMethod = Platform.OS === "android" ? "dimezisBlurView" : undefined;
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const containerBackground = listTheme.colors.row;
   const rowBackground = listTheme.colors.card;
@@ -148,10 +147,9 @@ export default function CategoryCreateSheet() {
   return (
     <View style={sheetStyles.overlay}>
       {blurEnabled ? (
-        <BlurView
+        <PlatformBlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
-          experimentalBlurMethod={blurMethod}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />

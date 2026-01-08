@@ -20,7 +20,7 @@ import { useNavigation, useRouter } from 'expo-router'
 import { task$ } from './create'
 import { Memo } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
-import { BlurView } from 'expo-blur';
+import { PlatformBlurView } from "@/components/PlatformBlurView";
 import { settings$, styling$, themeTokens$, timeGoalEdit$, tasks$ } from '@/utils/stateManager';
 import { getListTheme } from '@/constants/listTheme';
 import ToastOverlay from "@/components/animation-toast/ToastOverlay";
@@ -74,7 +74,6 @@ const TimeGoalSelectSheet = () => {
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
-  const blurMethod = Platform.OS === "android" ? "dimezisBlurView" : undefined;
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const containerBackground = listTheme.colors.row;
   const cardBackground = listTheme.colors.card;
@@ -131,10 +130,9 @@ const TimeGoalSelectSheet = () => {
   return (
     <View style={sheetStyles.overlay}>
       {blurEnabled ? (
-        <BlurView
+        <PlatformBlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
-          experimentalBlurMethod={blurMethod}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />

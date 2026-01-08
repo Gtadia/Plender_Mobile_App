@@ -3,7 +3,7 @@ import React from 'react';
 import { Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { observer } from '@legendapp/state/react';
-import { BlurView } from 'expo-blur';
+import { PlatformBlurView } from '@/components/PlatformBlurView';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
 import { settings$, styling$, themeTokens$ } from '@/utils/stateManager';
@@ -110,7 +110,7 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
       ]}
     >
       {blurEnabled ? (
-        <BlurView tint={isDark ? "dark" : "light"} intensity={35} style={StyleSheet.absoluteFill} />
+        <PlatformBlurView tint={isDark ? "dark" : "light"} intensity={35} style={StyleSheet.absoluteFill} />
       ) : null}
       <View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: barBackground }]} />
       <Animated.View

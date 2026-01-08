@@ -3,7 +3,7 @@ import { Dimensions, Pressable, ScrollView, StyleSheet, View } from "react-nativ
 import { Text } from "@/components/Themed";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { BlurView } from "expo-blur";
+import { PlatformBlurView } from "@/components/PlatformBlurView";
 import { AntDesign } from "@expo/vector-icons";
 import { getListTheme } from "@/constants/listTheme";
 import { createListSheetStyles } from "@/constants/listStyles";
@@ -19,7 +19,6 @@ const SettingsInfoSheet = () => {
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
-  const blurMethod = "dimezisBlurView";
   const overlayColor = blurEnabled
     ? isDark
       ? "rgba(255,255,255,0.08)"
@@ -49,10 +48,9 @@ const SettingsInfoSheet = () => {
   return (
     <View style={sheetStyles.overlay}>
       {blurEnabled ? (
-        <BlurView
+        <PlatformBlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
-          experimentalBlurMethod={blurMethod}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />

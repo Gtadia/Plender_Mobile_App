@@ -38,7 +38,7 @@ import { observable } from "@legendapp/state";
 import { useFocusEffect } from "@react-navigation/native";
 import { Picker as WheelPicker } from "react-native-wheel-pick";
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
-import { BlurView } from "expo-blur";
+import { PlatformBlurView } from "@/components/PlatformBlurView";
 import { getListTheme } from "@/constants/listTheme";
 import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import { createListSheetStyles } from "@/constants/listStyles";
@@ -157,7 +157,6 @@ const DateSelectSheet = () => {
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
-  const blurMethod = Platform.OS === "android" ? "dimezisBlurView" : undefined;
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const containerBackground = listTheme.colors.row;
   const cardBackground = listTheme.colors.card;
@@ -259,10 +258,9 @@ const DateSelectSheet = () => {
   return (
     <View style={sheetStyles.overlay}>
       {blurEnabled ? (
-        <BlurView
+        <PlatformBlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
-          experimentalBlurMethod={blurMethod}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
@@ -622,10 +620,9 @@ const DateSelectSheet = () => {
       >
         <View style={[styles.calendarOverlay, { backgroundColor: overlayColor }]}>
           {blurEnabled ? (
-            <BlurView
+            <PlatformBlurView
               tint={isDark ? "dark" : "light"}
               intensity={40}
-              experimentalBlurMethod={blurMethod}
               style={StyleSheet.absoluteFill}
               pointerEvents="none"
             />

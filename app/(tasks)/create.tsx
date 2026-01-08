@@ -56,7 +56,7 @@ import { toastShow$ } from "@/components/animation-toast/toastStore";
 import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import { clearEvents, createEvent, getEventsForDate } from "@/utils/database";
 import { useFocusEffect } from "@react-navigation/native";
-import { BlurView } from "expo-blur";
+import { PlatformBlurView } from "@/components/PlatformBlurView";
 import { TASK_NAME_MAX_LENGTH } from "@/constants/limits";
 import { getNow } from "@/utils/timeOverride";
 
@@ -251,7 +251,6 @@ const create = () => {
   const listTheme = getListTheme(palette, isDark);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
   const insets = useSafeAreaInsets();
-  const blurMethod = Platform.OS === "android" ? "dimezisBlurView" : undefined;
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const actionBorder = withOpacity(palette.overlay0, isDark ? 0.5 : 0.35);
   const actionTextColor = colors.subtext0;
@@ -293,28 +292,28 @@ const create = () => {
     task$.rrule.set(todayRRule());
   }, []);
 
-  // Keep keyboard visible by refocusing the title when it hides
   React.useEffect(() => {
     const sub = Keyboard.addListener("keyboardDidHide", () => {
-      titleRef.current?.focus?.();
+      if (Platform.OS === "android" && navigation.isFocused()) {
+        navigation.goBack();
+      }
     });
     return () => sub.remove();
-  }, []);
+  }, [navigation]);
 
   return (
     <View style={styles.overlay}>
       {blurEnabled ? (
-        <BlurView
+        <PlatformBlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
-          experimentalBlurMethod={blurMethod}
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, styles.backdrop]}
           pointerEvents="none"
         />
       ) : null}
       <View
         pointerEvents="none"
-        style={[StyleSheet.absoluteFill, { backgroundColor: overlayColor }]}
+        style={[StyleSheet.absoluteFill, styles.backdrop, { backgroundColor: overlayColor }]}
       />
       <TouchableWithoutFeedback
         onPress={Keyboard.dismiss}
@@ -328,8 +327,9 @@ const create = () => {
       </TouchableWithoutFeedback>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "position"}
-        keyboardVerticalOffset={Platform.OS === "android" ? insets.bottom + 24 : 0}
+        // behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={"padding"}
+        keyboardVerticalOffset={0}
         style={styles.kav}
       >
         <ScrollView
@@ -798,6 +798,7 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "transparent",
+    position: "relative",
   },
 
   // Transparent flex filler (used on TouchableWithoutFeedback wrapper)
@@ -810,6 +811,8 @@ const styles = StyleSheet.create({
   background: {
     backgroundColor: "transparent",
     flex: 1,
+    zIndex: 100,
+    elevation: 100,
   },
 
   // KeyboardAvoidingView container
@@ -817,6 +820,12 @@ const styles = StyleSheet.create({
     bottom: 0,
     position: "relative",
     backgroundColor: "transparent",
+    zIndex: 100,
+    elevation: 100,
+  },
+  backdrop: {
+    zIndex: -1,
+    elevation: -1,
   },
 
   // The card body holding inputs and actions
@@ -825,6 +834,8 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     borderRadius: 0,
     padding: 15,
+    zIndex: 100,
+    elevation: 100,
   },
 
   // (Unused here, but kept intentionally to avoid functional changes)

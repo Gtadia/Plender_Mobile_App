@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Text, Pressable, TouchableOpacity, StyleSheet, Dimensions, Platform } from 'react-native';
 import { useNavigation, useRouter } from 'expo-router';
 import { $TextInput } from '@legendapp/state/react-native';
-import { BlurView } from 'expo-blur';
+import { PlatformBlurView } from "@/components/PlatformBlurView";
 import { settings$, styling$, themeTokens$ } from '@/utils/stateManager';
 import { getListTheme } from '@/constants/listTheme';
 import { createListSheetStyles } from '@/constants/listStyles';
@@ -21,7 +21,6 @@ export default function TaskEditView() {
   const listTheme = getListTheme(palette, isDark);
   const sheetStyles = createListSheetStyles(listTheme);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
-  const blurMethod = Platform.OS === "android" ? "dimezisBlurView" : undefined;
   const overlayColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.35)";
   const containerBackground = listTheme.colors.row;
   const rowBackground = listTheme.colors.card;
@@ -63,10 +62,9 @@ export default function TaskEditView() {
   return (
     <View style={sheetStyles.overlay}>
       {blurEnabled ? (
-        <BlurView
+        <PlatformBlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
-          experimentalBlurMethod={blurMethod}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />

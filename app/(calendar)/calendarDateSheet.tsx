@@ -10,7 +10,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import { Text } from "@/components/Themed";
 import { selectedDate$ } from "@/app/index/calendar/rowCalendar";
 import { getNow } from "@/utils/timeOverride";
-import { BlurView } from "expo-blur";
+import { PlatformBlurView } from "@/components/PlatformBlurView";
 import { styling$, themeTokens$ } from "@/utils/stateManager";
 import CalendarDatePicker from "@/components/CalendarDatePicker";
 import ToastOverlay from "@/components/animation-toast/ToastOverlay";
@@ -73,7 +73,7 @@ const CalendarDateSheet = observer(() => {
   return (
     <View style={styles.overlay}>
       {blurEnabled ? (
-        <BlurView
+        <PlatformBlurView
           tint={isDark ? "dark" : "light"}
           intensity={40}
           style={StyleSheet.absoluteFill}

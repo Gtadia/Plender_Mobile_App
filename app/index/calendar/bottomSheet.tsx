@@ -9,7 +9,7 @@ import { Memo, observer } from '@legendapp/state/react';
 import { observable } from '@legendapp/state';
 import { useFocusEffect } from '@react-navigation/native';
 import { Text } from '@/components/Themed';
-import { BlurView } from 'expo-blur';
+import { PlatformBlurView } from "@/components/PlatformBlurView";
 import { styling$, themeTokens$ } from '@/utils/stateManager';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
@@ -53,12 +53,12 @@ const bottomSheet = observer(() => {
   return (
     <View style={styles.overlay}>
       {blurEnabled ? (
-        <BlurView
-          tint={isDark ? "dark" : "light"}
-          intensity={40}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
+      <PlatformBlurView
+        tint={isDark ? "dark" : "light"}
+        intensity={40}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       ) : null}
       <View
         pointerEvents="none"
