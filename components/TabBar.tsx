@@ -6,7 +6,7 @@ import { observer } from '@legendapp/state/react';
 import { BlurView } from 'expo-blur';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg';
-import { styling$, themeTokens$ } from '@/utils/stateManager';
+import { settings$, styling$, themeTokens$ } from '@/utils/stateManager';
 import { FontAwesome6 } from '@expo/vector-icons';
 
 const itemSize = 20;
@@ -25,7 +25,14 @@ const withOpacity = (hex: string, opacity: number) => {
 const TabBar = observer(({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
   const windowWidth = Dimensions.get('window').width;
-  const visibleRoutes = state.routes.filter((r) => !['_sitemap', '+not-found'].includes(r.name));
+  const visibleRoutes = state.routes.filter((route) => {
+    if (['_sitemap', '+not-found'].includes(route.name)) return false;
+    if (route.name === 'testPanel') return false;
+    if (route.name === 'support' && !settings$.general.showSupportPage.get()) return false;
+    const options = descriptors[route.key]?.options as { href?: string | null } | undefined;
+    if (options?.href === null) return false;
+    return true;
+  });
   const tabWidth = itemWidth * visibleRoutes.length;
   const computedIndex = visibleRoutes.findIndex(
     (route) => route.key === state.routes[state.index]?.key
@@ -69,7 +76,7 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
     index: (props: any) => <FontAwesome6 name="house" size={itemSize} {...props} />,
     calendar: (props: any) => <FontAwesome6 name="calendar" size={itemSize} {...props} />,
     dayProgress: (props: any) => <FontAwesome6 name="chart-pie" size={itemSize} {...props} />,
-    testPanel: (props: any) => <FontAwesome6 name="flask" size={itemSize} {...props} />,
+    support: (props: any) => <FontAwesome6 name="mug-hot" size={itemSize} {...props} />,
     test: (props: any) => <FontAwesome6 name="chart-line" size={itemSize} {...props} />,
     test2: (props: any) => <FontAwesome6 name="chart-line" size={itemSize} {...props} />,
     settings: (props: any) => <FontAwesome6 name="gear" size={itemSize} {...props} />,
@@ -79,7 +86,7 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
     index: 'Home',
     calendar: 'Calendar',
     dayProgress: 'Progress',
-    testPanel: 'Test',
+    support: 'Support',
     settings: 'Settings',
   };
 

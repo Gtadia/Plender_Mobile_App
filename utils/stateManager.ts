@@ -374,6 +374,7 @@ interface SettingsState {
   general: {
     startWeekOn: string;
     allowQuickTasks: boolean;
+    showSupportPage: boolean;
   };
   personalization: {
     theme: ThemeKey;
@@ -392,6 +393,7 @@ export const settings$ = observable<SettingsState>({
   general: {
     startWeekOn: "Sunday",
     allowQuickTasks: true,
+    showSupportPage: true,
   },
   personalization: {
     theme: "light",
@@ -478,6 +480,7 @@ observe(() => {
   settings$.personalization.createActionOrder.get();
   settings$.general.allowQuickTasks.get();
   settings$.general.startWeekOn.get();
+  settings$.general.showSupportPage.get();
   settings$.productivity.hideGoalRingOnComplete.get();
   settings$.productivity.capCategoryCompletion.get();
   if (!settingsReady) return;

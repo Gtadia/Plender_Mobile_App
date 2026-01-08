@@ -39,7 +39,14 @@ export default observer(function TabLayout() {
         <Tabs.Screen name="index" options={{ title: "Home" }} />
         <Tabs.Screen name="calendar" options={{ title: "Week Calendar" }} />
         <Tabs.Screen name="dayProgress" options={{ title: "Day Progress" }} />
-        <Tabs.Screen name="testPanel" options={{ title: "Test Panel" }} />
+        <Tabs.Screen name="testPanel" options={{ href: null }} />
+        <Tabs.Screen
+          name="support"
+          options={{
+            title: "Support",
+            href: settings$.general.showSupportPage.get() ? undefined : null,
+          }}
+        />
         <Tabs.Screen name="settings" options={{ title: "Settings" }} />
       </Tabs>
 

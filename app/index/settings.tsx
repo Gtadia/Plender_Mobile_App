@@ -237,7 +237,7 @@ const SettingsScreen = observer(() => {
             <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
             <View style={listStyles.row}>
               <View style={listStyles.rowLeft}>
-                <RowIcon name="image" />
+                <RowIcon name="square" />
                 <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
                   Apply Tint to Banner
                 </Text>
@@ -339,6 +339,21 @@ const SettingsScreen = observer(() => {
                 onValueChange={(value) => styling$.tabBarBlurEnabled.set(value)}
                 trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
                 thumbColor={blurEnabled ? accent : palette.surface0}
+              />
+            </View>
+            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
+            <View style={listStyles.row}>
+              <View style={listStyles.rowLeft}>
+                <RowIcon name="mug-hot" />
+                <Text style={listStyles.rowLabel} fontColor="strong">
+                  Show Support Page
+                </Text>
+              </View>
+              <Switch
+                value={settings$.general.showSupportPage.get()}
+                onValueChange={(value) => settings$.general.showSupportPage.set(value)}
+                trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
+                thumbColor={settings$.general.showSupportPage.get() ? accent : palette.surface0}
               />
             </View>
           </SettingsCard>
