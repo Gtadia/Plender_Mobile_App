@@ -2,7 +2,6 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import {
   FlatList,
   Dimensions,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -21,6 +20,7 @@ import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 import DateTimePicker, { DateType, useDefaultStyles } from 'react-native-ui-datepicker';
 import BottomSheet, { openAddMenu$ } from '@/components/BottomSheet';
 import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 dayjs.extend(isoWeek);
 

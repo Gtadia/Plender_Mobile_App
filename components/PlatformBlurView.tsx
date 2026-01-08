@@ -1,5 +1,5 @@
 import React from "react";
-import { Platform, ViewProps, ViewStyle } from "react-native";
+import { Platform, View, ViewProps, ViewStyle } from "react-native";
 import { BlurView as ExpoBlurView } from "expo-blur";
 import { BlurView as RNBlurView } from "@react-native-community/blur";
 
@@ -25,9 +25,9 @@ export const PlatformBlurView = ({
 }: PlatformBlurViewProps) => {
   if (Platform.OS === "android") {
     return (
-      <RNBlurView blurType={mapTint(tint)} blurAmount={intensity} style={style} pointerEvents={pointerEvents}>
+      <View style={style} pointerEvents={pointerEvents}>
         {children}
-      </RNBlurView>
+      </View>
     );
   }
 

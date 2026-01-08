@@ -23,6 +23,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -33,7 +34,6 @@ import React from "react";
 import { useNavigation, useRouter } from "expo-router";
 import { $TextInput } from "@legendapp/state/react-native";
 import { observable } from "@legendapp/state";
-import { ScrollView } from "react-native-gesture-handler";
 import {
   AntDesign,
   Entypo,
@@ -51,7 +51,6 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { time$ } from "./timeGoalSelectSheet";
 import { toastShow$ } from "@/components/animation-toast/toastStore";
 import ToastOverlay from "@/components/animation-toast/ToastOverlay";
 import { clearEvents, createEvent, getEventsForDate } from "@/utils/database";
@@ -480,7 +479,7 @@ const create = () => {
                                 return (
                                   <>
                                     <AntDesign
-                                      name="clockcircleo"
+                                      name="clock-circle"
                                       size={15}
                                       color={quickAddEnabled ? disabledColor : timeAccent}
                                     />
@@ -497,7 +496,7 @@ const create = () => {
                               return (
                                 <>
                                   <AntDesign
-                                    name="clockcircleo"
+                                    name="clock-circle"
                                     size={15}
                                     color={quickAddEnabled ? disabledColor : actionTextColor}
                                   />

@@ -307,7 +307,7 @@ const TaskDetailsContent = observer(() => {
                           }}
                           style={sheetStyles.goalButton}
                         >
-                          <AntDesign name="clockcircleo" size={14} color={catColor} />
+                          <AntDesign name="clock-circle" size={14} color={catColor} />
                           <Text style={[sheetStyles.goalButtonText, { color: catColor }]}>{fmt(goal)}</Text>
                         </TouchableOpacity>
                       ) : (

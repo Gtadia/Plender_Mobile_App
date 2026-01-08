@@ -4,7 +4,6 @@ import {
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  SafeAreaView,
   StyleSheet,
   Text,
   TouchableOpacity,

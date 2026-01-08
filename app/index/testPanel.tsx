@@ -1,4 +1,4 @@
-import { StyleSheet, View, Button, Alert, ScrollView, SafeAreaView } from "react-native";
+import { StyleSheet, View, Button, Alert, ScrollView } from "react-native";
 import { Text, ScreenView } from "@/components/Themed";
 import React, { useCallback, useState } from "react";
 import moment from "moment";
@@ -12,6 +12,7 @@ import { ScreenHeader } from "@/components/ScreenHeader";
 import { getListTheme } from "@/constants/listTheme";
 import { globalTheme, horizontalPadding } from "@/constants/globalThemeVar";
 import { observer } from "@legendapp/state/react";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default observer(function TestPanelScreen() {
   const { palette, isDark } = themeTokens$.get();

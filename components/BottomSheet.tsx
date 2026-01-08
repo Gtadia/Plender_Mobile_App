@@ -56,6 +56,8 @@ const BottomSheet = ({
   const context = useSharedValue({ y: 0 }); // to keep context of the previous scroll position
   const openHeight = (-height * 5) / 8;
 
+  const openObservable = open$ ?? openAddMenu$;
+
   const closeSheet = useCallback(() => {
     openObservable.set(false);
   }, [openObservable]);
@@ -117,21 +119,42 @@ const BottomSheet = ({
     };
   });
 
-  const openObservable = open$ ?? openAddMenu$;
-  openObservable.onChange?.(
-    ({ value }) => {
-      if (value) scrollTo(openHeight);
-      else scrollTo(0);
-    },
-    { initial: false, trackingType: true }
-  );
-  close?.onChange?.(
-    () => {
-      scrollTo(0);
-      closeSheet();
-    },
-    { initial: false, trackingType: true }
-  );
+  React.useEffect(() => {
+    const dispose = openObservable.onChange?.(
+      ({ value }) => {
+        if (value) scrollTo(openHeight);
+        else scrollTo(0);
+      },
+      { initial: false, trackingType: true }
+    );
+
+    return () => {
+      if (typeof dispose === "function") {
+        dispose();
+      } else {
+        dispose?.off?.();
+      }
+    };
+  }, [openHeight, openObservable, scrollTo]);
+
+  React.useEffect(() => {
+    if (!close?.onChange) return;
+    const dispose = close.onChange(
+      () => {
+        scrollTo(0);
+        closeSheet();
+      },
+      { initial: false, trackingType: true }
+    );
+
+    return () => {
+      if (typeof dispose === "function") {
+        dispose();
+      } else {
+        dispose?.off?.();
+      }
+    };
+  }, [close, closeSheet, scrollTo]);
 
   // observe(() => {
   //   // Doesn't matter if it's true or false, just detect when changes happen

@@ -4,6 +4,7 @@ import * as SQLite from 'expo-sqlite';
 import { RRule, RRuleSet } from 'rrule';
 
 const db = SQLite.openDatabaseSync('calendar.db');
+let dbReady: Promise<void> | null = null;
 
 export interface dbEvents {
   id: number;
@@ -16,19 +17,27 @@ export interface dbEvents {
 }
 // CREATE TABLE
 export async function initializeDB() {
-  await db.runAsync(`
-    CREATE TABLE IF NOT EXISTS event (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      rrule TEXT NOT NULL,         -- e.g., FREQ=WEEKLY;BYDAY=MO,WE
-      -- Extra Fields
-      category INTEGER NOT NULL DEFAULT 0, -- 0: no category
-      timeGoal INTEGER NOT NULL,        -- store in seconds
-      timeSpent INTEGER NOT NULL,       -- store in seconds
-      -- Optional Fields
-      description TEXT,              -- Optional description
-    );
-  `);
+  if (!dbReady) {
+    dbReady = db
+      .runAsync(`
+        CREATE TABLE IF NOT EXISTS event (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          rrule TEXT NOT NULL,         -- e.g., FREQ=WEEKLY;BYDAY=MO,WE
+          -- Extra Fields
+          category INTEGER NOT NULL DEFAULT 0, -- 0: no category
+          timeGoal INTEGER NOT NULL,        -- store in seconds
+          timeSpent INTEGER NOT NULL,       -- store in seconds
+          -- Optional Fields
+          description TEXT              -- Optional description
+        );
+      `)
+      .catch((err) => {
+        dbReady = null;
+        throw err;
+      });
+  }
+  await dbReady;
 }
 
 
@@ -47,6 +56,7 @@ export async function createEvent({
   category?: number;
   description?: string;
 }) {
+  await initializeDB();
   console.log("TEST: ", { title, rrule, category, timeGoal, timeSpent, description });
   await db.runAsync(
     `INSERT INTO event (title, rrule, category, timeGoal, timeSpent, description) VALUES (?, ?, ?, ?, ?, ?)`,
@@ -70,6 +80,7 @@ export interface eventsType {
 
 // 🟡 targetDate should be a Date object representing the specific day
 export async function getEventsForDate(targetDate: Date) {
+  await initializeDB();
   // console.log("FUNC IS CALLED WITH TARGET DATE: ", targetDate.toISOString());
   const rows: dbEvents[] = await db.getAllAsync(`SELECT * FROM event`);
   // console.log("Rows fetched: ", rows.length);
@@ -129,6 +140,7 @@ export async function updateEvent({
   timeSpent?: number;
   description?: string;
 }) {
+  await initializeDB();
 const fields: string[] = [];
   const values: any[] = [];
 
@@ -171,6 +183,7 @@ const fields: string[] = [];
 }
 
 export async function deleteEvent(id: number) {
+  await initializeDB();
   await db.runAsync(`DELETE FROM event WHERE id = ?`, [id]);
 }
 
@@ -178,6 +191,7 @@ export async function deleteEvent(id: number) {
 // TODO — Create x number of events
 
 export async function getAllEvents() {
+  await initializeDB();
   const rows = await db.getAllAsync(`SELECT * FROM event`);
   return rows;
 }
@@ -185,19 +199,8 @@ export async function getAllEvents() {
 // TODO — Clear all events
 export async function clearEvents() {
   await db.runAsync(`DROP TABLE IF EXISTS event`);
-
-
-  await db.runAsync(`
-    CREATE TABLE event (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      title TEXT NOT NULL,
-      rrule TEXT NOT NULL,            -- e.g., FREQ=WEEKLY;BYDAY=MO,WE
-      category INTEGER NOT NULL DEFAULT 0,   -- 0: no category
-      timeGoal INTEGER NOT NULL,      -- in seconds
-      timeSpent INTEGER NOT NULL,     -- in seconds
-      description TEXT                -- optional
-    );
-  `);
+  dbReady = null;
+  await initializeDB();
   await db.runAsync(`DELETE FROM event`);
   console.log("All events cleared");
 }
