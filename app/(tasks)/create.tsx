@@ -263,6 +263,21 @@ const create = () => {
   const timeAccent = palette.red;
   const defaultActionOrder = ["date", "time", "category", "quick"] as const;
 
+  React.useEffect(() => {
+    const dispose = settings$.general.allowQuickTasks.onChange(({ value }) => {
+      if (!value) {
+        quickAdd$.set(false);
+      }
+    });
+    return () => {
+      if (typeof dispose === "function") {
+        dispose();
+      } else {
+        dispose?.off?.();
+      }
+    };
+  }, []);
+
   const ensureCreateDateFresh = React.useCallback(() => {
     const currentRule = task$.rrule.get();
     if (task$.isRepeating.get()) return;
@@ -389,6 +404,7 @@ const create = () => {
                     {() => {
                       const quickAddEnabled = quickAdd$.get();
                       const disabledColor = colors.subtext1;
+                      const allowQuickTasks = settings$.general.allowQuickTasks.get();
                       const actionMap = {
                       date: (
                         <TouchableOpacity
@@ -397,6 +413,7 @@ const create = () => {
                             {
                               borderColor: quickAddEnabled ? withOpacity(actionBorder, 0.35) : actionBorder,
                               backgroundColor: quickAddEnabled ? withOpacity(colors.subtext0, 0.12) : "transparent",
+                              opacity: quickAddEnabled ? 0.55 : 1,
                             },
                           ]}
                           onPress={() => {
@@ -465,6 +482,7 @@ const create = () => {
                             {
                               borderColor: quickAddEnabled ? withOpacity(actionBorder, 0.35) : actionBorder,
                               backgroundColor: quickAddEnabled ? withOpacity(colors.subtext0, 0.12) : "transparent",
+                              opacity: quickAddEnabled ? 0.55 : 1,
                             },
                           ]}
                           onPress={() => {
@@ -568,28 +586,41 @@ const create = () => {
                           {() => {
                             const enabled = quickAdd$.get();
                             const accent = quickAddAccent;
+                            const isDisabled = !allowQuickTasks;
+                            const inactiveColor = disabledColor;
                             return (
                               <TouchableOpacity
                                 style={[
                                   styles.actionButton,
                                   {
-                                    borderColor: enabled ? accent : actionBorder,
-                                    backgroundColor: enabled ? withOpacity(accent, 0.2) : "transparent",
+                                    borderColor: isDisabled
+                                      ? withOpacity(actionBorder, 0.35)
+                                      : enabled
+                                      ? accent
+                                      : actionBorder,
+                                    backgroundColor: isDisabled
+                                      ? withOpacity(colors.subtext0, 0.12)
+                                      : enabled
+                                      ? withOpacity(accent, 0.2)
+                                      : "transparent",
+                                    opacity: isDisabled ? 0.55 : 1,
                                   },
                                 ]}
                                 onPress={() => {
+                                  if (isDisabled) return;
                                   quickAdd$.set((prev) => !prev);
                                 }}
+                                disabled={isDisabled}
                               >
                                 <MaterialIcons
                                   name="flash-on"
                                   size={16}
-                                  color={enabled ? accent : actionTextColor}
+                                  color={isDisabled ? inactiveColor : enabled ? accent : actionTextColor}
                                 />
                                 <Text
                                   style={[
                                     styles.actionText,
-                                    { color: enabled ? accent : actionTextColor },
+                                    { color: isDisabled ? inactiveColor : enabled ? accent : actionTextColor },
                                   ]}
                                 >
                                   Quick Task

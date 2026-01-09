@@ -22,6 +22,7 @@ import {
   Modal,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -46,7 +47,6 @@ import { settings$, styling$, themeTokens$ } from "@/utils/stateManager";
 import CalendarDatePicker from "@/components/CalendarDatePicker";
 import { getNow } from "@/utils/timeOverride";
 import Picker from "@/components/TimeCarousel/Picker";
-import { ScrollView } from "react-native-gesture-handler";
 
 // -------------------------------------------------------------
 // Observable state for repeat settings
