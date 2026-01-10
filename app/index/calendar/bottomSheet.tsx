@@ -109,7 +109,7 @@ const bottomSheet = observer(() => {
         <TouchableOpacity
           style={styles.confirmButton}
           onPress={() => {
-            const next = pickerDate$.get();
+            const next = pickerDate$.get().clone().startOf('day');
             selectedDate$.set(next);
             closeSheet();
           }}

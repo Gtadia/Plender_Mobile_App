@@ -262,6 +262,16 @@ const create = () => {
   const quickAddAccent = palette.green;
   const timeAccent = palette.red;
   const defaultActionOrder = ["date", "time", "category", "quick"] as const;
+  const actionLockRef = React.useRef(false);
+
+  const withActionLock = React.useCallback((action: () => void) => {
+    if (actionLockRef.current) return;
+    actionLockRef.current = true;
+    action();
+    setTimeout(() => {
+      actionLockRef.current = false;
+    }, 350);
+  }, []);
 
   React.useEffect(() => {
     const dispose = settings$.general.allowQuickTasks.onChange(({ value }) => {
@@ -404,6 +414,8 @@ const create = () => {
                     {() => {
                       const quickAddEnabled = quickAdd$.get();
                       const disabledColor = colors.subtext1;
+                      const disabledBorder = withOpacity(palette.overlay0, isDark ? 0.25 : 0.2);
+                      const disabledBackground = withOpacity(colors.subtext0, isDark ? 0.2 : 0.12);
                       const allowQuickTasks = settings$.general.allowQuickTasks.get();
                       const actionMap = {
                       date: (
@@ -411,14 +423,14 @@ const create = () => {
                           style={[
                             styles.actionButton,
                             {
-                              borderColor: quickAddEnabled ? withOpacity(actionBorder, 0.35) : actionBorder,
-                              backgroundColor: quickAddEnabled ? withOpacity(colors.subtext0, 0.12) : "transparent",
-                              opacity: quickAddEnabled ? 0.55 : 1,
+                              borderColor: quickAddEnabled ? disabledBorder : actionBorder,
+                              backgroundColor: quickAddEnabled ? disabledBackground : "transparent",
                             },
                           ]}
+                          activeOpacity={quickAddEnabled ? 1 : 0.85}
                           onPress={() => {
                             if (quickAddEnabled) return;
-                            router.push("/(tasks)/dateSelectSheet");
+                            withActionLock(() => router.push("/(tasks)/dateSelectSheet"));
                           }}
                           disabled={quickAddEnabled}
                         >
@@ -480,20 +492,21 @@ const create = () => {
                           style={[
                             styles.actionButton,
                             {
-                              borderColor: quickAddEnabled ? withOpacity(actionBorder, 0.35) : actionBorder,
-                              backgroundColor: quickAddEnabled ? withOpacity(colors.subtext0, 0.12) : "transparent",
-                              opacity: quickAddEnabled ? 0.55 : 1,
+                              borderColor: quickAddEnabled ? disabledBorder : actionBorder,
+                              backgroundColor: quickAddEnabled ? disabledBackground : "transparent",
                             },
                           ]}
+                          activeOpacity={quickAddEnabled ? 1 : 0.85}
                           onPress={() => {
                             if (quickAddEnabled) return;
-                            router.push("/(tasks)/timeGoalSelectSheet");
+                            withActionLock(() => router.push("/(tasks)/timeGoalSelectSheet"));
                           }}
                           disabled={quickAddEnabled}
                         >
                           <Memo>
                             {() => {
-                              if (task$.timeGoal.get())
+                              const goalSeconds = task$.timeGoal.get();
+                              if (goalSeconds)
                                 return (
                                   <>
                                     <AntDesign
@@ -506,9 +519,9 @@ const create = () => {
                                         styles.actionText,
                                         { color: quickAddEnabled ? disabledColor : timeAccent },
                                       ]}
-                                    >{`${time$.hours.get()}:${
-                                      time$.minutes.get() < 10 ? "0" : ""
-                                    }${time$.minutes.get()}`}</Text>
+                                    >{`${Math.floor(goalSeconds / 3600)}:${
+                                      Math.floor((goalSeconds % 3600) / 60) < 10 ? "0" : ""
+                                    }${Math.floor((goalSeconds % 3600) / 60)}`}</Text>
                                   </>
                                 );
                               return (
@@ -587,40 +600,35 @@ const create = () => {
                             const enabled = quickAdd$.get();
                             const accent = quickAddAccent;
                             const isDisabled = !allowQuickTasks;
-                            const inactiveColor = disabledColor;
+                            const quickTextColor = enabled ? colors.textStrong : actionTextColor;
+                            const quickBorderColor = enabled ? accent : actionBorder;
+                            const quickBackground = enabled ? withOpacity(accent, isDark ? 0.3 : 0.2) : "transparent";
                             return (
                               <TouchableOpacity
                                 style={[
                                   styles.actionButton,
                                   {
-                                    borderColor: isDisabled
-                                      ? withOpacity(actionBorder, 0.35)
-                                      : enabled
-                                      ? accent
-                                      : actionBorder,
-                                    backgroundColor: isDisabled
-                                      ? withOpacity(colors.subtext0, 0.12)
-                                      : enabled
-                                      ? withOpacity(accent, 0.2)
-                                      : "transparent",
-                                    opacity: isDisabled ? 0.55 : 1,
+                                    borderColor: isDisabled ? disabledBorder : quickBorderColor,
+                                    backgroundColor: isDisabled ? disabledBackground : quickBackground,
                                   },
                                 ]}
                                 onPress={() => {
                                   if (isDisabled) return;
                                   quickAdd$.set((prev) => !prev);
                                 }}
+                                activeOpacity={isDisabled ? 1 : 0.85}
                                 disabled={isDisabled}
+                                accessibilityState={{ disabled: isDisabled }}
                               >
                                 <MaterialIcons
                                   name="flash-on"
                                   size={16}
-                                  color={isDisabled ? inactiveColor : enabled ? accent : actionTextColor}
+                                  color={isDisabled ? disabledColor : quickTextColor}
                                 />
                                 <Text
                                   style={[
                                     styles.actionText,
-                                    { color: isDisabled ? inactiveColor : enabled ? accent : actionTextColor },
+                                    { color: isDisabled ? disabledColor : quickTextColor },
                                   ]}
                                 >
                                   Quick Task

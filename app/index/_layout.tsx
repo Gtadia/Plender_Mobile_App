@@ -9,7 +9,6 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { settings$, themeTokens$ } from '@/utils/stateManager';
 import TabBar from '@/components/TabBar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { observer } from '@legendapp/state/react';
 
 // You can explore the built-in icon families and icons on the web at https://icons.expo.fyi/
@@ -30,7 +29,7 @@ export default observer(function TabLayout() {
   const plusColor = useButtonTint ? colors.textStrong : isDark ? palette.crust : palette.base;
 
   return (
-    <GestureHandlerRootView>
+    <View style={{ flex: 1 }}>
       <Tabs
         tabBar={props => <TabBar {...props} />}
         screenOptions={({ route }) => ({
@@ -58,7 +57,7 @@ export default observer(function TabLayout() {
       >
         <FontAwesome6 name="plus" size={24} color={plusColor} />
       </TouchableOpacity>
-    </GestureHandlerRootView>
+    </View>
   );
 })
 

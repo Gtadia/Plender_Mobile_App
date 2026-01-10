@@ -5,9 +5,9 @@ import {
   Dimensions,
   Platform,
   StyleSheet,
+  ScrollView,
   View,
 } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
 import { Text, ScreenView } from '@/components/Themed';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {

@@ -1,7 +1,7 @@
 import { Observable, observe } from "@legendapp/state";
 import React, { useCallback } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
-import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Extrapolation,
   interpolate,
@@ -190,7 +190,7 @@ const Picker = ({
   return (
     <View style={ styles.container }>
       {/* Scrollable numbers */}
-      <GestureHandlerRootView style={{ flex: 1, overflow: "hidden" }}>
+      <View style={{ flex: 1, overflow: "hidden" }}>
         <GestureDetector gesture={gesture}>
           <View style={{ flex: 1, flexDirection: "row", justifyContent: 'center' }}>
             <Animated.View style={[styles.listPane, listTranslate]}>
@@ -251,7 +251,7 @@ const Picker = ({
           </View>
           </View>
         </GestureDetector>
-      </GestureHandlerRootView>
+      </View>
 
       {/* SUPER VISIBLE pill overlay */}
       {enableSelectBox && <View style={styles.pill} />}

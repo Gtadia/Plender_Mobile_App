@@ -38,7 +38,7 @@ const PANES = 5;
 const CENTER_INDEX = Math.floor(PANES / 2);
 const WEEK_ROW_HEIGHT = 120;
 
-export const selectedDate$ = observable(moment(getNow()));
+export const selectedDate$ = observable(moment(getNow()).startOf('day'));
 
 type WeekPane = {
   key: string;
@@ -55,6 +55,8 @@ const withOpacity = (hex: string, opacity: number) => {
 };
 
 type ThemeTokens = ReturnType<typeof themeTokens$.get>;
+
+const normalizeDate = (value: Moment) => value.clone().startOf('day');
 
 const getWeekStart = (date: Moment, startWeekOn: string) => {
   const startIndex = startWeekOn === "Monday" ? 1 : 0;
@@ -76,6 +78,10 @@ const generatePaneSet = (center: Moment, startWeekOn: string): WeekPane[] => {
 export default observer(function FlatListSwiperExample() {
   const weekScrollRef = useRef<ScrollView>(null);
   const dayListRef = useRef<FlatList<Moment>>(null);
+  const weekProgrammaticRef = useRef(false);
+  const dayProgrammaticRef = useRef(false);
+  const didInitWeekRef = useRef(false);
+  const didInitDayRef = useRef(false);
   const followTodayRef = useRef(true);
   const todayKeyRef = useRef(moment(getNow()).format('YYYY-MM-DD'));
   const { palette, colors } = themeTokens$.get();
@@ -88,8 +94,8 @@ export default observer(function FlatListSwiperExample() {
   const accentBorder = withOpacity(colors.accent, 0.28);
   const styles = createStyles({ palette, colors, accentSoft, accentBorder });
 
-  const [selectedDate, setSelectedDate] = useState(moment(getNow()));
-  const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(moment(getNow()), startWeekOn));
+  const [selectedDate, setSelectedDate] = useState(() => normalizeDate(moment(getNow())));
+  const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(normalizeDate(moment(getNow())), startWeekOn));
   const [isSnapping, setIsSnapping] = useState(false);
   const [isDaySnapping, setIsDaySnapping] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
@@ -98,13 +104,12 @@ export default observer(function FlatListSwiperExample() {
 
   useEffect(() => {
     const unsubscribe = selectedDate$.onChange(({ value }) => {
-      setSelectedDate(value.clone());
-      setPanes(generatePaneSet(value, startWeekOn));
-      followTodayRef.current = value.isSame(moment(getNow()), 'day');
+      const normalized = normalizeDate(value);
+      setSelectedDate(normalized);
+      followTodayRef.current = normalized.isSame(moment(getNow()), 'day');
     });
-    const initial = selectedDate$.get().clone();
+    const initial = normalizeDate(selectedDate$.get());
     setSelectedDate(initial);
-    setPanes(generatePaneSet(initial, startWeekOn));
     followTodayRef.current = initial.isSame(moment(getNow()), 'day');
     return () => {
       if (typeof unsubscribe === 'function') {
@@ -117,7 +122,7 @@ export default observer(function FlatListSwiperExample() {
 
   useEffect(() => {
     const dispose = dayKey$.onChange(async ({ value }) => {
-      const nextToday = moment(getNow());
+      const nextToday = normalizeDate(moment(getNow()));
       todayKeyRef.current = value;
       if (followTodayRef.current) {
         selectedDate$.set(nextToday);
@@ -140,12 +145,18 @@ export default observer(function FlatListSwiperExample() {
     ];
   }, [selectedDate]);
 
-  const scrollDayListToCenter = useCallback(() => {
-    dayListRef.current?.scrollToIndex({ index: 1, animated: false });
+  const scrollDayListToCenter = useCallback((animated = false) => {
+    dayProgrammaticRef.current = true;
+    dayListRef.current?.scrollToIndex({ index: 1, animated });
+    if (!animated) {
+      requestAnimationFrame(() => {
+        dayProgrammaticRef.current = false;
+      });
+    }
   }, []);
 
   useEffect(() => {
-    scrollDayListToCenter();
+    scrollDayListToCenter(false);
   }, [days, scrollDayListToCenter]);
 
   // Ensure that the date is cache synced when...
@@ -178,15 +189,14 @@ export default observer(function FlatListSwiperExample() {
       if (nextKey === todayKeyRef.current) return;
       todayKeyRef.current = nextKey;
       if (!followTodayRef.current) return;
-      const next = moment(getNow()).startOf('day');
+      const next = normalizeDate(moment(getNow()));
       selectedDate$.set(next);
       setSelectedDate(next);
-      setPanes(generatePaneSet(next, startWeekOn));
       followTodayRef.current = true;
       void ensureDateCached(next);
     }, 30000);
     return () => clearInterval(interval);
-  }, [ensureDateCached, startWeekOn]);
+  }, [ensureDateCached]);
 
   // Only prefetch current week's days; debounce to avoid hammering JS thread
   useEffect(() => {
@@ -215,8 +225,26 @@ export default observer(function FlatListSwiperExample() {
   }, [ensureDateCached, selectedDate]);
 
   const scrollToCenter = useCallback((animated = false) => {
+    weekProgrammaticRef.current = true;
     weekScrollRef.current?.scrollTo({ x: width * CENTER_INDEX, animated });
+    if (!animated) {
+      requestAnimationFrame(() => {
+        weekProgrammaticRef.current = false;
+      });
+    }
   }, []);
+
+  const handleWeekLayout = useCallback(() => {
+    if (didInitWeekRef.current) return;
+    didInitWeekRef.current = true;
+    requestAnimationFrame(() => scrollToCenter(false));
+  }, [scrollToCenter]);
+
+  const handleDayLayout = useCallback(() => {
+    if (didInitDayRef.current) return;
+    didInitDayRef.current = true;
+    requestAnimationFrame(() => scrollDayListToCenter(false));
+  }, [scrollDayListToCenter]);
 
   useEffect(() => {
     scrollToCenter();
@@ -229,16 +257,15 @@ export default observer(function FlatListSwiperExample() {
 
   useFocusEffect(
     useCallback(() => {
-      const now = moment(getNow()).startOf('day');
+      const now = normalizeDate(moment(getNow()));
       const current = selectedDate$.get().clone();
       if (followTodayRef.current && !now.isSame(current, 'day')) {
         selectedDate$.set(now);
         setSelectedDate(now);
-        setPanes(generatePaneSet(now, startWeekOn));
         ensureDateCached(now);
       }
       return () => {};
-    }, [ensureDateCached, startWeekOn])
+    }, [ensureDateCached])
   );
 
   const finalizeSnap = useCallback(() => {
@@ -250,33 +277,39 @@ export default observer(function FlatListSwiperExample() {
 
   const handleWeekSwipe = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (weekProgrammaticRef.current) {
+        weekProgrammaticRef.current = false;
+        return;
+      }
       const idx = Math.round(event.nativeEvent.contentOffset.x / width);
       const direction = idx - CENTER_INDEX;
       if (direction !== 0) {
         setIsSnapping(true);
         setSelectedDate((prev) => {
-          const nextDate = prev.clone().add(direction, 'week');
-        setPanes(generatePaneSet(nextDate, startWeekOn));
-        selectedDate$.set(nextDate);
-        followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-        return nextDate;
+          const nextDate = normalizeDate(prev.clone().add(direction, 'week'));
+          selectedDate$.set(nextDate);
+          followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
+          return nextDate;
         });
         finalizeSnap();
       } else {
         finalizeSnap();
       }
     },
-    [finalizeSnap, startWeekOn],
+    [finalizeSnap],
   );
 
   const handleDaySwipe = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      if (dayProgrammaticRef.current) {
+        dayProgrammaticRef.current = false;
+        return;
+      }
       const idx = Math.round(event.nativeEvent.contentOffset.x / width);
       const direction = idx - 1;
       if (direction !== 0) {
-        const nextDate = selectedDate.clone().add(direction, 'day');
+        const nextDate = normalizeDate(selectedDate.clone().add(direction, 'day'));
         setSelectedDate(nextDate);
-        setPanes(generatePaneSet(nextDate, startWeekOn));
         selectedDate$.set(nextDate);
         followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
         setIsSnapping(true);
@@ -285,23 +318,24 @@ export default observer(function FlatListSwiperExample() {
       setIsDaySnapping(true);
       requestAnimationFrame(() => {
         scrollDayListToCenter();
-        setTimeout(() => setIsDaySnapping(false), 150);
+        setTimeout(() => {
+          setIsDaySnapping(false);
+        }, 150);
       });
     },
-    [finalizeSnap, scrollDayListToCenter, selectedDate, startWeekOn],
+    [finalizeSnap, scrollDayListToCenter, selectedDate],
   );
 
   const handleSelectWeekDay = useCallback(
     (day: Moment) => {
-      const normalized = day.clone();
+      const normalized = normalizeDate(day);
       setSelectedDate(normalized);
-      setPanes(generatePaneSet(normalized, startWeekOn));
       selectedDate$.set(normalized);
       followTodayRef.current = normalized.isSame(moment(getNow()), 'day');
       setIsSnapping(true);
       finalizeSnap();
     },
-    [finalizeSnap, startWeekOn],
+    [finalizeSnap],
   );
 
   const getTasksForDate = useCallback(
@@ -407,12 +441,10 @@ export default observer(function FlatListSwiperExample() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      const now = moment(getNow());
-      const today = now.startOf('day');
+      const today = normalizeDate(moment(getNow()));
       dayKey$.set(today.format('YYYY-MM-DD'));
       selectedDate$.set(today);
       setSelectedDate(today);
-      setPanes(generatePaneSet(today, startWeekOn));
       followTodayRef.current = true;
       todayKeyRef.current = today.format('YYYY-MM-DD');
       await loadDay(today.toDate());
@@ -421,16 +453,15 @@ export default observer(function FlatListSwiperExample() {
     } finally {
       setRefreshing(false);
     }
-  }, [startWeekOn]);
+  }, []);
 
   const handleJumpToday = useCallback(() => {
-    const today = moment(getNow()).startOf('day');
+    const today = normalizeDate(moment(getNow()));
     selectedDate$.set(today);
     setSelectedDate(today);
-    setPanes(generatePaneSet(today, startWeekOn));
     followTodayRef.current = true;
     void ensureDateCached(today);
-  }, [ensureDateCached, startWeekOn]);
+  }, [ensureDateCached]);
 
   useFocusEffect(
     useCallback(() => {
@@ -467,10 +498,16 @@ export default observer(function FlatListSwiperExample() {
                 showsHorizontalScrollIndicator={false}
                 decelerationRate="fast"
                 bounces={false}
+                contentOffset={{ x: width * CENTER_INDEX, y: 0 }}
                 scrollEnabled={!isSnapping}
                 onMomentumScrollEnd={handleWeekSwipe}
                 scrollEventThrottle={16}
                 contentContainerStyle={styles.weekRowContent}
+                onLayout={handleWeekLayout}
+                onContentSizeChange={() => {
+                  if (didInitWeekRef.current) return;
+                  handleWeekLayout();
+                }}
               >
                 {panes.map((pane) => (
                   <View key={pane.key} style={{ width }}>
@@ -487,16 +524,30 @@ export default observer(function FlatListSwiperExample() {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                initialScrollIndex={1}
                 getItemLayout={(_, index) => ({
                   length: width,
                   offset: width * index,
                   index,
                 })}
+                initialNumToRender={3}
+                onScrollToIndexFailed={({ index }) => {
+                  requestAnimationFrame(() => {
+                    dayProgrammaticRef.current = true;
+                    dayListRef.current?.scrollToIndex({ index, animated: false });
+                    requestAnimationFrame(() => {
+                      dayProgrammaticRef.current = false;
+                    });
+                  });
+                }}
                 onMomentumScrollEnd={handleDaySwipe}
                 scrollEnabled={!isDaySnapping}
                 style={styles.dayList}
                 contentContainerStyle={styles.dayListContent}
+                onLayout={handleDayLayout}
+                onContentSizeChange={() => {
+                  if (didInitDayRef.current) return;
+                  handleDayLayout();
+                }}
                 keyExtractor={(item, index) => `day-${index}`}
                 renderItem={({ item }) => {
                   const dateKey = item.format('YYYY-MM-DD');
