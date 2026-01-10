@@ -78,10 +78,8 @@ const generatePaneSet = (center: Moment, startWeekOn: string): WeekPane[] => {
 export default observer(function FlatListSwiperExample() {
   const weekScrollRef = useRef<ScrollView>(null);
   const dayListRef = useRef<FlatList<Moment>>(null);
-  const weekProgrammaticRef = useRef(false);
-  const dayProgrammaticRef = useRef(false);
-  const didInitWeekRef = useRef(false);
-  const didInitDayRef = useRef(false);
+  const lastWeekSwipeTsRef = useRef(0);
+  const lastDaySwipeTsRef = useRef(0);
   const followTodayRef = useRef(true);
   const todayKeyRef = useRef(moment(getNow()).format('YYYY-MM-DD'));
   const { palette, colors } = themeTokens$.get();
@@ -100,6 +98,8 @@ export default observer(function FlatListSwiperExample() {
   const [isDaySnapping, setIsDaySnapping] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [weekResetSeed, setWeekResetSeed] = useState(0);
+  const [dayResetSeed, setDayResetSeed] = useState(0);
   const pendingLoadsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -145,19 +145,10 @@ export default observer(function FlatListSwiperExample() {
     ];
   }, [selectedDate]);
 
-  const scrollDayListToCenter = useCallback((animated = false) => {
-    dayProgrammaticRef.current = true;
-    dayListRef.current?.scrollToIndex({ index: 1, animated });
-    if (!animated) {
-      requestAnimationFrame(() => {
-        dayProgrammaticRef.current = false;
-      });
-    }
-  }, []);
-
   useEffect(() => {
-    scrollDayListToCenter(false);
-  }, [days, scrollDayListToCenter]);
+    setWeekResetSeed((value) => value + 1);
+    setDayResetSeed((value) => value + 1);
+  }, [selectedDate]);
 
   // Ensure that the date is cache synced when...
   // 1. (JUST GOTTA LOOK AT THE IMPLEMENATION MORE CLOSELY LATER)
@@ -224,31 +215,13 @@ export default observer(function FlatListSwiperExample() {
     return () => t.cancel();
   }, [ensureDateCached, selectedDate]);
 
-  const scrollToCenter = useCallback((animated = false) => {
-    weekProgrammaticRef.current = true;
-    weekScrollRef.current?.scrollTo({ x: width * CENTER_INDEX, animated });
-    if (!animated) {
-      requestAnimationFrame(() => {
-        weekProgrammaticRef.current = false;
-      });
-    }
+  const bumpWeekReset = useCallback(() => {
+    setWeekResetSeed((value) => value + 1);
   }, []);
 
-  const handleWeekLayout = useCallback(() => {
-    if (didInitWeekRef.current) return;
-    didInitWeekRef.current = true;
-    requestAnimationFrame(() => scrollToCenter(false));
-  }, [scrollToCenter]);
-
-  const handleDayLayout = useCallback(() => {
-    if (didInitDayRef.current) return;
-    didInitDayRef.current = true;
-    requestAnimationFrame(() => scrollDayListToCenter(false));
-  }, [scrollDayListToCenter]);
-
-  useEffect(() => {
-    scrollToCenter();
-  }, [panes, scrollToCenter]);
+  const bumpDayReset = useCallback(() => {
+    setDayResetSeed((value) => value + 1);
+  }, []);
 
   useEffect(() => {
     setIsSnapping(false);
@@ -269,18 +242,16 @@ export default observer(function FlatListSwiperExample() {
   );
 
   const finalizeSnap = useCallback(() => {
-    requestAnimationFrame(() => {
-      scrollToCenter();
-      setTimeout(() => setIsSnapping(false), 300);
-    });
-  }, [scrollToCenter]);
+    setTimeout(() => setIsSnapping(false), 120);
+  }, []);
 
   const handleWeekSwipe = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (weekProgrammaticRef.current) {
-        weekProgrammaticRef.current = false;
+      const now = Date.now();
+      if (now - lastWeekSwipeTsRef.current < 80) {
         return;
       }
+      lastWeekSwipeTsRef.current = now;
       const idx = Math.round(event.nativeEvent.contentOffset.x / width);
       const direction = idx - CENTER_INDEX;
       if (direction !== 0) {
@@ -291,20 +262,21 @@ export default observer(function FlatListSwiperExample() {
           followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
           return nextDate;
         });
-        finalizeSnap();
       } else {
-        finalizeSnap();
+        bumpWeekReset();
       }
+      finalizeSnap();
     },
-    [finalizeSnap],
+    [bumpWeekReset, finalizeSnap],
   );
 
   const handleDaySwipe = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (dayProgrammaticRef.current) {
-        dayProgrammaticRef.current = false;
+      const now = Date.now();
+      if (now - lastDaySwipeTsRef.current < 80) {
         return;
       }
+      lastDaySwipeTsRef.current = now;
       const idx = Math.round(event.nativeEvent.contentOffset.x / width);
       const direction = idx - 1;
       if (direction !== 0) {
@@ -313,17 +285,15 @@ export default observer(function FlatListSwiperExample() {
         selectedDate$.set(nextDate);
         followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
         setIsSnapping(true);
-        finalizeSnap();
+      }
+      if (direction === 0) {
+        bumpDayReset();
       }
       setIsDaySnapping(true);
-      requestAnimationFrame(() => {
-        scrollDayListToCenter();
-        setTimeout(() => {
-          setIsDaySnapping(false);
-        }, 150);
-      });
+      setTimeout(() => setIsDaySnapping(false), 120);
+      finalizeSnap();
     },
-    [finalizeSnap, scrollDayListToCenter, selectedDate],
+    [bumpDayReset, finalizeSnap, selectedDate],
   );
 
   const handleSelectWeekDay = useCallback(
@@ -334,8 +304,10 @@ export default observer(function FlatListSwiperExample() {
       followTodayRef.current = normalized.isSame(moment(getNow()), 'day');
       setIsSnapping(true);
       finalizeSnap();
+      bumpWeekReset();
+      bumpDayReset();
     },
-    [finalizeSnap],
+    [bumpDayReset, bumpWeekReset, finalizeSnap],
   );
 
   const getTasksForDate = useCallback(
@@ -437,7 +409,6 @@ export default observer(function FlatListSwiperExample() {
   );
 
   const insets = useSafeAreaInsets();
-  const tabBarHeight = 60 + insets.bottom;
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -461,7 +432,9 @@ export default observer(function FlatListSwiperExample() {
     setSelectedDate(today);
     followTodayRef.current = true;
     void ensureDateCached(today);
-  }, [ensureDateCached]);
+    bumpWeekReset();
+    bumpDayReset();
+  }, [bumpDayReset, bumpWeekReset, ensureDateCached]);
 
   useFocusEffect(
     useCallback(() => {
@@ -492,6 +465,7 @@ export default observer(function FlatListSwiperExample() {
           <View style={styles.calContainer}>
             <View style={styles.weekRowWrapper}>
               <ScrollView
+                key={`week-${weekResetSeed}`}
                 ref={weekScrollRef}
                 horizontal
                 pagingEnabled
@@ -500,14 +474,10 @@ export default observer(function FlatListSwiperExample() {
                 bounces={false}
                 contentOffset={{ x: width * CENTER_INDEX, y: 0 }}
                 scrollEnabled={!isSnapping}
+                onScrollEndDrag={handleWeekSwipe}
                 onMomentumScrollEnd={handleWeekSwipe}
                 scrollEventThrottle={16}
                 contentContainerStyle={styles.weekRowContent}
-                onLayout={handleWeekLayout}
-                onContentSizeChange={() => {
-                  if (didInitWeekRef.current) return;
-                  handleWeekLayout();
-                }}
               >
                 {panes.map((pane) => (
                   <View key={pane.key} style={{ width }}>
@@ -519,35 +489,27 @@ export default observer(function FlatListSwiperExample() {
 
             <View style={styles.dayListWrapper}>
               <FlatList
+                key={`day-${dayResetSeed}`}
                 ref={dayListRef}
                 data={days}
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
+                initialScrollIndex={1}
                 getItemLayout={(_, index) => ({
                   length: width,
                   offset: width * index,
                   index,
                 })}
                 initialNumToRender={3}
-                onScrollToIndexFailed={({ index }) => {
-                  requestAnimationFrame(() => {
-                    dayProgrammaticRef.current = true;
-                    dayListRef.current?.scrollToIndex({ index, animated: false });
-                    requestAnimationFrame(() => {
-                      dayProgrammaticRef.current = false;
-                    });
-                  });
+                onScrollToIndexFailed={() => {
+                  bumpDayReset();
                 }}
+                onScrollEndDrag={handleDaySwipe}
                 onMomentumScrollEnd={handleDaySwipe}
                 scrollEnabled={!isDaySnapping}
                 style={styles.dayList}
                 contentContainerStyle={styles.dayListContent}
-                onLayout={handleDayLayout}
-                onContentSizeChange={() => {
-                  if (didInitDayRef.current) return;
-                  handleDayLayout();
-                }}
                 keyExtractor={(item, index) => `day-${index}`}
                 renderItem={({ item }) => {
                   const dateKey = item.format('YYYY-MM-DD');
