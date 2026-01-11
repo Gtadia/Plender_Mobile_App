@@ -28,7 +28,6 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
   const visibleRoutes = state.routes.filter((route) => {
     if (['_sitemap', '+not-found'].includes(route.name)) return false;
     if (route.name === 'testPanel') return false;
-    if (route.name === 'recenterTest') return false;
     if (route.name === 'support' && !settings$.general.showSupportPage.get()) return false;
     const options = descriptors[route.key]?.options as { href?: string | null } | undefined;
     if (options?.href === null) return false;

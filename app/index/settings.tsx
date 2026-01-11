@@ -143,37 +143,6 @@ const SettingsScreen = observer(() => {
             <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Behavior</Text>
             <View style={listStyles.row}>
               <View style={listStyles.rowLeft}>
-                <RowIcon name="chart-pie" />
-                <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
-                  Hide Goal Ring When Complete
-                </Text>
-              </View>
-              <View style={listStyles.rowRight}>
-                <Pressable
-                  onPress={() =>
-                    openInfo(
-                      "Hide Goal Ring When Complete",
-                      "When enabled, the goal ring disappears once all category goals for the day are complete.",
-                    )
-                  }
-                  hitSlop={8}
-                  style={styles.infoButton}
-                >
-                  <FontAwesome6 name="circle-info" size={14} color={subtext0} />
-                </Pressable>
-                <Switch
-                  value={settings$.productivity.hideGoalRingOnComplete.get()}
-                  onValueChange={(value) => settings$.productivity.hideGoalRingOnComplete.set(value)}
-                  trackColor={{ false: withOpacity(subtext0, 0.3), true: withOpacity(accent, 0.45) }}
-                  thumbColor={
-                    settings$.productivity.hideGoalRingOnComplete.get() ? accent : palette.surface0
-                  }
-                />
-              </View>
-            </View>
-            <View style={[listStyles.divider, { backgroundColor: dividerColor }]} />
-            <View style={listStyles.row}>
-              <View style={listStyles.rowLeft}>
                 <RowIcon name="gauge" />
                 <Text style={[listStyles.rowLabel, styles.wrapLabel]} fontColor="strong">
                   Cap Category Completion
