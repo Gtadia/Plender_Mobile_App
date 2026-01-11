@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   StyleSheet,
@@ -75,6 +75,34 @@ const generatePaneSet = (center: Moment, startWeekOn: string): WeekPane[] => {
   return Array.from({ length: PANES }).map((_, idx) => buildPane(base, idx, startWeekOn));
 };
 
+const shiftWeekPanes = (current: WeekPane[], direction: 1 | -1, startWeekOn: string): WeekPane[] => {
+  if (!current.length) {
+    return generatePaneSet(normalizeDate(moment(getNow())), startWeekOn);
+  }
+  if (direction > 0) {
+    const shifted = current.slice(1);
+    const last = current[current.length - 1].start;
+    const nextStart = getWeekStart(last.clone().add(1, 'week'), startWeekOn);
+    shifted.push({ key: nextStart.toISOString(), start: nextStart });
+    return shifted;
+  }
+  const shifted = current.slice(0, -1);
+  const first = current[0].start;
+  const prevStart = getWeekStart(first.clone().subtract(1, 'week'), startWeekOn);
+  shifted.unshift({ key: prevStart.toISOString(), start: prevStart });
+  return shifted;
+};
+
+const shiftWeekPanesBy = (current: WeekPane[], step: number, startWeekOn: string): WeekPane[] => {
+  if (!step) return current;
+  const direction: 1 | -1 = step > 0 ? 1 : -1;
+  let next = current;
+  for (let i = 0; i < Math.abs(step); i += 1) {
+    next = shiftWeekPanes(next, direction, startWeekOn);
+  }
+  return next;
+};
+
 export default observer(function FlatListSwiperExample() {
   const weekPagerRef = useRef<PagerView | null>(null);
   const dayPagerRef = useRef<PagerView | null>(null);
@@ -104,6 +132,9 @@ export default observer(function FlatListSwiperExample() {
   const dayAllowSelectRef = useRef(false);
   const weekSnapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const daySnapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const suppressWeekRebuildRef = useRef(false);
+  const suppressWeekStartWeekOnRef = useRef(startWeekOn);
+  const pendingWeekRecenterRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = selectedDate$.onChange(({ value }) => {
@@ -138,6 +169,10 @@ export default observer(function FlatListSwiperExample() {
   }, []);
 
   useEffect(() => {
+    if (suppressWeekRebuildRef.current && suppressWeekStartWeekOnRef.current === startWeekOn) {
+      suppressWeekRebuildRef.current = false;
+      return;
+    }
     setPanes(generatePaneSet(selectedDate, startWeekOn));
   }, [selectedDate, startWeekOn]);
 
@@ -172,7 +207,7 @@ export default observer(function FlatListSwiperExample() {
     async (date: Moment) => {
       const key = date.format('YYYY-MM-DD');
       const existing = tasks$.lists.byDate[key]?.get?.();
-      if (existing && existing.length) {
+      if (Array.isArray(existing)) {
         return existing;
       }
       if (pendingLoadsRef.current.has(key)) {
@@ -189,6 +224,29 @@ export default observer(function FlatListSwiperExample() {
     },
     [setDataVersion],
   );
+
+  const ensureWeekCached = useCallback(
+    (centerDate: Moment) => {
+      const start = getWeekStart(centerDate, startWeekOn);
+      for (let i = -14; i <= 14; i += 1) {
+        void ensureDateCached(start.clone().add(i, 'day'));
+      }
+    },
+    [ensureDateCached, startWeekOn],
+  );
+
+  const refreshDirtyDates = useCallback(async () => {
+    const dirty = getDirtySnapshot();
+    const keys = new Set<string>();
+    Object.values(dirty).forEach((record) => {
+      if (!record?.byDate) return;
+      Object.keys(record.byDate).forEach((key) => keys.add(key));
+    });
+    if (!keys.size) return;
+    await Promise.all(
+      Array.from(keys).map((key) => loadDay(moment(key, 'YYYY-MM-DD').toDate())),
+    );
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -269,12 +327,17 @@ export default observer(function FlatListSwiperExample() {
     });
   }, []);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (pendingWeekRecenterRef.current) {
+      pendingWeekRecenterRef.current = false;
+      recenterWeekPager(true);
+      return;
+    }
     recenterWeekPager();
   }, [panes, recenterWeekPager]);
 
   useEffect(() => {
-    recenterDayPager();
+    recenterDayPager(true);
   }, [days, recenterDayPager]);
 
   const handleWeekPageSelected = useCallback(
@@ -287,26 +350,28 @@ export default observer(function FlatListSwiperExample() {
       }
       if (!weekAllowSelectRef.current) return;
       weekAllowSelectRef.current = false;
-      if (idx === CENTER_INDEX) return;
+      const step = idx - CENTER_INDEX;
+      if (step === 0) return;
       if (weekSnapTimeoutRef.current) {
         clearTimeout(weekSnapTimeoutRef.current);
       }
       setIsWeekSnapping(true);
-      const step = idx > CENTER_INDEX ? 1 : -1;
       const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'week'));
-      recenterWeekPager(true);
-      requestAnimationFrame(() => {
-        selectedDateRef.current = nextDate;
-        setSelectedDate(nextDate);
-        selectedDate$.set(nextDate);
-        followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-        void ensureDateCached(nextDate);
-        weekSnapTimeoutRef.current = setTimeout(() => {
-          setIsWeekSnapping(false);
-        }, 160);
-      });
+      suppressWeekRebuildRef.current = true;
+      suppressWeekStartWeekOnRef.current = startWeekOn;
+      pendingWeekRecenterRef.current = true;
+      setPanes((current) => shiftWeekPanesBy(current, step, startWeekOn));
+      selectedDateRef.current = nextDate;
+      setSelectedDate(nextDate);
+      selectedDate$.set(nextDate);
+      followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
+      ensureWeekCached(nextDate);
+      recenterDayPager(true);
+      weekSnapTimeoutRef.current = setTimeout(() => {
+        setIsWeekSnapping(false);
+      }, 160);
     },
-    [ensureDateCached, recenterWeekPager],
+    [ensureWeekCached, recenterDayPager, startWeekOn],
   );
 
   const handleDayPageSelected = useCallback(
@@ -428,24 +493,30 @@ export default observer(function FlatListSwiperExample() {
       return (
         <View style={styles.itemRowContainer}>
           <View style={styles.itemRow}>
-            {weekDays.map((day) => {
+            {weekDays.map((day, index) => {
               const isToday = day.isSame(moment(getNow()), 'day');
               const isActive = day.isSame(selectedDate, 'day');
               const { taskCount, spentRatio, hasGoal } = getDayProgress(day);
+              const dayKey = day.format('YYYY-MM-DD');
+              const isLoading = pendingLoadsRef.current.has(dayKey);
               const inactiveGoalColor = withOpacity(colors.accent, 0.4);
               const inactiveTrackColor = withOpacity(oppositeAccent, 0.4);
               const hasTasks = hasGoal;
               const goalColor = isActive ? colors.accent : inactiveGoalColor;
-              const trackColor = hasTasks
-                ? (isActive ? withOpacity(oppositeAccent, 0.5) : inactiveTrackColor)
-                : palette.surface1;
+              const emptyTrackColor = withOpacity(colors.subtext1, 0.18);
+              const trackColor = isLoading
+                ? emptyTrackColor
+                : (hasTasks
+                  ? (isActive ? withOpacity(oppositeAccent, 0.5) : inactiveTrackColor)
+                  : emptyTrackColor);
               const segments = [];
-              if (taskCount > 0 && spentRatio > 0) {
+              if (!isLoading && taskCount > 0 && spentRatio > 0) {
                 segments.push({ value: spentRatio, color: goalColor });
               }
               const taskLabel = taskCount > 99 ? "99+" : `${taskCount}`;
+              const centerLabel = isLoading ? "" : taskLabel;
               return (
-                <TouchableWithoutFeedback key={day.toISOString()} onPress={() => handleSelectWeekDay(day)}>
+                <TouchableWithoutFeedback key={`week-day-${index}`} onPress={() => handleSelectWeekDay(day)}>
                   <View style={[styles.item, !isActive && styles.itemInactive]}>
                     <Text style={[styles.itemWeekday, { color: isToday ? colors.accent : colors.text }]}>{day.format('ddd')}</Text>
                     <StackedProgressRing
@@ -454,7 +525,7 @@ export default observer(function FlatListSwiperExample() {
                       trackColor={trackColor}
                       segments={segments}
                       rotation={-90}
-                      centerLabel={taskLabel}
+                      centerLabel={centerLabel}
                       centerLabelStyle={{ color: isActive ? colors.text : colors.subtext1 }}
                     />
                     <Text style={[styles.itemDate, { color: isToday ? colors.accent : colors.text }]}>
@@ -505,11 +576,12 @@ export default observer(function FlatListSwiperExample() {
     useCallback(() => {
       const run = async () => {
         await ensureDirtyTasksHydrated();
+        await refreshDirtyDates();
         await ensureDateCached(selectedDate);
       };
       void run();
       return () => {};
-    }, [ensureDateCached, selectedDate])
+    }, [ensureDateCached, refreshDirtyDates, selectedDate])
   );
 
   // TODO — move database initialization to a more appropriate place
@@ -537,8 +609,8 @@ export default observer(function FlatListSwiperExample() {
                 onPageScrollStateChanged={handleWeekScrollStateChanged}
                 scrollEnabled={!isWeekSnapping}
               >
-                {panes.map((pane) => (
-                  <View key={pane.key} style={{ width }}>
+                {panes.map((pane, index) => (
+                  <View key={`week-pane-${index}`} style={{ width }}>
                     {renderWeek(pane)}
                   </View>
                 ))}
