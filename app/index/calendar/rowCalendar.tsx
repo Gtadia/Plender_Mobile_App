@@ -37,7 +37,6 @@ const CENTER_INDEX = Math.floor(PANES / 2);
 const DAY_PANES = 3;
 const DAY_CENTER_INDEX = Math.floor(DAY_PANES / 2);
 const WEEK_ROW_HEIGHT = 120;
-const PANE_COLORS = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#007aff'];
 
 export const selectedDate$ = observable(moment(getNow()).startOf('day'));
 
@@ -96,13 +95,15 @@ export default observer(function FlatListSwiperExample() {
   const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(normalizeDate(moment(getNow())), startWeekOn));
   const [dataVersion, setDataVersion] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [isWeekSnapping, setIsWeekSnapping] = useState(false);
+  const [isDaySnapping, setIsDaySnapping] = useState(false);
   const pendingLoadsRef = useRef<Set<string>>(new Set());
   const weekIgnoreSelectRef = useRef(false);
   const dayIgnoreSelectRef = useRef(false);
-  const weekPendingIndexRef = useRef<number | null>(null);
-  const dayPendingIndexRef = useRef<number | null>(null);
-  const weekUserScrollRef = useRef(false);
-  const dayUserScrollRef = useRef(false);
+  const weekAllowSelectRef = useRef(false);
+  const dayAllowSelectRef = useRef(false);
+  const weekSnapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const daySnapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const unsubscribe = selectedDate$.onChange(({ value }) => {
@@ -143,6 +144,17 @@ export default observer(function FlatListSwiperExample() {
   useEffect(() => {
     selectedDateRef.current = selectedDate;
   }, [selectedDate]);
+
+  useEffect(() => {
+    return () => {
+      if (weekSnapTimeoutRef.current) {
+        clearTimeout(weekSnapTimeoutRef.current);
+      }
+      if (daySnapTimeoutRef.current) {
+        clearTimeout(daySnapTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const days = useMemo(() => {
     const center = selectedDate.clone();
@@ -233,15 +245,25 @@ export default observer(function FlatListSwiperExample() {
     }, [ensureDateCached])
   );
 
-  const recenterWeekPager = useCallback(() => {
+  const recenterWeekPager = useCallback((immediate = false) => {
     weekIgnoreSelectRef.current = true;
+    weekAllowSelectRef.current = false;
+    if (immediate) {
+      weekPagerRef.current?.setPageWithoutAnimation(CENTER_INDEX);
+      return;
+    }
     requestAnimationFrame(() => {
       weekPagerRef.current?.setPageWithoutAnimation(CENTER_INDEX);
     });
   }, []);
 
-  const recenterDayPager = useCallback(() => {
+  const recenterDayPager = useCallback((immediate = false) => {
     dayIgnoreSelectRef.current = true;
+    dayAllowSelectRef.current = false;
+    if (immediate) {
+      dayPagerRef.current?.setPageWithoutAnimation(DAY_CENTER_INDEX);
+      return;
+    }
     requestAnimationFrame(() => {
       dayPagerRef.current?.setPageWithoutAnimation(DAY_CENTER_INDEX);
     });
@@ -260,11 +282,31 @@ export default observer(function FlatListSwiperExample() {
       const idx = event.nativeEvent.position;
       if (weekIgnoreSelectRef.current) {
         weekIgnoreSelectRef.current = false;
+        weekAllowSelectRef.current = false;
         return;
       }
-      weekPendingIndexRef.current = idx;
+      if (!weekAllowSelectRef.current) return;
+      weekAllowSelectRef.current = false;
+      if (idx === CENTER_INDEX) return;
+      if (weekSnapTimeoutRef.current) {
+        clearTimeout(weekSnapTimeoutRef.current);
+      }
+      setIsWeekSnapping(true);
+      const step = idx > CENTER_INDEX ? 1 : -1;
+      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'week'));
+      recenterWeekPager(true);
+      requestAnimationFrame(() => {
+        selectedDateRef.current = nextDate;
+        setSelectedDate(nextDate);
+        selectedDate$.set(nextDate);
+        followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
+        void ensureDateCached(nextDate);
+        weekSnapTimeoutRef.current = setTimeout(() => {
+          setIsWeekSnapping(false);
+        }, 160);
+      });
     },
-    [],
+    [ensureDateCached, recenterWeekPager],
   );
 
   const handleDayPageSelected = useCallback(
@@ -272,63 +314,16 @@ export default observer(function FlatListSwiperExample() {
       const idx = event.nativeEvent.position;
       if (dayIgnoreSelectRef.current) {
         dayIgnoreSelectRef.current = false;
+        dayAllowSelectRef.current = false;
         return;
       }
-      dayPendingIndexRef.current = idx;
-    },
-    [],
-  );
-
-  const handleWeekScrollStateChanged = useCallback(
-    (event: { nativeEvent: { pageScrollState: string } }) => {
-      const state = event.nativeEvent.pageScrollState;
-      if (state === 'dragging' || state === 'settling') {
-        weekUserScrollRef.current = true;
-        return;
+      if (!dayAllowSelectRef.current) return;
+      dayAllowSelectRef.current = false;
+      if (idx === DAY_CENTER_INDEX) return;
+      if (daySnapTimeoutRef.current) {
+        clearTimeout(daySnapTimeoutRef.current);
       }
-      if (state !== 'idle') return;
-      if (!weekUserScrollRef.current) {
-        weekPendingIndexRef.current = null;
-        return;
-      }
-      weekUserScrollRef.current = false;
-      const idx = weekPendingIndexRef.current;
-      weekPendingIndexRef.current = null;
-      if (idx == null || idx === CENTER_INDEX) {
-        recenterWeekPager();
-        return;
-      }
-      const step = idx > CENTER_INDEX ? 1 : -1;
-      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'week'));
-      selectedDateRef.current = nextDate;
-      setSelectedDate(nextDate);
-      selectedDate$.set(nextDate);
-      followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-      void ensureDateCached(nextDate);
-      recenterWeekPager();
-    },
-    [ensureDateCached, recenterWeekPager],
-  );
-
-  const handleDayScrollStateChanged = useCallback(
-    (event: { nativeEvent: { pageScrollState: string } }) => {
-      const state = event.nativeEvent.pageScrollState;
-      if (state === 'dragging' || state === 'settling') {
-        dayUserScrollRef.current = true;
-        return;
-      }
-      if (state !== 'idle') return;
-      if (!dayUserScrollRef.current) {
-        dayPendingIndexRef.current = null;
-        return;
-      }
-      dayUserScrollRef.current = false;
-      const idx = dayPendingIndexRef.current;
-      dayPendingIndexRef.current = null;
-      if (idx == null || idx === DAY_CENTER_INDEX) {
-        recenterDayPager();
-        return;
-      }
+      setIsDaySnapping(true);
       const step = idx > DAY_CENTER_INDEX ? 1 : -1;
       const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'day'));
       selectedDateRef.current = nextDate;
@@ -337,8 +332,31 @@ export default observer(function FlatListSwiperExample() {
       followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
       void ensureDateCached(nextDate);
       recenterDayPager();
+      daySnapTimeoutRef.current = setTimeout(() => {
+        setIsDaySnapping(false);
+      }, 120);
     },
     [ensureDateCached, recenterDayPager],
+  );
+
+  const handleWeekScrollStateChanged = useCallback(
+    (event: { nativeEvent: { pageScrollState: string } }) => {
+      const state = event.nativeEvent.pageScrollState;
+      if (state === 'dragging') {
+        weekAllowSelectRef.current = true;
+      }
+    },
+    [],
+  );
+
+  const handleDayScrollStateChanged = useCallback(
+    (event: { nativeEvent: { pageScrollState: string } }) => {
+      const state = event.nativeEvent.pageScrollState;
+      if (state === 'dragging') {
+        dayAllowSelectRef.current = true;
+      }
+    },
+    [],
   );
 
   const handleSelectWeekDay = useCallback(
@@ -517,9 +535,10 @@ export default observer(function FlatListSwiperExample() {
                 initialPage={CENTER_INDEX}
                 onPageSelected={handleWeekPageSelected}
                 onPageScrollStateChanged={handleWeekScrollStateChanged}
+                scrollEnabled={!isWeekSnapping}
               >
-                {panes.map((pane, index) => (
-                  <View key={pane.key} style={{ width, backgroundColor: PANE_COLORS[index % PANE_COLORS.length] }}>
+                {panes.map((pane) => (
+                  <View key={pane.key} style={{ width }}>
                     {renderWeek(pane)}
                   </View>
                 ))}
@@ -533,13 +552,14 @@ export default observer(function FlatListSwiperExample() {
                 initialPage={DAY_CENTER_INDEX}
                 onPageSelected={handleDayPageSelected}
                 onPageScrollStateChanged={handleDayScrollStateChanged}
+                scrollEnabled={!isDaySnapping}
               >
-                {days.map((item, index) => {
+                {days.map((item) => {
                   const dateKey = item.format('YYYY-MM-DD');
                   return (
                     <View
                       key={dateKey}
-                      style={[styles.dayPane, { backgroundColor: PANE_COLORS[index % PANE_COLORS.length] }]}
+                      style={styles.dayPane}
                     >
                     <TouchableOpacity
                       onPress={() => {
