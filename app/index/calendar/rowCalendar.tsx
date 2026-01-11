@@ -263,24 +263,10 @@ export default observer(function FlatListSwiperExample() {
     return () => clearInterval(interval);
   }, [ensureDateCached]);
 
-  // Only prefetch current week's days; debounce to avoid hammering JS thread
+  // Prefetch a 5-week window immediately to keep week swaps warm.
   useEffect(() => {
-    let cancelled = false;
-    const task = InteractionManager.runAfterInteractions(async () => {
-      const loaders: Promise<any>[] = [];
-      const centerStart = panes[CENTER_INDEX]?.start;
-      if (centerStart) {
-        for (let i = 0; i < 7; i++) {
-          loaders.push(ensureDateCached(centerStart.clone().add(i, 'day')));
-        }
-      }
-      await Promise.all(loaders);
-    });
-    return () => {
-      cancelled = true;
-      task.cancel();
-    };
-  }, [panes, ensureDateCached]);
+    ensureWeekCached(selectedDate);
+  }, [ensureWeekCached, selectedDate]);
 
   useEffect(() => {
     const t = InteractionManager.runAfterInteractions(() => {
@@ -409,9 +395,13 @@ export default observer(function FlatListSwiperExample() {
       const state = event.nativeEvent.pageScrollState;
       if (state === 'dragging') {
         weekAllowSelectRef.current = true;
+        const base = selectedDateRef.current;
+        ensureWeekCached(base);
+        ensureWeekCached(base.clone().add(1, 'week'));
+        ensureWeekCached(base.clone().subtract(1, 'week'));
       }
     },
-    [],
+    [ensureWeekCached],
   );
 
   const handleDayScrollStateChanged = useCallback(
@@ -498,7 +488,7 @@ export default observer(function FlatListSwiperExample() {
               const isActive = day.isSame(selectedDate, 'day');
               const dayKey = day.format('YYYY-MM-DD');
               const cachedList = tasks$.lists.byDate[dayKey]?.get?.();
-              const isLoading = !Array.isArray(cachedList) || pendingLoadsRef.current.has(dayKey);
+              const isLoading = !Array.isArray(cachedList);
               const { taskCount, spentRatio, hasGoal } = getDayProgress(day);
               const inactiveGoalColor = withOpacity(colors.accent, 0.4);
               const inactiveTrackColor = withOpacity(oppositeAccent, 0.4);
@@ -526,7 +516,6 @@ export default observer(function FlatListSwiperExample() {
                     <Text style={[styles.itemWeekday, { color: isToday ? colors.accent : colors.text }]}>{day.format('ddd')}</Text>
                     <View pointerEvents="none">
                       <StackedProgressRing
-                        key={dayKey}
                         size={46}
                         strokeWidth={7}
                         trackColor={trackColor}
@@ -585,11 +574,12 @@ export default observer(function FlatListSwiperExample() {
       const run = async () => {
         await ensureDirtyTasksHydrated();
         await refreshDirtyDates();
+        ensureWeekCached(selectedDate);
         await ensureDateCached(selectedDate);
       };
       void run();
       return () => {};
-    }, [ensureDateCached, refreshDirtyDates, selectedDate])
+    }, [ensureDateCached, ensureWeekCached, refreshDirtyDates, selectedDate])
   );
 
   // TODO — move database initialization to a more appropriate place
