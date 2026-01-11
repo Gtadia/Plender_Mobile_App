@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, Linking, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { ScreenView, Text } from "@/components/Themed";
 import { ScreenHeader } from "@/components/ScreenHeader";
@@ -8,81 +8,91 @@ import { createSettingsListStyles } from "@/constants/listStyles";
 import { globalTheme } from "@/constants/globalThemeVar";
 import { themeTokens$ } from "@/utils/stateManager";
 import { observer } from "@legendapp/state/react";
-// import {
-//   endConnection,
-//   getProducts,
-//   initConnection,
-//   requestPurchase,
-//   type Product,
-// } from "react-native-iap";
+import { useIAP, type Product } from "react-native-iap";
 
 const SupportScreen = observer(() => {
   const { palette, isDark, colors } = themeTokens$.get();
   const listTheme = getListTheme(palette, isDark);
   const listStyles = createSettingsListStyles(listTheme);
   const accent = colors.accent;
+  const showIap = Platform.OS === "ios";
   const showBmac = Platform.OS === "android";
 
-  // const tipTiers = useMemo(
-  //   () => [
-  //     { sku: "tip_099", thanks: "Thanks for the $0.99 tip!" },
-  //     { sku: "tip_299", thanks: "Thanks for the $2.99 tip!" },
-  //     { sku: "tip_599", thanks: "Thanks for the $5.99 tip!" },
-  //   ],
-  //   []
-  // );
-  // const [products, setProducts] = useState<Product[]>([]);
-  // const [loading, setLoading] = useState(false);
-  // const [iapReady, setIapReady] = useState(true);
-  // const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const tipTiers = useMemo(
+    () => [
+      { sku: "tip_099", label: "Small tip", thanks: "Thanks for the $0.99 tip!" },
+      { sku: "tip_299", label: "Medium tip", thanks: "Thanks for the $2.99 tip!" },
+      { sku: "tip_599", label: "Large tip", thanks: "Thanks for the $5.99 tip!" },
+    ],
+    []
+  );
+  const tipSkus = useMemo(() => tipTiers.map((tier) => tier.sku), [tipTiers]);
+  const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // useEffect(() => {
-  //   let mounted = true;
-  //   const loadProducts = async () => {
-  //     setLoading(true);
-  //     setErrorMessage(null);
-  //     try {
-  //       const connected = await initConnection();
-  //       if (!connected) {
-  //         throw new Error("Store connection unavailable.");
-  //       }
-  //       const result = await getProducts({ skus: tipTiers.map((tier) => tier.sku) });
-  //       if (mounted) {
-  //         setProducts(result);
-  //       }
-  //     } catch (err: any) {
-  //       if (mounted) {
-  //         setIapReady(false);
-  //         setErrorMessage(err?.message ?? "Unable to load in-app products.");
-  //       }
-  //     } finally {
-  //       if (mounted) setLoading(false);
-  //     }
-  //   };
+  const {
+    connected,
+    products,
+    fetchProducts,
+    requestPurchase,
+    finishTransaction,
+  } = useIAP({
+    onPurchaseSuccess: async (purchase) => {
+      try {
+        await finishTransaction({ purchase, isConsumable: true });
+      } catch {
+        // Finish failures can be retried by StoreKit; still thank the user.
+      }
+      const match = tipTiers.find((tier) => tier.sku === purchase.productId);
+      Alert.alert("Thanks!", match?.thanks ?? "Thanks for your support!");
+    },
+    onPurchaseError: (err) => {
+      if (err.code === "E_USER_CANCELLED") return;
+      Alert.alert("Purchase failed", err.message ?? "Please try again.");
+    },
+  });
 
-  //   loadProducts();
-  //   return () => {
-  //     mounted = false;
-  //     void endConnection();
-  //   };
-  // }, [tipTiers]);
+  useEffect(() => {
+    if (!showIap || !connected) return;
+    let mounted = true;
+    const loadProducts = async () => {
+      setLoading(true);
+      setErrorMessage(null);
+      try {
+        await fetchProducts({ skus: tipSkus, type: "in-app" });
+      } catch (err: any) {
+        if (mounted) {
+          setErrorMessage(err?.message ?? "Unable to load in-app products.");
+        }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
 
-  // const productMap = useMemo(() => {
-  //   return products.reduce<Record<string, Product>>((acc, item) => {
-  //     acc[item.productId] = item;
-  //     return acc;
-  //   }, {});
-  // }, [products]);
+    loadProducts();
+    return () => {
+      mounted = false;
+    };
+  }, [connected, fetchProducts, showIap, tipSkus]);
 
-  // const handleTip = async (sku: string, thanks: string) => {
-  //   try {
-  //     await requestPurchase({ skus: [sku] });
-  //     Alert.alert("Thanks!", thanks);
-  //   } catch (err: any) {
-  //     if (err?.code === "E_USER_CANCELLED") return;
-  //     Alert.alert("Purchase failed", "Please try again.");
-  //   }
-  // };
+  const productMap = useMemo(() => {
+    return products.reduce<Record<string, Product>>((acc, item) => {
+      acc[item.id] = item;
+      return acc;
+    }, {});
+  }, [products]);
+
+  const handleTip = useCallback(
+    async (sku: string) => {
+      try {
+        await requestPurchase({ request: { apple: { sku } }, type: "in-app" });
+      } catch (err: any) {
+        if (err?.code === "E_USER_CANCELLED") return;
+        Alert.alert("Purchase failed", err?.message ?? "Please try again.");
+      }
+    },
+    [requestPurchase]
+  );
 
   const openBmac = async () => {
     const url = "https://buymeacoffee.com/yourname";
@@ -111,10 +121,59 @@ const SupportScreen = observer(() => {
           <Text style={styles.subtitle} fontColor="strong">
             Tip with in‑app purchase
           </Text>
-          <Text style={[styles.body, { color: colors.subtext0 }]}>
-            In‑app purchases are disabled while running in Expo Go. Build a dev client to enable
-            tipping.
-          </Text>
+          {showIap ? (
+            <>
+              <Text style={[styles.body, { color: colors.subtext0 }]}>
+                In‑app purchases are disabled while running in Expo Go. Build a dev client to
+                enable tipping.
+              </Text>
+              {errorMessage ? (
+                <Text style={[styles.body, { color: colors.subtext0, marginTop: 8 }]}>
+                  {errorMessage}
+                </Text>
+              ) : null}
+              {!connected ? (
+                <Text style={[styles.body, { color: colors.subtext0, marginTop: 8 }]}>
+                  Connecting to the App Store…
+                </Text>
+              ) : null}
+              <View style={styles.tierList}>
+                {tipTiers.map((tier) => {
+                  const product = productMap[tier.sku];
+                  const label = product?.title ?? tier.label;
+                  const price = product?.displayPrice ?? "";
+                  const disabled = !connected || loading || !product;
+                  return (
+                    <Pressable
+                      key={tier.sku}
+                      style={[
+                        styles.tierRow,
+                        { borderColor: listTheme.colors.divider, opacity: disabled ? 0.6 : 1 },
+                      ]}
+                      disabled={disabled}
+                      onPress={() => handleTip(tier.sku)}
+                    >
+                      <View>
+                        <Text style={styles.tierLabel} fontColor="strong">
+                          {label}
+                        </Text>
+                        <Text style={[styles.tierHint, { color: colors.subtext1 }]}>
+                          {product?.description ?? "One‑time tip"}
+                        </Text>
+                      </View>
+                      <Text style={styles.tierLabel} fontColor="strong">
+                        {price || "—"}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </>
+          ) : (
+            <Text style={[styles.body, { color: colors.subtext0 }]}>
+              iOS tips are available through in‑app purchase.
+            </Text>
+          )}
         </SettingsCard>
 
         {showBmac ? (
