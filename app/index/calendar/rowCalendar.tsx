@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
   View,
   InteractionManager,
   ScrollView,
@@ -496,9 +496,10 @@ export default observer(function FlatListSwiperExample() {
             {weekDays.map((day, index) => {
               const isToday = day.isSame(moment(getNow()), 'day');
               const isActive = day.isSame(selectedDate, 'day');
-              const { taskCount, spentRatio, hasGoal } = getDayProgress(day);
               const dayKey = day.format('YYYY-MM-DD');
-              const isLoading = pendingLoadsRef.current.has(dayKey);
+              const cachedList = tasks$.lists.byDate[dayKey]?.get?.();
+              const isLoading = !Array.isArray(cachedList) || pendingLoadsRef.current.has(dayKey);
+              const { taskCount, spentRatio, hasGoal } = getDayProgress(day);
               const inactiveGoalColor = withOpacity(colors.accent, 0.4);
               const inactiveTrackColor = withOpacity(oppositeAccent, 0.4);
               const hasTasks = hasGoal;
@@ -516,23 +517,30 @@ export default observer(function FlatListSwiperExample() {
               const taskLabel = taskCount > 99 ? "99+" : `${taskCount}`;
               const centerLabel = isLoading ? "" : taskLabel;
               return (
-                <TouchableWithoutFeedback key={`week-day-${index}`} onPress={() => handleSelectWeekDay(day)}>
+                <Pressable
+                  key={`week-day-${index}`}
+                  onPress={() => handleSelectWeekDay(day)}
+                  hitSlop={8}
+                >
                   <View style={[styles.item, !isActive && styles.itemInactive]}>
                     <Text style={[styles.itemWeekday, { color: isToday ? colors.accent : colors.text }]}>{day.format('ddd')}</Text>
-                    <StackedProgressRing
-                      size={46}
-                      strokeWidth={7}
-                      trackColor={trackColor}
-                      segments={segments}
-                      rotation={-90}
-                      centerLabel={centerLabel}
-                      centerLabelStyle={{ color: isActive ? colors.text : colors.subtext1 }}
-                    />
+                    <View pointerEvents="none">
+                      <StackedProgressRing
+                        key={dayKey}
+                        size={46}
+                        strokeWidth={7}
+                        trackColor={trackColor}
+                        segments={segments}
+                        rotation={-90}
+                        centerLabel={centerLabel}
+                        centerLabelStyle={{ color: isActive ? colors.text : colors.subtext1 }}
+                      />
+                    </View>
                     <Text style={[styles.itemDate, { color: isToday ? colors.accent : colors.text }]}>
                       {day.date()}
                     </Text>
                   </View>
-                </TouchableWithoutFeedback>
+                </Pressable>
               );
             })}
           </View>
