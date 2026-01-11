@@ -77,8 +77,9 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
     calendar: (props: any) => <FontAwesome6 name="calendar" size={itemSize} {...props} />,
     dayProgress: (props: any) => <FontAwesome6 name="chart-pie" size={itemSize} {...props} />,
     support: (props: any) => <FontAwesome6 name="mug-hot" size={itemSize} {...props} />,
-    test: (props: any) => <FontAwesome6 name="chart-line" size={itemSize} {...props} />,
-    test2: (props: any) => <FontAwesome6 name="chart-line" size={itemSize} {...props} />,
+    // scrollTest: (props: any) => <FontAwesome6 name="arrows-left-right" size={itemSize} {...props} />,
+    // scrollProbe: (props: any) => <FontAwesome6 name="magnifying-glass" size={itemSize} {...props} />,
+    recenterTest: (props: any) => <FontAwesome6 name="crosshairs" size={itemSize} {...props} />,
     settings: (props: any) => <FontAwesome6 name="gear" size={itemSize} {...props} />,
   };
 
@@ -86,6 +87,9 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
     index: 'Home',
     calendar: 'Calendar',
     dayProgress: 'Progress',
+    // scrollTest: 'Scroll Test',
+    // scrollProbe: 'Scroll Probe',
+    recenterTest: 'Recenter Test',
     support: 'Support',
     settings: 'Settings',
   };

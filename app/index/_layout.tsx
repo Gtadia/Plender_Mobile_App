@@ -39,6 +39,9 @@ export default observer(function TabLayout() {
         <Tabs.Screen name="calendar" options={{ title: "Week Calendar" }} />
         <Tabs.Screen name="dayProgress" options={{ title: "Day Progress" }} />
         <Tabs.Screen name="testPanel" options={{ href: null }} />
+        <Tabs.Screen name="scrollTest" options={{ title: "Scroll Test" }} />
+        <Tabs.Screen name="scrollProbe" options={{ title: "Scroll Probe" }} />
+        <Tabs.Screen name="recenterTest" options={{ title: "Recenter Test" }} />
         <Tabs.Screen
           name="support"
           options={{

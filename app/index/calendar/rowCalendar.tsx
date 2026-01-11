@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
-  FlatList,
-  NativeScrollEvent,
-  NativeSyntheticEvent,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -15,6 +12,7 @@ import {
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import moment, { Moment } from 'moment';
+import PagerView from 'react-native-pager-view';
 import StackedProgressRing from '@/components/StackedProgressRing';
 import { initializeDB } from '@/utils/database';
 import { observable } from '@legendapp/state';
@@ -36,7 +34,10 @@ import { themeTokens$ } from '@/utils/stateManager';
 const { width } = Dimensions.get('window');
 const PANES = 5;
 const CENTER_INDEX = Math.floor(PANES / 2);
+const DAY_PANES = 3;
+const DAY_CENTER_INDEX = Math.floor(DAY_PANES / 2);
 const WEEK_ROW_HEIGHT = 120;
+const PANE_COLORS = ['#ff3b30', '#ff9500', '#ffcc00', '#34c759', '#007aff'];
 
 export const selectedDate$ = observable(moment(getNow()).startOf('day'));
 
@@ -76,12 +77,8 @@ const generatePaneSet = (center: Moment, startWeekOn: string): WeekPane[] => {
 };
 
 export default observer(function FlatListSwiperExample() {
-  const weekScrollRef = useRef<ScrollView>(null);
-  const dayListRef = useRef<FlatList<Moment>>(null);
-  const weekProgrammaticRef = useRef(false);
-  const dayProgrammaticRef = useRef(false);
-  const didInitWeekRef = useRef(false);
-  const didInitDayRef = useRef(false);
+  const weekPagerRef = useRef<PagerView | null>(null);
+  const dayPagerRef = useRef<PagerView | null>(null);
   const followTodayRef = useRef(true);
   const todayKeyRef = useRef(moment(getNow()).format('YYYY-MM-DD'));
   const { palette, colors } = themeTokens$.get();
@@ -95,21 +92,28 @@ export default observer(function FlatListSwiperExample() {
   const styles = createStyles({ palette, colors, accentSoft, accentBorder });
 
   const [selectedDate, setSelectedDate] = useState(() => normalizeDate(moment(getNow())));
+  const selectedDateRef = useRef(selectedDate);
   const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(normalizeDate(moment(getNow())), startWeekOn));
-  const [isSnapping, setIsSnapping] = useState(false);
-  const [isDaySnapping, setIsDaySnapping] = useState(false);
   const [dataVersion, setDataVersion] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const pendingLoadsRef = useRef<Set<string>>(new Set());
+  const weekIgnoreSelectRef = useRef(false);
+  const dayIgnoreSelectRef = useRef(false);
+  const weekPendingIndexRef = useRef<number | null>(null);
+  const dayPendingIndexRef = useRef<number | null>(null);
+  const weekUserScrollRef = useRef(false);
+  const dayUserScrollRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = selectedDate$.onChange(({ value }) => {
       const normalized = normalizeDate(value);
       setSelectedDate(normalized);
+      selectedDateRef.current = normalized;
       followTodayRef.current = normalized.isSame(moment(getNow()), 'day');
     });
     const initial = normalizeDate(selectedDate$.get());
     setSelectedDate(initial);
+    selectedDateRef.current = initial;
     followTodayRef.current = initial.isSame(moment(getNow()), 'day');
     return () => {
       if (typeof unsubscribe === 'function') {
@@ -136,6 +140,10 @@ export default observer(function FlatListSwiperExample() {
     setPanes(generatePaneSet(selectedDate, startWeekOn));
   }, [selectedDate, startWeekOn]);
 
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+  }, [selectedDate]);
+
   const days = useMemo(() => {
     const center = selectedDate.clone();
     return [
@@ -145,19 +153,6 @@ export default observer(function FlatListSwiperExample() {
     ];
   }, [selectedDate]);
 
-  const scrollDayListToCenter = useCallback((animated = false) => {
-    dayProgrammaticRef.current = true;
-    dayListRef.current?.scrollToIndex({ index: 1, animated });
-    if (!animated) {
-      requestAnimationFrame(() => {
-        dayProgrammaticRef.current = false;
-      });
-    }
-  }, []);
-
-  useEffect(() => {
-    scrollDayListToCenter(false);
-  }, [days, scrollDayListToCenter]);
 
   // Ensure that the date is cache synced when...
   // 1. (JUST GOTTA LOOK AT THE IMPLEMENATION MORE CLOSELY LATER)
@@ -224,36 +219,6 @@ export default observer(function FlatListSwiperExample() {
     return () => t.cancel();
   }, [ensureDateCached, selectedDate]);
 
-  const scrollToCenter = useCallback((animated = false) => {
-    weekProgrammaticRef.current = true;
-    weekScrollRef.current?.scrollTo({ x: width * CENTER_INDEX, animated });
-    if (!animated) {
-      requestAnimationFrame(() => {
-        weekProgrammaticRef.current = false;
-      });
-    }
-  }, []);
-
-  const handleWeekLayout = useCallback(() => {
-    if (didInitWeekRef.current) return;
-    didInitWeekRef.current = true;
-    requestAnimationFrame(() => scrollToCenter(false));
-  }, [scrollToCenter]);
-
-  const handleDayLayout = useCallback(() => {
-    if (didInitDayRef.current) return;
-    didInitDayRef.current = true;
-    requestAnimationFrame(() => scrollDayListToCenter(false));
-  }, [scrollDayListToCenter]);
-
-  useEffect(() => {
-    scrollToCenter();
-  }, [panes, scrollToCenter]);
-
-  useEffect(() => {
-    setIsSnapping(false);
-    setIsDaySnapping(false);
-  }, [selectedDate]);
 
   useFocusEffect(
     useCallback(() => {
@@ -268,74 +233,126 @@ export default observer(function FlatListSwiperExample() {
     }, [ensureDateCached])
   );
 
-  const finalizeSnap = useCallback(() => {
+  const recenterWeekPager = useCallback(() => {
+    weekIgnoreSelectRef.current = true;
     requestAnimationFrame(() => {
-      scrollToCenter();
-      setTimeout(() => setIsSnapping(false), 300);
+      weekPagerRef.current?.setPageWithoutAnimation(CENTER_INDEX);
     });
-  }, [scrollToCenter]);
+  }, []);
 
-  const handleWeekSwipe = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (weekProgrammaticRef.current) {
-        weekProgrammaticRef.current = false;
+  const recenterDayPager = useCallback(() => {
+    dayIgnoreSelectRef.current = true;
+    requestAnimationFrame(() => {
+      dayPagerRef.current?.setPageWithoutAnimation(DAY_CENTER_INDEX);
+    });
+  }, []);
+
+  useEffect(() => {
+    recenterWeekPager();
+  }, [panes, recenterWeekPager]);
+
+  useEffect(() => {
+    recenterDayPager();
+  }, [days, recenterDayPager]);
+
+  const handleWeekPageSelected = useCallback(
+    (event: { nativeEvent: { position: number } }) => {
+      const idx = event.nativeEvent.position;
+      if (weekIgnoreSelectRef.current) {
+        weekIgnoreSelectRef.current = false;
         return;
       }
-      const idx = Math.round(event.nativeEvent.contentOffset.x / width);
-      const direction = idx - CENTER_INDEX;
-      if (direction !== 0) {
-        setIsSnapping(true);
-        setSelectedDate((prev) => {
-          const nextDate = normalizeDate(prev.clone().add(direction, 'week'));
-          selectedDate$.set(nextDate);
-          followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-          return nextDate;
-        });
-        finalizeSnap();
-      } else {
-        finalizeSnap();
-      }
+      weekPendingIndexRef.current = idx;
     },
-    [finalizeSnap],
+    [],
   );
 
-  const handleDaySwipe = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (dayProgrammaticRef.current) {
-        dayProgrammaticRef.current = false;
+  const handleDayPageSelected = useCallback(
+    (event: { nativeEvent: { position: number } }) => {
+      const idx = event.nativeEvent.position;
+      if (dayIgnoreSelectRef.current) {
+        dayIgnoreSelectRef.current = false;
         return;
       }
-      const idx = Math.round(event.nativeEvent.contentOffset.x / width);
-      const direction = idx - 1;
-      if (direction !== 0) {
-        const nextDate = normalizeDate(selectedDate.clone().add(direction, 'day'));
-        setSelectedDate(nextDate);
-        selectedDate$.set(nextDate);
-        followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-        setIsSnapping(true);
-        finalizeSnap();
-      }
-      setIsDaySnapping(true);
-      requestAnimationFrame(() => {
-        scrollDayListToCenter();
-        setTimeout(() => {
-          setIsDaySnapping(false);
-        }, 150);
-      });
+      dayPendingIndexRef.current = idx;
     },
-    [finalizeSnap, scrollDayListToCenter, selectedDate],
+    [],
+  );
+
+  const handleWeekScrollStateChanged = useCallback(
+    (event: { nativeEvent: { pageScrollState: string } }) => {
+      const state = event.nativeEvent.pageScrollState;
+      if (state === 'dragging' || state === 'settling') {
+        weekUserScrollRef.current = true;
+        return;
+      }
+      if (state !== 'idle') return;
+      if (!weekUserScrollRef.current) {
+        weekPendingIndexRef.current = null;
+        return;
+      }
+      weekUserScrollRef.current = false;
+      const idx = weekPendingIndexRef.current;
+      weekPendingIndexRef.current = null;
+      if (idx == null || idx === CENTER_INDEX) {
+        recenterWeekPager();
+        return;
+      }
+      const step = idx > CENTER_INDEX ? 1 : -1;
+      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'week'));
+      selectedDateRef.current = nextDate;
+      setSelectedDate(nextDate);
+      selectedDate$.set(nextDate);
+      followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
+      void ensureDateCached(nextDate);
+      recenterWeekPager();
+    },
+    [ensureDateCached, recenterWeekPager],
+  );
+
+  const handleDayScrollStateChanged = useCallback(
+    (event: { nativeEvent: { pageScrollState: string } }) => {
+      const state = event.nativeEvent.pageScrollState;
+      if (state === 'dragging' || state === 'settling') {
+        dayUserScrollRef.current = true;
+        return;
+      }
+      if (state !== 'idle') return;
+      if (!dayUserScrollRef.current) {
+        dayPendingIndexRef.current = null;
+        return;
+      }
+      dayUserScrollRef.current = false;
+      const idx = dayPendingIndexRef.current;
+      dayPendingIndexRef.current = null;
+      if (idx == null || idx === DAY_CENTER_INDEX) {
+        recenterDayPager();
+        return;
+      }
+      const step = idx > DAY_CENTER_INDEX ? 1 : -1;
+      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'day'));
+      selectedDateRef.current = nextDate;
+      setSelectedDate(nextDate);
+      selectedDate$.set(nextDate);
+      followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
+      void ensureDateCached(nextDate);
+      recenterDayPager();
+    },
+    [ensureDateCached, recenterDayPager],
   );
 
   const handleSelectWeekDay = useCallback(
     (day: Moment) => {
       const normalized = normalizeDate(day);
+      selectedDateRef.current = normalized;
       setSelectedDate(normalized);
       selectedDate$.set(normalized);
       followTodayRef.current = normalized.isSame(moment(getNow()), 'day');
-      setIsSnapping(true);
-      finalizeSnap();
+      void ensureDateCached(normalized);
+      recenterWeekPager();
+      recenterDayPager();
     },
-    [finalizeSnap],
+    [ensureDateCached, recenterDayPager, recenterWeekPager],
   );
 
   const getTasksForDate = useCallback(
@@ -460,8 +477,11 @@ export default observer(function FlatListSwiperExample() {
     selectedDate$.set(today);
     setSelectedDate(today);
     followTodayRef.current = true;
+    selectedDateRef.current = today;
     void ensureDateCached(today);
-  }, [ensureDateCached]);
+    recenterWeekPager();
+    recenterDayPager();
+  }, [ensureDateCached, recenterDayPager, recenterWeekPager]);
 
   useFocusEffect(
     useCallback(() => {
@@ -491,68 +511,36 @@ export default observer(function FlatListSwiperExample() {
       {/* <SafeAreaView style={{ }}> */}
           <View style={styles.calContainer}>
             <View style={styles.weekRowWrapper}>
-              <ScrollView
-                ref={weekScrollRef}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                decelerationRate="fast"
-                bounces={false}
-                contentOffset={{ x: width * CENTER_INDEX, y: 0 }}
-                scrollEnabled={!isSnapping}
-                onMomentumScrollEnd={handleWeekSwipe}
-                scrollEventThrottle={16}
-                contentContainerStyle={styles.weekRowContent}
-                onLayout={handleWeekLayout}
-                onContentSizeChange={() => {
-                  if (didInitWeekRef.current) return;
-                  handleWeekLayout();
-                }}
+              <PagerView
+                ref={weekPagerRef}
+                style={styles.weekPager}
+                initialPage={CENTER_INDEX}
+                onPageSelected={handleWeekPageSelected}
+                onPageScrollStateChanged={handleWeekScrollStateChanged}
               >
-                {panes.map((pane) => (
-                  <View key={pane.key} style={{ width }}>
+                {panes.map((pane, index) => (
+                  <View key={pane.key} style={{ width, backgroundColor: PANE_COLORS[index % PANE_COLORS.length] }}>
                     {renderWeek(pane)}
                   </View>
                 ))}
-              </ScrollView>
+              </PagerView>
             </View>
 
             <View style={styles.dayListWrapper}>
-              <FlatList
-                ref={dayListRef}
-                data={days}
-                horizontal
-                pagingEnabled
-                showsHorizontalScrollIndicator={false}
-                getItemLayout={(_, index) => ({
-                  length: width,
-                  offset: width * index,
-                  index,
-                })}
-                initialNumToRender={3}
-                onScrollToIndexFailed={({ index }) => {
-                  requestAnimationFrame(() => {
-                    dayProgrammaticRef.current = true;
-                    dayListRef.current?.scrollToIndex({ index, animated: false });
-                    requestAnimationFrame(() => {
-                      dayProgrammaticRef.current = false;
-                    });
-                  });
-                }}
-                onMomentumScrollEnd={handleDaySwipe}
-                scrollEnabled={!isDaySnapping}
-                style={styles.dayList}
-                contentContainerStyle={styles.dayListContent}
-                onLayout={handleDayLayout}
-                onContentSizeChange={() => {
-                  if (didInitDayRef.current) return;
-                  handleDayLayout();
-                }}
-                keyExtractor={(item, index) => `day-${index}`}
-                renderItem={({ item }) => {
+              <PagerView
+                ref={dayPagerRef}
+                style={styles.dayPager}
+                initialPage={DAY_CENTER_INDEX}
+                onPageSelected={handleDayPageSelected}
+                onPageScrollStateChanged={handleDayScrollStateChanged}
+              >
+                {days.map((item, index) => {
                   const dateKey = item.format('YYYY-MM-DD');
                   return (
-                    <View style={styles.dayPane}>
+                    <View
+                      key={dateKey}
+                      style={[styles.dayPane, { backgroundColor: PANE_COLORS[index % PANE_COLORS.length] }]}
+                    >
                     <TouchableOpacity
                       onPress={() => {
                         router.push('/calendarDateSheet');
@@ -592,8 +580,8 @@ export default observer(function FlatListSwiperExample() {
                       </ScrollView>
                     </View>
                   );
-                }}
-              />
+                })}
+              </PagerView>
             </View>
           </View>
       {/* </SafeAreaView> */}
@@ -647,17 +635,16 @@ const createStyles = ({
     height: WEEK_ROW_HEIGHT,
     justifyContent: 'center',
   },
-  weekRowContent: {
-    paddingVertical: 6,
+  weekPager: {
+    width: '100%',
+    height: WEEK_ROW_HEIGHT,
   },
   dayListWrapper: {
     flex: 1,
   },
-  dayList: {
+  dayPager: {
     flex: 1,
-  },
-  dayListContent: {
-    height: '100%',
+    width: '100%',
   },
   header: { paddingHorizontal: 16 },
   // title: {
@@ -669,7 +656,8 @@ const createStyles = ({
   itemRowContainer: {
     width,
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
+    paddingVertical: 6,
   },
   itemRow: {
     width: '100%',
