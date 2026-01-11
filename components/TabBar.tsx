@@ -28,6 +28,7 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
   const visibleRoutes = state.routes.filter((route) => {
     if (['_sitemap', '+not-found'].includes(route.name)) return false;
     if (route.name === 'testPanel') return false;
+    if (route.name === 'recenterTest') return false;
     if (route.name === 'support' && !settings$.general.showSupportPage.get()) return false;
     const options = descriptors[route.key]?.options as { href?: string | null } | undefined;
     if (options?.href === null) return false;
@@ -79,7 +80,6 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
     support: (props: any) => <FontAwesome6 name="mug-hot" size={itemSize} {...props} />,
     // scrollTest: (props: any) => <FontAwesome6 name="arrows-left-right" size={itemSize} {...props} />,
     // scrollProbe: (props: any) => <FontAwesome6 name="magnifying-glass" size={itemSize} {...props} />,
-    recenterTest: (props: any) => <FontAwesome6 name="crosshairs" size={itemSize} {...props} />,
     settings: (props: any) => <FontAwesome6 name="gear" size={itemSize} {...props} />,
   };
 
@@ -89,7 +89,6 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
     dayProgress: 'Progress',
     // scrollTest: 'Scroll Test',
     // scrollProbe: 'Scroll Probe',
-    recenterTest: 'Recenter Test',
     support: 'Support',
     settings: 'Settings',
   };
@@ -125,48 +124,51 @@ const TabBar = observer(({ state, descriptors, navigation }) => {
           { backgroundColor: withOpacity(primaryColor, 0.2) },
         ]}
       />
-      {visibleRoutes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const isFocused = activeIndex === index;
-        const displayLabel = labelMap[route.name] ?? route.name;
-        const iconColor = isFocused ? primaryColor : textColor;
+      <View style={styles.tabItems}>
+        {visibleRoutes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const isFocused = activeIndex === index;
+          const displayLabel = labelMap[route.name] ?? route.name;
+          const iconColor = isFocused ? primaryColor : textColor;
 
-        const onPress = () => {
-          const event = navigation.emit({
-            type: 'tabPress',
-            target: route.key,
-            canPreventDefault: true,
-          });
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
 
-          if (!isFocused && !event.defaultPrevented) {
-            navigation.navigate(route.name, route.params);
-          }
-        };
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name, route.params);
+            }
+          };
 
-        const onLongPress = () => {
-          navigation.emit({
-            type: 'tabLongPress',
-            target: route.key,
-          });
-        };
+          const onLongPress = () => {
+            navigation.emit({
+              type: 'tabLongPress',
+              target: route.key,
+            });
+          };
 
-        return (
-          <TouchableOpacity
-            key={route.key}
-            accessibilityState={isFocused ? { selected: true } : {}}
-            accessibilityLabel={options.tabBarAccessibilityLabel}
-            testID={options.tabBarButtonTestID}
-            onPress={onPress}
-            onLongPress={onLongPress}
-            style={styles.tabBarItem}
-          >
-            {(icons[route.name] ?? icons.index)({ color: iconColor })}
-            <Text style={[styles.tabLabel, { color: isFocused ? primaryColor : textColor }]} numberOfLines={1}>
-              {displayLabel}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
+          return (
+            <TouchableOpacity
+              key={route.key}
+              accessibilityState={isFocused ? { selected: true } : {}}
+              accessibilityLabel={options.tabBarAccessibilityLabel}
+              testID={options.tabBarButtonTestID}
+              onPress={onPress}
+              onLongPress={onLongPress}
+              activeOpacity={1}
+              style={styles.tabBarItem}
+            >
+              {(icons[route.name] ?? icons.index)({ color: iconColor })}
+              <Text style={[styles.tabLabel, { color: isFocused ? primaryColor : textColor }]} numberOfLines={1}>
+                {displayLabel}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
     </View>
   );
 });
@@ -190,6 +192,13 @@ const styles = StyleSheet.create({
     width: itemWidth,
     height: barHeight - 8,
     gap: 2,
+    zIndex: 2,
+  },
+  tabItems: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 2,
+    elevation: 2,
   },
   activePill: {
     position: 'absolute',
@@ -199,6 +208,8 @@ const styles = StyleSheet.create({
     height: barHeight,
     borderRadius: 999,
     borderWidth: 0,
+    zIndex: 1,
+    elevation: 1,
   },
   tabLabel: {
     fontSize: 11,
