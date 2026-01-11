@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { Text, ScreenView } from '@/components/Themed';
 import { observer } from '@legendapp/state/react';
-import { FontAwesome6 } from '@expo/vector-icons';
+import { FontAwesome6, MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { settings$, styling$, themeTokens$ } from '@/utils/stateManager';
 import { themeOptions } from '@/constants/themes';
@@ -38,6 +38,11 @@ const SettingsScreen = observer(() => {
   const RowIcon = ({ name }: { name: React.ComponentProps<typeof FontAwesome6>["name"] }) => (
     <View style={[listStyles.iconBadge, { backgroundColor: withOpacity(accent, 0.14) }]}>
       <FontAwesome6 name={name} size={14} color={accent} />
+    </View>
+  );
+  const MaterialRowIcon = ({ name }: { name: React.ComponentProps<typeof MaterialIcons>["name"] }) => (
+    <View style={[listStyles.iconBadge, { backgroundColor: withOpacity(accent, 0.14) }]}>
+      <MaterialIcons name={name} size={14} color={accent} />
     </View>
   );
 
@@ -368,7 +373,7 @@ const SettingsScreen = observer(() => {
             <Text style={[listStyles.subsectionTitle, { color: subtext1 }]}>Notifications</Text>
             <View style={listStyles.row}>
               <View style={listStyles.rowLeft}>
-                <RowIcon name="bells" />
+                <MaterialRowIcon name="notifications-none" />
                 <Text style={listStyles.rowLabel} fontColor="strong">
                   Notifications coming soon!
                 </Text>

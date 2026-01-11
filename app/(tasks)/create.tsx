@@ -217,11 +217,7 @@ const CategoryPopup = ({
                 }}
               >
                 {/* <View> */}
-                <AntDesign
-                  name="addfile"
-                  size={16}
-                  color={mutedText}
-                />
+                <MaterialIcons name="add-box" size={16} color={mutedText} />
                 <Text style={[categoryStyles.label, { marginLeft: 5, color: mutedText }]}>
                   Add Category
                 </Text>

@@ -17,6 +17,7 @@ import { useNavigation, useRouter } from "expo-router";
 import { Memo, Show, observer, useObservable } from "@legendapp/state/react";
 import moment from "moment";
 import AntDesign from "@expo/vector-icons/AntDesign";
+import MaterialIcons from "@expo/vector-icons/MaterialIcons";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { PlatformBlurView } from "@/components/PlatformBlurView";
 
@@ -436,7 +437,7 @@ const TaskDetailsContent = observer(() => {
                           router.push("/(tasks)/categoryCreateSheet");
                         }}
                       >
-                        <AntDesign name="addfile" size={16} color={colors.subtext0} />
+                        <MaterialIcons name="add-box" size={16} color={colors.subtext0} />
                         <Text style={[sheetStyles.categoryPopupLabel, { marginLeft: 6, color: colors.subtext0 }]}>
                           Add Category
                         </Text>
