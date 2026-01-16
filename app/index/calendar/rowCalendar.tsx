@@ -9,6 +9,7 @@ import {
   InteractionManager,
   ScrollView,
   RefreshControl,
+  Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import moment, { Moment } from 'moment';
@@ -322,9 +323,31 @@ export default observer(function FlatListSwiperExample() {
     recenterWeekPager();
   }, [panes, recenterWeekPager]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    if (Platform.OS !== 'android') return;
     recenterDayPager(true);
   }, [days, recenterDayPager]);
+
+  useEffect(() => {
+    if (Platform.OS === 'android') return;
+    recenterDayPager(true);
+  }, [days, recenterDayPager]);
+
+  const commitWeekShift = useCallback(
+    (step: number) => {
+      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'week'));
+      suppressWeekRebuildRef.current = true;
+      suppressWeekStartWeekOnRef.current = startWeekOn;
+      setPanes((current) => shiftWeekPanesBy(current, step, startWeekOn));
+      selectedDateRef.current = nextDate;
+      setSelectedDate(nextDate);
+      selectedDate$.set(nextDate);
+      followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
+      ensureWeekCached(nextDate);
+      recenterDayPager(true);
+    },
+    [ensureWeekCached, recenterDayPager, startWeekOn],
+  );
 
   const handleWeekPageSelected = useCallback(
     (event: { nativeEvent: { position: number } }) => {
@@ -342,22 +365,13 @@ export default observer(function FlatListSwiperExample() {
         clearTimeout(weekSnapTimeoutRef.current);
       }
       setIsWeekSnapping(true);
-      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'week'));
-      suppressWeekRebuildRef.current = true;
-      suppressWeekStartWeekOnRef.current = startWeekOn;
       pendingWeekRecenterRef.current = true;
-      setPanes((current) => shiftWeekPanesBy(current, step, startWeekOn));
-      selectedDateRef.current = nextDate;
-      setSelectedDate(nextDate);
-      selectedDate$.set(nextDate);
-      followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-      ensureWeekCached(nextDate);
-      recenterDayPager(true);
+      commitWeekShift(step);
       weekSnapTimeoutRef.current = setTimeout(() => {
         setIsWeekSnapping(false);
       }, 160);
     },
-    [ensureWeekCached, recenterDayPager, startWeekOn],
+    [commitWeekShift],
   );
 
   const handleDayPageSelected = useCallback(
@@ -603,6 +617,7 @@ export default observer(function FlatListSwiperExample() {
                 ref={weekPagerRef}
                 style={styles.weekPager}
                 initialPage={CENTER_INDEX}
+                offscreenPageLimit={CENTER_INDEX}
                 onPageSelected={handleWeekPageSelected}
                 onPageScrollStateChanged={handleWeekScrollStateChanged}
                 scrollEnabled={!isWeekSnapping}
