@@ -842,9 +842,9 @@ export default observer(function FlatListSwiperExample() {
               const centerLabel = isLoading ? "" : taskLabel;
               return (
                 <Pressable
-                  key={`week-day-${index}`}
+                  key={`week-day-${dayKey}`}
                   onPress={() => handleSelectWeekDay(day)}
-                  disabled={isWeekSnapping}
+                  disabled={isWeekSnapping || isDaySnapping}
                   hitSlop={8}
                 >
                   <View style={[styles.item, !isActive && styles.itemInactive]}>
@@ -871,7 +871,7 @@ export default observer(function FlatListSwiperExample() {
         </View>
       );
     },
-    [getDayProgress, handleSelectWeekDay, isWeekSnapping, selectedDate, colors, oppositeAccent],
+    [getDayProgress, handleSelectWeekDay, isDaySnapping, isWeekSnapping, selectedDate, colors, oppositeAccent],
   );
 
   const insets = useSafeAreaInsets();
@@ -934,10 +934,7 @@ export default observer(function FlatListSwiperExample() {
       </View>
       {/* <SafeAreaView style={{ }}> */}
           <View style={styles.calContainer}>
-            <View style={styles.weekRowWrapper} pointerEvents={isWeekSnapping ? "none" : "auto"}>
-              {Platform.OS === 'android' && isWeekSnapping ? (
-                <View pointerEvents="none" style={styles.weekSwapOverlay} />
-              ) : null}
+            <View style={styles.weekRowWrapper} pointerEvents={isWeekSnapping || isDaySnapping ? "none" : "auto"}>
               <PagerView
                 ref={weekPagerRef}
                 style={styles.weekPager}
@@ -946,20 +943,17 @@ export default observer(function FlatListSwiperExample() {
                 onPageSelected={handleWeekPageSelected}
                 onPageScroll={handleWeekPageScroll}
                 onPageScrollStateChanged={handleWeekScrollStateChanged}
-                scrollEnabled={!isWeekSnapping}
+                scrollEnabled={!isWeekSnapping && !isDaySnapping}
               >
-                {panes.map((pane, index) => (
-                  <View key={`week-pane-${index}`} style={{ width }}>
+                {panes.map((pane) => (
+                  <View key={`week-pane-${pane.key}`} style={{ width }}>
                     {renderWeek(pane)}
                   </View>
                 ))}
               </PagerView>
             </View>
 
-            <View style={styles.dayListWrapper} pointerEvents={isWeekSnapping ? "none" : "auto"}>
-              {Platform.OS === 'android' && isDaySnapping ? (
-                <View pointerEvents="none" style={styles.daySwapOverlay} />
-              ) : null}
+            <View style={styles.dayListWrapper} pointerEvents={isWeekSnapping || isDaySnapping ? "none" : "auto"}>
               <PagerView
                 ref={dayPagerRef}
                 style={styles.dayPager}
@@ -978,6 +972,7 @@ export default observer(function FlatListSwiperExample() {
                       style={styles.dayPane}
                     >
                     <TouchableOpacity
+                      disabled={isWeekSnapping || isDaySnapping}
                       onPress={() => {
                         router.push('/calendarDateSheet');
                       }}
@@ -1069,24 +1064,6 @@ const createStyles = ({
   weekRowWrapper: {
     height: WEEK_ROW_HEIGHT,
     justifyContent: 'center',
-  },
-  weekSwapOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(64, 160, 96, 0.18)',
-    zIndex: 1,
-  },
-  daySwapOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(64, 160, 96, 0.12)',
-    zIndex: 1,
   },
   weekPager: {
     width: '100%',
