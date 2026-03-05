@@ -46,7 +46,6 @@ import { createListSheetStyles } from "@/constants/listStyles";
 import { settings$, styling$, themeTokens$ } from "@/utils/stateManager";
 import CalendarDatePicker from "@/components/CalendarDatePicker";
 import { getNow } from "@/utils/timeOverride";
-import Picker from "@/components/TimeCarousel/Picker";
 
 // -------------------------------------------------------------
 // Observable state for repeat settings
@@ -168,12 +167,6 @@ const DateSelectSheet = () => {
   const accentButtonIcon = useButtonTint ? colors.textStrong : isDark ? palette.crust : palette.base;
   const pickerLine = withOpacity(colors.text, isDark ? 0.4 : 0.32);
   const pickerTextColor = isDark ? colors.text : colors.textStrong;
-  const pickerTextStyle = {
-    primaryColor: pickerTextColor,
-    secondaryColor: mutedText,
-    fontSize: 20,
-  };
-  const pickerPill = withOpacity(palette.overlay0, isDark ? 0.4 : 0.2);
   const cardStyle = { backgroundColor: cardBackground, borderColor, borderWidth: 1 };
   const [calendarMode, setCalendarMode] = useState<"start" | "end" | null>(null);
   const [calendarDraft, setCalendarDraft] = useState<Moment | null>(null);
@@ -385,38 +378,12 @@ const DateSelectSheet = () => {
                         </View>
                         <View style={{ flexDirection: "row" }}>
                           {/* Number Picker */}
-                          {Platform.OS === "android" ? (
-                            <Picker
-                              values={values}
-                              legendState={repeat$.num}
-                              defaultValue={repeat$.num}
-                              ITEM_HEIGHT={34}
-                              VISIBLE_ITEMS={5}
-                              textStyle={pickerTextStyle}
-                              pillColor={pickerPill}
-                              enableSelectBox={true}
-                              onValueChange={(value) => {
-                                const next = String(value);
-                                repeat$.isRepeat.set(true);
-                                if (next === "") {
-                                  repeat$.isRepeat.set(false);
-                                  repeat$.type.set("None");
-                                  repeat$.num.set("");
-                                } else if (repeat$.type.get() === "None") {
-                                  repeat$.type.set("Day");
-                                  repeat$.num.set(next);
-                                } else {
-                                  repeat$.num.set(next);
-                                }
-                              }}
-                            />
-                          ) : (
-                            <WheelPicker
-                              style={[styles.picker, { backgroundColor: cardBackground }]}
-                              itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
-                              textColor={pickerTextColor}
-                              selectedValue={repeat$.num.get()}
-                              pickerData={values}
+                          <WheelPicker
+                            style={[styles.picker, { backgroundColor: cardBackground }]}
+                            itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
+                            textColor={pickerTextColor}
+                            selectedValue={repeat$.num.get()}
+                            pickerData={values}
                             onValueChange={(value: string) => {
                               repeat$.isRepeat.set(true);
                               if (value === "") {
@@ -430,55 +397,29 @@ const DateSelectSheet = () => {
                                 repeat$.num.set(value);
                               }
                             }}
-                            />
-                          )}
+                          />
                           {/* Type Picker */}
-                          {Platform.OS === "android" ? (
-                            <Picker
-                              values={types}
-                              legendState={repeat$.type}
-                              defaultValue={repeat$.type}
-                              ITEM_HEIGHT={34}
-                              VISIBLE_ITEMS={5}
-                              textStyle={pickerTextStyle}
-                              pillColor={pickerPill}
-                              enableSelectBox={true}
-                              onValueChange={(value) => {
-                                const next = String(value);
-                                repeat$.type.set(next);
-                                repeat$.isRepeat.set(true);
-                                if (next === "None") {
-                                  repeat$.num.set("");
-                                  repeat$.isRepeat.set(false);
-                                } else if (repeat$.num.get() === "") {
-                                  repeat$.num.set("1");
-                                }
-                                repeat$.isWeeks.set(next === "Week");
-                              }}
-                            />
-                          ) : (
-                            <WheelPicker
-                              isShowSelectLine={false}
-                              selectLineColor={pickerLine}
-                              selectLineSize={6}
-                              style={[styles.picker, { backgroundColor: cardBackground }]}
-                              itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
-                              textColor={pickerTextColor}
-                              selectedValue={repeat$.type.get()}
-                              pickerData={types}
-                              onValueChange={(value: string) => {
-                                repeat$.type.set(value);
-                                repeat$.isRepeat.set(true);
-                                if (value === "None") {
-                                  repeat$.num.set("");
-                                  repeat$.isRepeat.set(false);
-                                } else if (repeat$.num.get() === "") {
-                                  repeat$.num.set("1");
-                                }
-                                repeat$.isWeeks.set(value === "Week");
-                              }}
-                            />
-                          )}
+                          <WheelPicker
+                            isShowSelectLine={Platform.OS === "ios" ? false : true}
+                            selectLineColor={pickerLine}
+                            selectLineSize={6}
+                            style={[styles.picker, { backgroundColor: cardBackground }]}
+                            itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
+                            textColor={pickerTextColor}
+                            selectedValue={repeat$.type.get()}
+                            pickerData={types}
+                            onValueChange={(value: string) => {
+                              repeat$.type.set(value);
+                              repeat$.isRepeat.set(true);
+                              if (value === "None") {
+                                repeat$.num.set("");
+                                repeat$.isRepeat.set(false);
+                              } else if (repeat$.num.get() === "") {
+                                repeat$.num.set("1");
+                              }
+                              repeat$.isWeeks.set(value === "Week");
+                            }}
+                          />
                         </View>
                       </View>
 
@@ -683,8 +624,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 36,
   },
-  picker: { width: "50%", height: 215 },
-  pickerItem: { fontSize: 20 },
+  picker: {
+    width: "50%",
+    height: 215,
+  },
+  pickerItem: {
+    fontSize: 20,
+  },
   weekDayButton: {
     flex: 1,
     alignItems: "center",

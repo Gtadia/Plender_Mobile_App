@@ -242,6 +242,9 @@ const create = () => {
   const router = useRouter();
   let { height } = Dimensions.get("window");
   const titleRef = React.useRef<any>(null);
+  const descriptionRef = React.useRef<any>(null);
+  const lastFocusedFieldRef = React.useRef<"title" | "description">("title");
+  const restoreKeyboardAfterSheetRef = React.useRef(false);
   const { palette, colors, isDark } = themeTokens$.get();
   const listTheme = getListTheme(palette, isDark);
   const blurEnabled = styling$.tabBarBlurEnabled.get();
@@ -321,6 +324,21 @@ const create = () => {
     return () => sub.remove();
   }, [navigation]);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      if (!restoreKeyboardAfterSheetRef.current) return;
+      restoreKeyboardAfterSheetRef.current = false;
+      const timer = setTimeout(() => {
+        if (lastFocusedFieldRef.current === "description") {
+          descriptionRef.current?.focus?.();
+        } else {
+          titleRef.current?.focus?.();
+        }
+      }, 60);
+      return () => clearTimeout(timer);
+    }, [])
+  );
+
   return (
     <View style={styles.overlay}>
       {blurEnabled ? (
@@ -379,6 +397,9 @@ const create = () => {
                 placeholderTextColor={colors.subtext1}
                 ref={titleRef}
                 maxLength={TASK_NAME_MAX_LENGTH}
+                onFocus={() => {
+                  lastFocusedFieldRef.current = "title";
+                }}
               />
               <Memo>
                 {() => (
@@ -396,6 +417,10 @@ const create = () => {
               multiline
               placeholder="Description"
               placeholderTextColor={colors.subtext1}
+              ref={descriptionRef}
+              onFocus={() => {
+                lastFocusedFieldRef.current = "description";
+              }}
             />
 
             {/* Actions row: date, time goal, category + submit */}
@@ -427,6 +452,8 @@ const create = () => {
                           activeOpacity={quickAddEnabled ? 1 : 0.85}
                           onPress={() => {
                             if (quickAddEnabled) return;
+                            restoreKeyboardAfterSheetRef.current = true;
+                            Keyboard.dismiss();
                             withActionLock(() => router.push("/(tasks)/dateSelectSheet"));
                           }}
                           disabled={quickAddEnabled}
@@ -496,6 +523,8 @@ const create = () => {
                           activeOpacity={quickAddEnabled ? 1 : 0.85}
                           onPress={() => {
                             if (quickAddEnabled) return;
+                            restoreKeyboardAfterSheetRef.current = true;
+                            Keyboard.dismiss();
                             withActionLock(() => router.push("/(tasks)/timeGoalSelectSheet"));
                           }}
                           disabled={quickAddEnabled}
