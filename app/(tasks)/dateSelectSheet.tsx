@@ -314,7 +314,10 @@ const DateSelectSheet = () => {
         </View>
 
         {/* Content Scroll */}
-        <ScrollView showsVerticalScrollIndicator={false}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
           <View style={{ alignItems: "center" }}>
             <View style={{ maxWidth: 400, alignSelf: "center" }}>
               {/* Start Date Picker */}
@@ -677,6 +680,9 @@ export default DateSelectSheet;
 // Styles
 // -------------------------------------------------------------
 const styles = StyleSheet.create({
+  scrollContent: {
+    paddingBottom: 36,
+  },
   picker: { width: "50%", height: 215 },
   pickerItem: { fontSize: 20 },
   weekDayButton: {

@@ -5,6 +5,7 @@ import { RRule, RRuleSet } from 'rrule';
 
 const db = SQLite.openDatabaseSync('calendar.db');
 let dbReady: Promise<void> | null = null;
+const rruleCache = new Map<string, RRule>();
 
 export interface dbEvents {
   id: number;
@@ -60,7 +61,12 @@ export async function createEvent({
   console.log("TEST: ", { title, rrule, category, timeGoal, timeSpent, description });
   await db.runAsync(
     `INSERT INTO event (title, rrule, category, timeGoal, timeSpent, description) VALUES (?, ?, ?, ?, ?, ?)`,
-    [title, rrule, category, timeGoal, timeSpent, description]
+    title,
+    rrule,
+    category,
+    timeGoal,
+    timeSpent,
+    description
   );
   console.log("TEST COMPLETED");
 
@@ -93,9 +99,11 @@ export async function getEventsForDate(targetDate: Date) {
 
   for (const row of rows) {
     try {
-      const rruleOptions = RRule.parseString(row.rrule);
-
-      const rule = new RRule(rruleOptions);
+      const cached = rruleCache.get(row.rrule);
+      const rule = cached ?? new RRule(RRule.parseString(row.rrule));
+      if (!cached) {
+        rruleCache.set(row.rrule, rule);
+      }
 
       // Check if this event occurs *on* the target day
       const occursOnDay = rule.between(startOfDay, endOfDay, true).length > 0;
@@ -117,6 +125,45 @@ export async function getEventsForDate(targetDate: Date) {
   }
 
   return matchingEvents;
+}
+
+export async function getEventsForRange(startDate: Date, endDate: Date) {
+  await initializeDB();
+  const rows: dbEvents[] = await db.getAllAsync(`SELECT * FROM event`);
+  const startOfRange = dayjs(startDate).startOf('day').toDate();
+  const endOfRange = dayjs(endDate).endOf('day').toDate();
+  const eventsByDate: Record<string, eventsType[]> = {};
+
+  for (const row of rows) {
+    try {
+      const cached = rruleCache.get(row.rrule);
+      const rule = cached ?? new RRule(RRule.parseString(row.rrule));
+      if (!cached) {
+        rruleCache.set(row.rrule, rule);
+      }
+      const occurrences = rule.between(startOfRange, endOfRange, true);
+      if (!occurrences.length) continue;
+      occurrences.forEach((occurrence) => {
+        const key = dayjs(occurrence).format('YYYY-MM-DD');
+        if (!eventsByDate[key]) {
+          eventsByDate[key] = [];
+        }
+        eventsByDate[key].push({
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          date: dayjs(occurrence).toDate(),
+          category: row.category,
+          timeGoal: row.timeGoal,
+          timeSpent: row.timeSpent,
+        });
+      });
+    } catch (e) {
+      console.warn('Invalid RRULE for row:', row, e);
+    }
+  }
+
+  return eventsByDate;
 }
 
 
@@ -178,13 +225,13 @@ const fields: string[] = [];
 
   values.push(id); // add ID to the end
 
-  await db.runAsync(query, values);
+  await db.runAsync(query, ...values);
   console.log("Event Updated:", id);
 }
 
 export async function deleteEvent(id: number) {
   await initializeDB();
-  await db.runAsync(`DELETE FROM event WHERE id = ?`, [id]);
+  await db.runAsync(`DELETE FROM event WHERE id = ?`, id);
 }
 
 // DEBUGGING TOOLS
@@ -200,6 +247,7 @@ export async function getAllEvents() {
 export async function clearEvents() {
   await db.runAsync(`DROP TABLE IF EXISTS event`);
   dbReady = null;
+  rruleCache.clear();
   await initializeDB();
   await db.runAsync(`DELETE FROM event`);
   console.log("All events cleared");

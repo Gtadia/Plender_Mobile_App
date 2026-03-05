@@ -5,7 +5,7 @@ import { AccentKey, ThemeKey, accentOpposites, getThemeTokens } from "@/constant
 import dayjs from "dayjs";
 import utc from "dayjs/plugin/utc";
 import timezone from "dayjs/plugin/timezone";
-import { dbEvents, eventsType, getEventsForDate } from "./database";
+import { dbEvents, eventsType, getEventsForDate, getEventsForRange } from "./database";
 import { getNow } from "./timeOverride";
 import moment from "moment";
 
@@ -241,6 +241,29 @@ export async function loadDay(date: Date) {
     const withDirty = timeSpent !== undefined ? { ...r, timeSpent } : r;
     tasks$.entities[r.id].set(withDirty);
   });
+}
+
+export async function loadDateRange(startDate: Date, endDate: Date) {
+  await ensureDirtyTasksHydrated();
+  const eventsByDate = await getEventsForRange(startDate, endDate);
+  const dirty = getDirtySnapshot();
+  const start = moment(startDate).startOf('day');
+  const end = moment(endDate).startOf('day');
+  const cursor = start.clone();
+
+  while (cursor.isSameOrBefore(end, 'day')) {
+    const key = cursor.format('YYYY-MM-DD');
+    const rows = eventsByDate[key] ?? [];
+    tasks$.lists.byDate[key].set(rows.map((row) => row.id));
+    rows.forEach((row) => {
+      const dirtyEntry = dirty[row.id];
+      const dayOverride = dirtyEntry?.byDate?.[key];
+      const timeSpent = dayOverride ?? dirtyEntry?.timeSpent;
+      const withDirty = timeSpent !== undefined ? { ...row, timeSpent } : row;
+      tasks$.entities[row.id].set(withDirty);
+    });
+    cursor.add(1, 'day');
+  }
 }
 export async function loadWeek() {
   // TODO — For Calendar View

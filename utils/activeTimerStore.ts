@@ -23,11 +23,11 @@ observe(() => {
   }
   const payload = value ? JSON.stringify(value) : null;
   if (payload) {
-    kvDb.runAsync("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)", [STORAGE_KEY, payload]).catch((err) =>
+    kvDb.runAsync("INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)", STORAGE_KEY, payload).catch((err) =>
       console.warn("Failed to persist active timer", err)
     );
   } else {
-    kvDb.runAsync("DELETE FROM kv WHERE key = ?", [STORAGE_KEY]).catch((err) =>
+    kvDb.runAsync("DELETE FROM kv WHERE key = ?", STORAGE_KEY).catch((err) =>
       console.warn("Failed to clear active timer", err)
     );
   }
@@ -37,7 +37,7 @@ export async function hydrateActiveTimer() {
   if (hydrated) return;
   hydrated = true;
   try {
-    const rows = await kvDb.getAllAsync("SELECT value FROM kv WHERE key = ?", [STORAGE_KEY]);
+    const rows = await kvDb.getAllAsync("SELECT value FROM kv WHERE key = ?", STORAGE_KEY);
     const raw = rows?.[0]?.value as string | undefined;
     if (raw) activeTimer$.set(JSON.parse(raw));
   } catch (err) {
@@ -50,7 +50,7 @@ export async function hydrateActiveTimer() {
 export function clearActiveTimerState() {
   activeTimer$.set(null);
   if (!readyToPersist) {
-    kvDb.runAsync("DELETE FROM kv WHERE key = ?", [STORAGE_KEY]).catch((err) =>
+    kvDb.runAsync("DELETE FROM kv WHERE key = ?", STORAGE_KEY).catch((err) =>
       console.warn("Failed to clear active timer", err)
     );
   }

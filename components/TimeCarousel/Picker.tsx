@@ -1,5 +1,5 @@
 import { Observable, observe } from "@legendapp/state";
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Platform, StyleSheet, Text, View } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
@@ -102,10 +102,19 @@ const Picker = ({
     translateY.value = withSpring(dest, { damping: 45, stiffness: 280, mass: 0.9 });
   }, []);
 
-  observe(() => {
-    const idx = valueToIndex(defaultValue.get());
-    scrollTo((idx - 2) * -ITEM_HEIGHT);
-  });
+  useEffect(() => {
+    const stop = observe(() => {
+      const idx = valueToIndex(defaultValue.get());
+      scrollTo((idx - 2) * -ITEM_HEIGHT);
+    });
+    return () => {
+      if (typeof stop === "function") {
+        stop();
+      } else {
+        stop?.off?.();
+      }
+    };
+  }, [defaultValue, ITEM_HEIGHT, scrollTo, values]);
 
   const selectedIndex = useDerivedValue(() =>
     Math.round((translateY.value - ITEM_HEIGHT * 2) / -ITEM_HEIGHT)

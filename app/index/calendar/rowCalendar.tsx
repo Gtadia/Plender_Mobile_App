@@ -9,7 +9,6 @@ import {
   InteractionManager,
   ScrollView,
   RefreshControl,
-  Platform,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import moment, { Moment } from 'moment';
@@ -76,38 +75,6 @@ const generatePaneSet = (center: Moment, startWeekOn: string): WeekPane[] => {
   return Array.from({ length: PANES }).map((_, idx) => buildPane(base, idx, startWeekOn));
 };
 
-const buildDayPanes = (center: Moment): Moment[] => [
-  center.clone().subtract(1, 'day'),
-  center,
-  center.clone().add(1, 'day'),
-];
-
-const shiftDayPanes = (current: Moment[], direction: 1 | -1): Moment[] => {
-  if (!current.length) {
-    return buildDayPanes(normalizeDate(moment(getNow())));
-  }
-  if (direction > 0) {
-    const shifted = current.slice(1);
-    const last = current[current.length - 1].clone().add(1, 'day');
-    shifted.push(normalizeDate(last));
-    return shifted;
-  }
-  const shifted = current.slice(0, -1);
-  const first = current[0].clone().subtract(1, 'day');
-  shifted.unshift(normalizeDate(first));
-  return shifted;
-};
-
-const shiftDayPanesBy = (current: Moment[], step: number): Moment[] => {
-  if (!step) return current;
-  const direction: 1 | -1 = step > 0 ? 1 : -1;
-  let next = current;
-  for (let i = 0; i < Math.abs(step); i += 1) {
-    next = shiftDayPanes(next, direction);
-  }
-  return next;
-};
-
 const shiftWeekPanes = (current: WeekPane[], direction: 1 | -1, startWeekOn: string): WeekPane[] => {
   if (!current.length) {
     return generatePaneSet(normalizeDate(moment(getNow())), startWeekOn);
@@ -154,7 +121,6 @@ export default observer(function FlatListSwiperExample() {
   const [selectedDate, setSelectedDate] = useState(() => normalizeDate(moment(getNow())));
   const selectedDateRef = useRef(selectedDate);
   const [panes, setPanes] = useState<WeekPane[]>(() => generatePaneSet(normalizeDate(moment(getNow())), startWeekOn));
-  const [dayPanes, setDayPanes] = useState<Moment[]>(() => buildDayPanes(normalizeDate(moment(getNow()))));
   const [dataVersion, setDataVersion] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
   const [isWeekSnapping, setIsWeekSnapping] = useState(false);
@@ -166,33 +132,9 @@ export default observer(function FlatListSwiperExample() {
   const dayAllowSelectRef = useRef(false);
   const weekSnapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const daySnapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const weekPendingSwapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dayPendingSwapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressWeekRebuildRef = useRef(false);
   const suppressWeekStartWeekOnRef = useRef(startWeekOn);
-  const suppressDayRebuildRef = useRef(false);
   const pendingWeekRecenterRef = useRef(false);
-  const pendingDayRecenterRef = useRef(false);
-  const weekSuspendReadsRef = useRef(false);
-  const pendingWeekSwapRef = useRef<{ step: number; visibleIndex: number } | null>(null);
-  const pendingDaySwapRef = useRef<{ step: number; visibleIndex: number } | null>(null);
-  const lastWeekPositionRef = useRef(CENTER_INDEX);
-  const lastWeekOffsetRef = useRef(0);
-  const lastDayPositionRef = useRef(DAY_CENTER_INDEX);
-  const lastDayOffsetRef = useRef(0);
-  const daySwapInFlightRef = useRef(false);
-  const dayRecenterGuardRef = useRef(false);
-  const dayRecenterTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dayCommitLockRef = useRef(false);
-  const lastDayCommitAtRef = useRef(0);
-  const dayProgressCacheRef = useRef(
-    new Map<string, { taskCount: number; spentRatio: number; hasGoal: boolean }>(),
-  );
-
-  const invalidateDayProgressCache = useCallback((date: Moment | string) => {
-    const key = typeof date === 'string' ? date : date.format('YYYY-MM-DD');
-    dayProgressCacheRef.current.delete(key);
-  }, []);
 
   useEffect(() => {
     const unsubscribe = selectedDate$.onChange(({ value }) => {
@@ -235,14 +177,6 @@ export default observer(function FlatListSwiperExample() {
   }, [selectedDate, startWeekOn]);
 
   useEffect(() => {
-    if (suppressDayRebuildRef.current) {
-      suppressDayRebuildRef.current = false;
-      return;
-    }
-    setDayPanes(buildDayPanes(selectedDate));
-  }, [selectedDate]);
-
-  useEffect(() => {
     selectedDateRef.current = selectedDate;
   }, [selectedDate]);
 
@@ -251,20 +185,20 @@ export default observer(function FlatListSwiperExample() {
       if (weekSnapTimeoutRef.current) {
         clearTimeout(weekSnapTimeoutRef.current);
       }
-      if (weekPendingSwapTimeoutRef.current) {
-        clearTimeout(weekPendingSwapTimeoutRef.current);
-      }
-      if (dayPendingSwapTimeoutRef.current) {
-        clearTimeout(dayPendingSwapTimeoutRef.current);
-      }
-      if (dayRecenterTimeoutRef.current) {
-        clearTimeout(dayRecenterTimeoutRef.current);
-      }
       if (daySnapTimeoutRef.current) {
         clearTimeout(daySnapTimeoutRef.current);
       }
     };
   }, []);
+
+  const days = useMemo(() => {
+    const center = selectedDate.clone();
+    return [
+      center.clone().subtract(1, 'day'),
+      center,
+      center.clone().add(1, 'day'),
+    ];
+  }, [selectedDate]);
 
 
   // Ensure that the date is cache synced when...
@@ -283,13 +217,12 @@ export default observer(function FlatListSwiperExample() {
       try {
         await loadDay(date.toDate());
         setDataVersion((v) => v + 1);
-        invalidateDayProgressCache(key);
       } finally {
         pendingLoadsRef.current.delete(key);
       }
       return tasks$.lists.byDate[key]?.get?.() ?? [];
     },
-    [invalidateDayProgressCache, setDataVersion],
+    [setDataVersion],
   );
 
   const ensureWeekCached = useCallback(
@@ -311,12 +244,9 @@ export default observer(function FlatListSwiperExample() {
     });
     if (!keys.size) return;
     await Promise.all(
-      Array.from(keys).map(async (key) => {
-        await loadDay(moment(key, 'YYYY-MM-DD').toDate());
-        invalidateDayProgressCache(key);
-      }),
+      Array.from(keys).map((key) => loadDay(moment(key, 'YYYY-MM-DD').toDate())),
     );
-  }, [invalidateDayProgressCache]);
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -374,16 +304,6 @@ export default observer(function FlatListSwiperExample() {
   const recenterDayPager = useCallback((immediate = false) => {
     dayIgnoreSelectRef.current = true;
     dayAllowSelectRef.current = false;
-    if (Platform.OS === 'android') {
-      dayRecenterGuardRef.current = true;
-      if (dayRecenterTimeoutRef.current) {
-        clearTimeout(dayRecenterTimeoutRef.current);
-      }
-      dayRecenterTimeoutRef.current = setTimeout(() => {
-        dayRecenterGuardRef.current = false;
-        dayIgnoreSelectRef.current = false;
-      }, 220);
-    }
     if (immediate) {
       dayPagerRef.current?.setPageWithoutAnimation(DAY_CENTER_INDEX);
       return;
@@ -402,76 +322,9 @@ export default observer(function FlatListSwiperExample() {
     recenterWeekPager();
   }, [panes, recenterWeekPager]);
 
-  useLayoutEffect(() => {
-    if (Platform.OS !== 'android') return;
-    if (pendingDayRecenterRef.current) {
-      pendingDayRecenterRef.current = false;
-      recenterDayPager(true);
-      return;
-    }
-    recenterDayPager(true);
-  }, [dayPanes, recenterDayPager]);
-
   useEffect(() => {
-    if (Platform.OS === 'android') return;
     recenterDayPager(true);
-  }, [dayPanes, recenterDayPager]);
-
-  const commitWeekShift = useCallback(
-    (step: number) => {
-      weekSuspendReadsRef.current = true;
-      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'week'));
-      suppressWeekRebuildRef.current = true;
-      suppressWeekStartWeekOnRef.current = startWeekOn;
-      setPanes((current) => shiftWeekPanesBy(current, step, startWeekOn));
-      selectedDateRef.current = nextDate;
-      setSelectedDate(nextDate);
-      selectedDate$.set(nextDate);
-      followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-      ensureWeekCached(nextDate);
-      recenterDayPager(true);
-      requestAnimationFrame(() => {
-        weekSuspendReadsRef.current = false;
-      });
-    },
-    [ensureWeekCached, recenterDayPager, startWeekOn],
-  );
-
-  const commitWeekShiftAndroid = useCallback(
-    (step: number, visibleIndex: number) => {
-      weekSuspendReadsRef.current = true;
-      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'week'));
-      suppressWeekRebuildRef.current = true;
-      suppressWeekStartWeekOnRef.current = startWeekOn;
-      const freezeIndex = Math.max(0, Math.min(PANES - 1, CENTER_INDEX + step));
-      let finalNext: WeekPane[] | null = null;
-      setPanes((current) => {
-        finalNext = shiftWeekPanesBy(current, step, startWeekOn);
-        const pinned = current[freezeIndex] ?? current[visibleIndex];
-        if (!pinned) {
-          return finalNext;
-        }
-        const pinnedNext = finalNext.slice();
-        pinnedNext[visibleIndex] = pinned;
-        return pinnedNext;
-      });
-      ensureWeekCached(nextDate);
-      pendingWeekRecenterRef.current = true;
-      requestAnimationFrame(() => {
-        if (finalNext) {
-          setPanes(finalNext);
-        }
-        selectedDateRef.current = nextDate;
-        setSelectedDate(nextDate);
-        selectedDate$.set(nextDate);
-        followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-        recenterDayPager(true);
-        weekSuspendReadsRef.current = false;
-        setIsWeekSnapping(false);
-      });
-    },
-    [ensureWeekCached, recenterDayPager, startWeekOn],
-  );
+  }, [days, recenterDayPager]);
 
   const handleWeekPageSelected = useCallback(
     (event: { nativeEvent: { position: number } }) => {
@@ -483,132 +336,46 @@ export default observer(function FlatListSwiperExample() {
       }
       if (!weekAllowSelectRef.current) return;
       weekAllowSelectRef.current = false;
-      const step = Math.max(-1, Math.min(1, idx - CENTER_INDEX));
+      const step = idx - CENTER_INDEX;
       if (step === 0) return;
       if (weekSnapTimeoutRef.current) {
         clearTimeout(weekSnapTimeoutRef.current);
       }
-      if (Platform.OS === 'android') {
-        pendingWeekSwapRef.current = { step, visibleIndex: idx };
-        if (weekPendingSwapTimeoutRef.current) {
-          clearTimeout(weekPendingSwapTimeoutRef.current);
-        }
-        weekPendingSwapTimeoutRef.current = setTimeout(() => {
-          const pending = pendingWeekSwapRef.current;
-          if (!pending) {
-            weekSuspendReadsRef.current = false;
-            setIsWeekSnapping(false);
-            return;
-          }
-          pendingWeekSwapRef.current = null;
-          setIsWeekSnapping(true);
-          pendingWeekRecenterRef.current = true;
-          commitWeekShiftAndroid(pending.step, pending.visibleIndex);
-        }, 320);
-        return;
-      }
       setIsWeekSnapping(true);
+      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'week'));
+      suppressWeekRebuildRef.current = true;
+      suppressWeekStartWeekOnRef.current = startWeekOn;
       pendingWeekRecenterRef.current = true;
-      commitWeekShift(step);
+      setPanes((current) => shiftWeekPanesBy(current, step, startWeekOn));
+      selectedDateRef.current = nextDate;
+      setSelectedDate(nextDate);
+      selectedDate$.set(nextDate);
+      followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
+      ensureWeekCached(nextDate);
+      recenterDayPager(true);
       weekSnapTimeoutRef.current = setTimeout(() => {
         setIsWeekSnapping(false);
       }, 160);
     },
-    [commitWeekShift],
-  );
-
-  const commitDayShiftAndroid = useCallback(
-    (step: number, visibleIndex: number) => {
-      if (daySwapInFlightRef.current) {
-        setIsDaySnapping(false);
-        dayCommitLockRef.current = false;
-        return;
-      }
-      daySwapInFlightRef.current = true;
-      lastDayCommitAtRef.current = Date.now();
-      const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'day'));
-      suppressDayRebuildRef.current = true;
-      let finalNext: Moment[] | null = null;
-      setDayPanes((current) => {
-        finalNext = shiftDayPanesBy(current, step);
-        const pinned = current[visibleIndex];
-        if (!pinned) {
-          return finalNext;
-        }
-        const pinnedNext = finalNext.slice();
-        pinnedNext[visibleIndex] = pinned;
-        return pinnedNext;
-      });
-      void ensureDateCached(nextDate);
-      pendingDayRecenterRef.current = true;
-      requestAnimationFrame(() => {
-        if (finalNext) {
-          setDayPanes(finalNext);
-        }
-        selectedDateRef.current = nextDate;
-        setSelectedDate(nextDate);
-        selectedDate$.set(nextDate);
-        followTodayRef.current = nextDate.isSame(moment(getNow()), 'day');
-        recenterDayPager(true);
-        setIsDaySnapping(false);
-        daySwapInFlightRef.current = false;
-        dayCommitLockRef.current = false;
-      });
-    },
-    [ensureDateCached, recenterDayPager],
+    [ensureWeekCached, recenterDayPager, startWeekOn],
   );
 
   const handleDayPageSelected = useCallback(
     (event: { nativeEvent: { position: number } }) => {
       const idx = event.nativeEvent.position;
-      if (Platform.OS === 'android' && Date.now() - lastDayCommitAtRef.current < 250) {
-        return;
-      }
-      if (Platform.OS === 'android' && dayRecenterGuardRef.current) {
-        dayRecenterGuardRef.current = false;
-        return;
-      }
       if (dayIgnoreSelectRef.current) {
         dayIgnoreSelectRef.current = false;
         dayAllowSelectRef.current = false;
         return;
       }
-      if (Platform.OS !== 'android' && !dayAllowSelectRef.current) return;
+      if (!dayAllowSelectRef.current) return;
       dayAllowSelectRef.current = false;
       if (idx === DAY_CENTER_INDEX) return;
       if (daySnapTimeoutRef.current) {
         clearTimeout(daySnapTimeoutRef.current);
       }
-      const step = idx > DAY_CENTER_INDEX ? 1 : -1;
-      if (Platform.OS === 'android') {
-        if (dayCommitLockRef.current) {
-          return;
-        }
-        dayCommitLockRef.current = true;
-        pendingDaySwapRef.current = { step, visibleIndex: idx };
-        if (dayPendingSwapTimeoutRef.current) {
-          clearTimeout(dayPendingSwapTimeoutRef.current);
-        }
-        dayPendingSwapTimeoutRef.current = setTimeout(() => {
-          const pending = pendingDaySwapRef.current;
-          if (!pending) {
-            setIsDaySnapping(false);
-            dayCommitLockRef.current = false;
-            return;
-          }
-          if (Date.now() - lastDayCommitAtRef.current < 250) {
-            pendingDaySwapRef.current = null;
-            setIsDaySnapping(false);
-            dayCommitLockRef.current = false;
-            return;
-          }
-          pendingDaySwapRef.current = null;
-          setIsDaySnapping(true);
-          commitDayShiftAndroid(pending.step, pending.visibleIndex);
-        }, 220);
-        return;
-      }
       setIsDaySnapping(true);
+      const step = idx > DAY_CENTER_INDEX ? 1 : -1;
       const nextDate = normalizeDate(selectedDateRef.current.clone().add(step, 'day'));
       selectedDateRef.current = nextDate;
       setSelectedDate(nextDate);
@@ -620,7 +387,7 @@ export default observer(function FlatListSwiperExample() {
         setIsDaySnapping(false);
       }, 120);
     },
-    [commitDayShiftAndroid, ensureDateCached, recenterDayPager],
+    [ensureDateCached, recenterDayPager],
   );
 
   const handleWeekScrollStateChanged = useCallback(
@@ -628,56 +395,13 @@ export default observer(function FlatListSwiperExample() {
       const state = event.nativeEvent.pageScrollState;
       if (state === 'dragging') {
         weekAllowSelectRef.current = true;
-        weekSuspendReadsRef.current = true;
         const base = selectedDateRef.current;
         ensureWeekCached(base);
         ensureWeekCached(base.clone().add(1, 'week'));
         ensureWeekCached(base.clone().subtract(1, 'week'));
-        return;
-      }
-      if (state === 'idle') {
-        if (Platform.OS === 'android' && pendingWeekSwapRef.current) {
-          const { step, visibleIndex } = pendingWeekSwapRef.current;
-          pendingWeekSwapRef.current = null;
-          if (weekPendingSwapTimeoutRef.current) {
-            clearTimeout(weekPendingSwapTimeoutRef.current);
-          }
-          setIsWeekSnapping(true);
-          pendingWeekRecenterRef.current = true;
-          commitWeekShiftAndroid(step, visibleIndex);
-          return;
-        }
-        if (Platform.OS === 'android' && !pendingWeekSwapRef.current) {
-          const rawIndex =
-            lastWeekPositionRef.current + (lastWeekOffsetRef.current > 0.5 ? 1 : 0);
-          const step = Math.max(-1, Math.min(1, rawIndex - CENTER_INDEX));
-          if (step !== 0) {
-            setIsWeekSnapping(true);
-            pendingWeekRecenterRef.current = true;
-            commitWeekShiftAndroid(step, rawIndex);
-            return;
-          }
-        }
-        if (Platform.OS === 'android') {
-          weekSuspendReadsRef.current = false;
-          setIsWeekSnapping(false);
-          return;
-        }
-        requestAnimationFrame(() => {
-          weekSuspendReadsRef.current = false;
-        });
       }
     },
-    [commitWeekShiftAndroid, ensureWeekCached],
-  );
-
-  const handleWeekPageScroll = useCallback(
-    (event: { nativeEvent: { position: number; offset: number } }) => {
-      if (Platform.OS !== 'android') return;
-      lastWeekPositionRef.current = event.nativeEvent.position;
-      lastWeekOffsetRef.current = event.nativeEvent.offset;
-    },
-    [],
+    [ensureWeekCached],
   );
 
   const handleDayScrollStateChanged = useCallback(
@@ -685,59 +409,7 @@ export default observer(function FlatListSwiperExample() {
       const state = event.nativeEvent.pageScrollState;
       if (state === 'dragging') {
         dayAllowSelectRef.current = true;
-        return;
       }
-      if (state === 'idle') {
-        if (Platform.OS === 'android' && pendingDaySwapRef.current) {
-          if (Date.now() - lastDayCommitAtRef.current < 250) {
-            pendingDaySwapRef.current = null;
-            if (dayPendingSwapTimeoutRef.current) {
-              clearTimeout(dayPendingSwapTimeoutRef.current);
-            }
-            dayCommitLockRef.current = false;
-            setIsDaySnapping(false);
-            return;
-          }
-          const { step, visibleIndex } = pendingDaySwapRef.current;
-          pendingDaySwapRef.current = null;
-          if (dayPendingSwapTimeoutRef.current) {
-            clearTimeout(dayPendingSwapTimeoutRef.current);
-          }
-          setIsDaySnapping(true);
-          dayCommitLockRef.current = true;
-          commitDayShiftAndroid(step, visibleIndex);
-          return;
-        }
-        if (Platform.OS === 'android' && !pendingDaySwapRef.current) {
-          const rawIndex =
-            lastDayPositionRef.current + (lastDayOffsetRef.current > 0.5 ? 1 : 0);
-          const step = Math.max(-1, Math.min(1, rawIndex - DAY_CENTER_INDEX));
-          if (step !== 0) {
-            if (Date.now() - lastDayCommitAtRef.current < 250) {
-              setIsDaySnapping(false);
-              dayCommitLockRef.current = false;
-              return;
-            }
-            setIsDaySnapping(true);
-            dayCommitLockRef.current = true;
-            commitDayShiftAndroid(step, rawIndex);
-            return;
-          }
-        }
-        if (Platform.OS === 'android') {
-          setIsDaySnapping(false);
-          dayCommitLockRef.current = false;
-        }
-      }
-    },
-    [commitDayShiftAndroid],
-  );
-
-  const handleDayPageScroll = useCallback(
-    (event: { nativeEvent: { position: number; offset: number } }) => {
-      if (Platform.OS !== 'android') return;
-      lastDayPositionRef.current = event.nativeEvent.position;
-      lastDayOffsetRef.current = event.nativeEvent.offset;
     },
     [],
   );
@@ -785,11 +457,6 @@ export default observer(function FlatListSwiperExample() {
 
   const getDayProgress = useCallback(
     (date: Moment) => {
-      const key = date.format('YYYY-MM-DD');
-      if (weekSuspendReadsRef.current) {
-        const cached = dayProgressCacheRef.current.get(key);
-        if (cached) return cached;
-      }
       const tasksForDay = getTasksForDate(date);
       const taskCount = tasksForDay.length;
       const goalTasks = tasksForDay.filter((t) => (t.timeGoal ?? 0) > 0);
@@ -800,13 +467,12 @@ export default observer(function FlatListSwiperExample() {
         return sum + Math.min(spent, goal);
       }, 0);
       const timeGoal = goalTasks.reduce((sum, t) => sum + (t.timeGoal ?? 0), 0);
-      const result = {
+
+      return {
         taskCount,
         spentRatio: timeGoal > 0 ? Math.min(timeSpent / timeGoal, 1) : 0,
         hasGoal: timeGoal > 0,
       };
-      dayProgressCacheRef.current.set(key, result);
-      return result;
     },
     [capCategoryCompletion, getTasksForDate],
   );
@@ -822,7 +488,7 @@ export default observer(function FlatListSwiperExample() {
               const isActive = day.isSame(selectedDate, 'day');
               const dayKey = day.format('YYYY-MM-DD');
               const cachedList = tasks$.lists.byDate[dayKey]?.get?.();
-              const isLoading = !Array.isArray(cachedList) && !weekSuspendReadsRef.current;
+              const isLoading = !Array.isArray(cachedList);
               const { taskCount, spentRatio, hasGoal } = getDayProgress(day);
               const inactiveGoalColor = withOpacity(colors.accent, 0.4);
               const inactiveTrackColor = withOpacity(oppositeAccent, 0.4);
@@ -842,9 +508,8 @@ export default observer(function FlatListSwiperExample() {
               const centerLabel = isLoading ? "" : taskLabel;
               return (
                 <Pressable
-                  key={`week-day-${dayKey}`}
+                  key={`week-day-${index}`}
                   onPress={() => handleSelectWeekDay(day)}
-                  disabled={isWeekSnapping || isDaySnapping}
                   hitSlop={8}
                 >
                   <View style={[styles.item, !isActive && styles.itemInactive]}>
@@ -871,7 +536,7 @@ export default observer(function FlatListSwiperExample() {
         </View>
       );
     },
-    [getDayProgress, handleSelectWeekDay, isDaySnapping, isWeekSnapping, selectedDate, colors, oppositeAccent],
+    [getDayProgress, handleSelectWeekDay, selectedDate, colors, oppositeAccent],
   );
 
   const insets = useSafeAreaInsets();
@@ -888,7 +553,6 @@ export default observer(function FlatListSwiperExample() {
       await loadDay(today.toDate());
       await flushDirtyTasksToDB();
       await ensureDirtyTasksHydrated();
-      dayProgressCacheRef.current.clear();
     } finally {
       setRefreshing(false);
     }
@@ -934,45 +598,40 @@ export default observer(function FlatListSwiperExample() {
       </View>
       {/* <SafeAreaView style={{ }}> */}
           <View style={styles.calContainer}>
-            <View style={styles.weekRowWrapper} pointerEvents={isWeekSnapping || isDaySnapping ? "none" : "auto"}>
+            <View style={styles.weekRowWrapper}>
               <PagerView
                 ref={weekPagerRef}
                 style={styles.weekPager}
                 initialPage={CENTER_INDEX}
-                offscreenPageLimit={CENTER_INDEX}
                 onPageSelected={handleWeekPageSelected}
-                onPageScroll={handleWeekPageScroll}
                 onPageScrollStateChanged={handleWeekScrollStateChanged}
-                scrollEnabled={!isWeekSnapping && !isDaySnapping}
+                scrollEnabled={!isWeekSnapping}
               >
-                {panes.map((pane) => (
-                  <View key={`week-pane-${pane.key}`} style={{ width }}>
+                {panes.map((pane, index) => (
+                  <View key={`week-pane-${index}`} style={{ width }}>
                     {renderWeek(pane)}
                   </View>
                 ))}
               </PagerView>
             </View>
 
-            <View style={styles.dayListWrapper} pointerEvents={isWeekSnapping || isDaySnapping ? "none" : "auto"}>
+            <View style={styles.dayListWrapper}>
               <PagerView
                 ref={dayPagerRef}
                 style={styles.dayPager}
                 initialPage={DAY_CENTER_INDEX}
                 onPageSelected={handleDayPageSelected}
-                onPageScroll={handleDayPageScroll}
                 onPageScrollStateChanged={handleDayScrollStateChanged}
-                scrollEnabled={!isDaySnapping && !isWeekSnapping}
+                scrollEnabled={!isDaySnapping}
               >
-                {[0, 1, 2].map((index) => {
-                  const item = dayPanes[index];
+                {days.map((item) => {
                   const dateKey = item.format('YYYY-MM-DD');
                   return (
                     <View
-                      key={`day-pane-${index}`}
+                      key={dateKey}
                       style={styles.dayPane}
                     >
                     <TouchableOpacity
-                      disabled={isWeekSnapping || isDaySnapping}
                       onPress={() => {
                         router.push('/calendarDateSheet');
                       }}
@@ -993,6 +652,7 @@ export default observer(function FlatListSwiperExample() {
                         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
                       >
                         <TaskList
+                          key={dateKey}
                           dateKey={dateKey}
                           variant="calendar"
                           onPressItem={(id) => {

@@ -402,6 +402,7 @@ const create = () => {
             <View style={styles.actionRow}>
               <ScrollView
                 horizontal={true}
+                style={styles.actionsScroll}
                 showsHorizontalScrollIndicator={false}
                 keyboardShouldPersistTaps={"always"}
               >
@@ -925,15 +926,19 @@ const styles = StyleSheet.create({
   // Actions row (left scroll of chips + right submit button)
   actionRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignContent: "center",
+    alignItems: "center",
     marginBottom: 0,
+  },
+  actionsScroll: {
+    flex: 1,
+    minWidth: 0,
   },
 
   // Action chips container
   actions: {
     flexDirection: "row",
     alignItems: "center",
+    paddingRight: 4,
   },
 
   // Single action chip
@@ -958,6 +963,8 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     aspectRatio: 1,
     width: 40,
+    marginLeft: 10,
+    flexShrink: 0,
     justifyContent: "center",
     alignItems: "center",
   },

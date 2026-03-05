@@ -2,11 +2,11 @@ import React, { useEffect } from 'react';
 import { Stack, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { clearEvents, eventsType, getEventsForDate, initializeDB } from '@/utils/database';
+import { initializeDB } from '@/utils/database';
 import { useBackNavOverride } from '@/utils/useBackNavOverride';
 import { Toast } from '@/components/animation-toast/components';
 import { Host } from 'react-native-portalize';
-import { dayKey$, ensureCategoriesHydrated, ensureSettingsHydrated, ensureStylingHydrated, loadDay, tasks$, themeTokens$ } from '@/utils/stateManager';
+import { dayKey$, ensureCategoriesHydrated, ensureSettingsHydrated, ensureStylingHydrated, loadDay, themeTokens$ } from '@/utils/stateManager';
 import { fakeNow$, getNow } from '@/utils/timeOverride';
 import { AppState } from 'react-native';
 import { observer } from '@legendapp/state/react';
@@ -17,29 +17,34 @@ import moment from 'moment';
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
-const RootLayout = observer(() => {
-  // intialize sqlite database
-  // clearEvents();
-  initializeDB();
-  useBackNavOverride();   // Overrides default back behavior of Android
+let hasBootstrapped = false;
 
-  // Load Today's Event's
-  console.log("Initialize DB cache")
-  ensureCategoriesHydrated().catch((err) => console.warn("Failed to hydrate categories", err));
-  ensureStylingHydrated().catch((err) => console.warn("Failed to hydrate styling", err));
-  ensureSettingsHydrated().catch((err) => console.warn("Failed to hydrate settings", err));
-  // getEventsForDate(new Date()).then((events) => {
-  //   Today$.set(events);
-  // })
-  getEventsForDate(moment().startOf("day").toDate()).then((tasks) => {
-    // Save Today's events by its category
-    tasks.forEach(r => tasks$.entities[r.id].set(r));
-  });
-  loadDay(new Date());
+const RootLayout = observer(() => {
+  useBackNavOverride();   // Overrides default back behavior of Android
 
   const isDark = themeTokens$.isDark.get();
   const segments = useSegments();
   const isModalGroup = segments[0] === '(tasks)' || segments[0] === '(calendar)' || segments[0] === '(overlays)';
+
+  useEffect(() => {
+    if (hasBootstrapped) return;
+    hasBootstrapped = true;
+
+    void (async () => {
+      try {
+        await initializeDB();
+        console.log("Initialize DB cache");
+        await Promise.all([
+          ensureCategoriesHydrated(),
+          ensureStylingHydrated(),
+          ensureSettingsHydrated(),
+        ]);
+        await loadDay(moment(getNow()).startOf("day").toDate());
+      } catch (err) {
+        console.warn("Failed app bootstrap", err);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
