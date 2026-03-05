@@ -20,9 +20,9 @@
 import {
   Dimensions,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
+  Switch,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -47,13 +47,16 @@ import { settings$, styling$, themeTokens$ } from "@/utils/stateManager";
 import CalendarDatePicker from "@/components/CalendarDatePicker";
 import { getNow } from "@/utils/timeOverride";
 
+type RepeatType = "Day" | "Week" | "Month" | "Year";
+type PickerOption = { label: string; value: string };
+
 // -------------------------------------------------------------
 // Observable state for repeat settings
 // -------------------------------------------------------------
 const repeat$ = observable({
   isRepeat: false,
-  num: "",
-  type: "None", // Options: None, Day, Week, Month, Year
+  num: "1",
+  type: "Day", // Options: Day, Week, Month, Year
   weeks: [false, false, false, false, false, false, false],
   isWeeks: false, // true if weekly recurrence enabled
   endsOn: moment().add(1, "day"), // end date if endsOnMode=true
@@ -67,10 +70,15 @@ const repeat$ = observable({
 // -------------------------------------------------------------
 // Static constants
 // -------------------------------------------------------------
-const values: string[] = [""]; // first entry blank = no repeat
-for (let i = 1; i < 999; i++) values.push(`${i}`);
+const repeatIntervalOptions: PickerOption[] = Array.from({ length: 365 }, (_, index) => {
+  const value = `${index + 1}`;
+  return { label: value, value };
+});
 
-const types: string[] = ["None", "Day", "Week", "Month", "Year"];
+const repeatTypeOptions: PickerOption[] = ["Day", "Week", "Month", "Year"].map((value) => ({
+  label: value,
+  value,
+}));
 
 const dayOfWeek = ["S", "M", "T", "W", "T", "F", "S"];
 const dayOfWeekRrule = [
@@ -82,6 +90,23 @@ const dayOfWeekRrule = [
   RRule.FR,
   RRule.SA,
 ];
+
+const freqToType = (freq: number): RepeatType => {
+  if (freq === RRule.WEEKLY) return "Week";
+  if (freq === RRule.MONTHLY) return "Month";
+  if (freq === RRule.YEARLY) return "Year";
+  return "Day";
+};
+
+const isRepeatingOptions = (options: Partial<RRule.Options>) => {
+  if ((options.count ?? 0) > 1) return true;
+  if ((options.interval ?? 1) > 1) return true;
+  if ((options.byweekday?.length ?? 0) > 0) return true;
+  if (options.until && options.dtstart && options.until.getTime() !== options.dtstart.getTime()) {
+    return true;
+  }
+  return false;
+};
 
 const withOpacity = (hex: string, opacity: number) => {
   const normalized = hex.replace("#", "");
@@ -134,11 +159,12 @@ const AddRrule = () => {
   }
 
   const rule =
-    !repeat$.isRepeat.peek() || repeat$.type.peek() === "None"
+    !repeat$.isRepeat.peek()
       ? new RRule({ dtstart, freq: RRule.DAILY, interval: 1, until: dtstart }) // single occurrence
       : new RRule(base as RRule.Options);
 
   task$.rrule.set(rule);
+  task$.isRepeating.set(repeat$.isRepeat.peek());
 
   // console.log("The Completed RRule, ", rrule.toText());
   console.log("isRepeat ", repeat$.isRepeat.get());
@@ -170,7 +196,10 @@ const DateSelectSheet = () => {
   const cardStyle = { backgroundColor: cardBackground, borderColor, borderWidth: 1 };
   const [calendarMode, setCalendarMode] = useState<"start" | "end" | null>(null);
   const [calendarDraft, setCalendarDraft] = useState<Moment | null>(null);
-  const formatDate = (date: Moment) => date.format("MMM D, YYYY");
+  const [repeatPickerVisible, setRepeatPickerVisible] = useState(false);
+  const [repeatDraftNum, setRepeatDraftNum] = useState("1");
+  const [repeatDraftType, setRepeatDraftType] = useState<RepeatType>("Day");
+  const formatDate = (date: Moment) => date.format("MMM D, YY");
   const minSelectableDate = moment(getNow()).startOf("day").toDate();
 
   useFocusEffect(
@@ -182,14 +211,38 @@ const DateSelectSheet = () => {
 
       if (!existing) {
         repeat$.isRepeat.set(false);
-        repeat$.type.set("None");
-        repeat$.num.set("");
+        repeat$.type.set("Day");
+        repeat$.num.set("1");
         repeat$.isWeeks.set(false);
         const weeks = [false, false, false, false, false, false, false];
         weeks[start.day()] = true;
         repeat$.weeks.set(weeks);
         repeat$.endsOnMode.set(false);
         repeat$.endsOn.set(start.clone().add(1, "day"));
+      } else {
+        const options = existing.options;
+        const repeating = isRepeatingOptions(options);
+        const type = freqToType(options.freq ?? RRule.DAILY);
+        repeat$.isRepeat.set(repeating);
+        repeat$.type.set(type);
+        repeat$.num.set(String(options.interval ?? 1));
+        repeat$.isWeeks.set(type === "Week");
+        if ((options.byweekday?.length ?? 0) > 0) {
+          const nextWeeks = [false, false, false, false, false, false, false];
+          options.byweekday!.forEach((entry: any) => {
+            const idx = typeof entry?.weekday === "number" ? (entry.weekday + 1) % 7 : -1;
+            if (idx >= 0 && idx <= 6) nextWeeks[idx] = true;
+          });
+          if (nextWeeks.some(Boolean)) {
+            repeat$.weeks.set(nextWeeks);
+          }
+        }
+        const hasDistinctUntil =
+          options.until && options.dtstart && options.until.getTime() !== options.dtstart.getTime();
+        repeat$.endsOnMode.set(Boolean(hasDistinctUntil));
+        repeat$.endsOn.set(
+          options.until ? moment(options.until) : start.clone().add(1, "day")
+        );
       }
     }, [])
   );
@@ -233,6 +286,23 @@ const DateSelectSheet = () => {
   const closeCalendar = () => {
     setCalendarMode(null);
     setCalendarDraft(null);
+  };
+
+  const openRepeatPicker = () => {
+    setRepeatDraftNum(repeat$.num.get() || "1");
+    setRepeatDraftType((repeat$.type.get() as RepeatType) || "Day");
+    setRepeatPickerVisible(true);
+  };
+
+  const closeRepeatPicker = () => {
+    setRepeatPickerVisible(false);
+  };
+
+  const applyRepeatPicker = () => {
+    repeat$.num.set(repeatDraftNum || "1");
+    repeat$.type.set(repeatDraftType);
+    repeat$.isWeeks.set(repeatDraftType === "Week");
+    closeRepeatPicker();
   };
 
   const applyCalendar = () => {
@@ -323,105 +393,74 @@ const DateSelectSheet = () => {
                   ]}
                 >
                   <Text style={[sheetStyles.menuText, { color: textColor }]}>Start Date</Text>
-                  <Pressable
-                    style={[
-                      styles.datePill,
-                      { backgroundColor: listTheme.colors.card, borderColor },
-                    ]}
-                    onPress={() => openCalendar("start")}
-                  >
-                    <Text style={[styles.datePillText, { color: textColor }]}>
+                  <TouchableOpacity onPress={() => openCalendar("start")}>
+                    <Text style={[styles.dateButtonText, { color: textColor }]}>
                       {formatDate(repeat$.startsOn.get())}
                     </Text>
-                    <AntDesign name="calendar" size={16} color={mutedText} />
-                  </Pressable>
+                  </TouchableOpacity>
                 </View>
               </View>
 
               {/* Repeat Section */}
               <View style={sheetStyles.subMenu}>
-                <View style={{ flexDirection: "row" }}>
-                  <AntDesign
-                    name="retweet"
-                    size={20}
-                    color={mutedText}
+                <View style={styles.repeatHeaderRow}>
+                  <View style={{ flexDirection: "row" }}>
+                    <AntDesign
+                      name="retweet"
+                      size={20}
+                      color={mutedText}
+                    />
+                    <Text style={[sheetStyles.menuText, sheetStyles.subMenuText, { color: textColor }]}>
+                      Repeat
+                    </Text>
+                  </View>
+                  <Switch
+                    value={repeat$.isRepeat.get()}
+                    onValueChange={(enabled) => {
+                      repeat$.isRepeat.set(enabled);
+                      if (enabled) {
+                        if (!repeat$.num.get()) repeat$.num.set("1");
+                        if (!repeat$.type.get()) repeat$.type.set("Day");
+                        repeat$.isWeeks.set(repeat$.type.get() === "Week");
+                      } else {
+                        repeat$.isWeeks.set(false);
+                      }
+                    }}
+                    trackColor={{ false: listTheme.colors.card, true: colors.accent }}
+                    thumbColor={colors.textStrong}
                   />
-                  <Text style={[sheetStyles.menuText, sheetStyles.subMenuText, { color: textColor }]}>
-                    Repeat
-                  </Text>
                 </View>
               </View>
 
               {/* Repeat Picker UI */}
               <Memo>
                 {() => {
-                  const repeatValue =
-                    repeat$.type.get() === "None"
-                      ? "None"
-                      : `${repeat$.num.get()} ${repeat$.type.get()}${
-                          Number(repeat$.num.get()) > 1 ? "s" : ""
-                        }`;
+                  const repeatCount = Math.max(1, parseInt(repeat$.num.get() || "1", 10) || 1);
+                  const repeatValue = `${repeatCount} ${repeat$.type.get()}${
+                    repeatCount > 1 ? "s" : ""
+                  }`;
 
                   return (
                     <>
-                      {/* Number + Type Pickers */}
-                      <View
-                        style={[
-                          sheetStyles.subMenuSquare,
-                          sheetStyles.subMenuSquarePadding,
-                          cardStyle,
-                        ]}
-                      >
-                        <View style={sheetStyles.subMenuBar}>
-                          <Text style={[sheetStyles.menuText, { color: textColor }]}>Every</Text>
-                          <Text style={[sheetStyles.menuTextEnd, { color: mutedText }]}>{repeatValue}</Text>
-                        </View>
-                        <View style={{ flexDirection: "row" }}>
-                          {/* Number Picker */}
-                          <WheelPicker
-                            style={[styles.picker, { backgroundColor: cardBackground }]}
-                            itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
-                            textColor={pickerTextColor}
-                            selectedValue={repeat$.num.get()}
-                            pickerData={values}
-                            onValueChange={(value: string) => {
-                              repeat$.isRepeat.set(true);
-                              if (value === "") {
-                                repeat$.isRepeat.set(false);
-                                repeat$.type.set("None");
-                                repeat$.num.set("");
-                              } else if (repeat$.type.get() === "None") {
-                                repeat$.type.set("Day");
-                                repeat$.num.set(value);
-                              } else {
-                                repeat$.num.set(value);
-                              }
-                            }}
-                          />
-                          {/* Type Picker */}
-                          <WheelPicker
-                            isShowSelectLine={Platform.OS === "ios" ? false : true}
-                            selectLineColor={pickerLine}
-                            selectLineSize={6}
-                            style={[styles.picker, { backgroundColor: cardBackground }]}
-                            itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
-                            textColor={pickerTextColor}
-                            selectedValue={repeat$.type.get()}
-                            pickerData={types}
-                            onValueChange={(value: string) => {
-                              repeat$.type.set(value);
-                              repeat$.isRepeat.set(true);
-                              if (value === "None") {
-                                repeat$.num.set("");
-                                repeat$.isRepeat.set(false);
-                              } else if (repeat$.num.get() === "") {
-                                repeat$.num.set("1");
-                              }
-                              repeat$.isWeeks.set(value === "Week");
-                            }}
-                          />
-                        </View>
-                      </View>
+                      <Show if={repeat$.isRepeat} else={() => <></>}>
+                        {() => (
+                          <View
+                            style={[
+                              sheetStyles.subMenuSquare,
+                              sheetStyles.subMenuSquarePadding,
+                              cardStyle,
+                            ]}
+                          >
+                            <TouchableOpacity
+                              style={sheetStyles.subMenuBar}
+                              onPress={openRepeatPicker}
+                            >
+                              <Text style={[sheetStyles.menuText, { color: textColor }]}>Every</Text>
+                              <Text style={[sheetStyles.menuTextEnd, { color: mutedText }]}>{repeatValue}</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </Show>
 
                       {/* Weekly Day Toggles */}
                       <Show if={repeat$.isWeeks} else={() => <></>}>
@@ -517,18 +556,11 @@ const DateSelectSheet = () => {
                                     if={repeat$.endsOnMode}
                                     else={() => <></>}
                                   >
-                                    <Pressable
-                                      style={[
-                                        styles.datePill,
-                                        { backgroundColor: listTheme.colors.card, borderColor },
-                                      ]}
-                                      onPress={() => openCalendar("end")}
-                                    >
-                                      <Text style={[styles.datePillText, { color: textColor }]}>
+                                    <TouchableOpacity onPress={() => openCalendar("end")}>
+                                      <Text style={[styles.dateButtonText, { color: textColor }]}>
                                         {formatDate(repeat$.endsOn.get())}
                                       </Text>
-                                      <AntDesign name="calendar" size={16} color={mutedText} />
-                                    </Pressable>
+                                    </TouchableOpacity>
                                   </Show>
                                   <Memo>
                                     {() =>
@@ -610,6 +642,78 @@ const DateSelectSheet = () => {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        transparent
+        visible={repeatPickerVisible}
+        animationType="fade"
+        onRequestClose={closeRepeatPicker}
+      >
+        <View style={[styles.calendarOverlay, { backgroundColor: overlayColor }]}>
+          {blurEnabled ? (
+            <PlatformBlurView
+              tint={isDark ? "dark" : "light"}
+              intensity={40}
+              style={StyleSheet.absoluteFill}
+              pointerEvents="none"
+            />
+          ) : null}
+          <Pressable style={StyleSheet.absoluteFill} onPress={closeRepeatPicker} />
+          <View style={[styles.calendarCard, { backgroundColor: containerBackground, borderColor }]}>
+            <View style={styles.calendarHeader}>
+              <TouchableOpacity
+                style={[
+                  sheetStyles.headerIconButton,
+                  { backgroundColor: listTheme.colors.card, borderColor },
+                ]}
+                onPress={closeRepeatPicker}
+              >
+                <AntDesign name="close" size={20} color={headerTextColor} />
+              </TouchableOpacity>
+              <Text style={[styles.calendarTitle, { color: headerTextColor }]}>Repeat</Text>
+              <TouchableOpacity
+                style={[
+                  sheetStyles.headerIconButton,
+                  { backgroundColor: colors.accent, borderColor: colors.accent },
+                ]}
+                onPress={applyRepeatPicker}
+              >
+                <AntDesign name="check" size={20} color={accentButtonIcon} />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.repeatPickerPanel}>
+              <WheelPicker
+                isShowSelectLine={true}
+                isShowSelectBackground={false}
+                selectLineColor={pickerLine}
+                selectLineSize={1}
+                style={[styles.picker, { backgroundColor: cardBackground }]}
+                itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
+                textColor={pickerTextColor}
+                selectTextColor={headerTextColor}
+                selectedValue={repeatDraftNum}
+                pickerData={repeatIntervalOptions}
+                onValueChange={(value: string | number) => setRepeatDraftNum(String(value))}
+              />
+              <WheelPicker
+                isShowSelectLine={true}
+                isShowSelectBackground={false}
+                selectLineColor={pickerLine}
+                selectLineSize={1}
+                style={[styles.picker, { backgroundColor: cardBackground }]}
+                itemStyle={[styles.pickerItem, { color: pickerTextColor }]}
+                textColor={pickerTextColor}
+                selectTextColor={headerTextColor}
+                selectedValue={repeatDraftType}
+                pickerData={repeatTypeOptions}
+                onValueChange={(value: string | number) =>
+                  setRepeatDraftType(String(value) as RepeatType)
+                }
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
       <ToastOverlay />
     </View>
   );
@@ -624,12 +728,24 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: 36,
   },
+  repeatHeaderRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  repeatPickerPanel: {
+    flexDirection: "row",
+    borderRadius: 16,
+    overflow: "hidden",
+    marginTop: 4,
+  },
   picker: {
     width: "50%",
-    height: 215,
+    height: 228,
   },
   pickerItem: {
-    fontSize: 20,
+    fontSize: 24,
   },
   weekDayButton: {
     flex: 1,
@@ -637,16 +753,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 10,
   },
-  datePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-  },
-  datePillText: {
+  dateButtonText: {
     fontWeight: "600",
     fontSize: 16,
   },

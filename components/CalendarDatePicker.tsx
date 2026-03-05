@@ -14,8 +14,6 @@ const withOpacity = (hex: string, opacity: number) => {
   return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 };
 
-type ThemeTokens = ReturnType<typeof themeTokens$.get>;
-
 const CalendarDatePicker = observer(
   ({
     date,
@@ -26,7 +24,8 @@ const CalendarDatePicker = observer(
     onChange: (next: Moment) => void;
     minDate?: Date;
   }) => {
-    const { palette, colors } = themeTokens$.get();
+    const { palette, colors, isDark } = themeTokens$.get();
+    const defaultStyles = useDefaultStyles(isDark ? "dark" : "light");
 
     return (
       <View style={{ alignSelf: "center", backgroundColor: palette.base }}>
@@ -34,12 +33,14 @@ const CalendarDatePicker = observer(
           mode="single"
           date={date}
           minDate={minDate}
+          monthsFormat="short"
+          monthCaptionFormat="short"
           onChange={(event) => {
             if (!event.date) return;
             onChange(moment(event.date));
           }}
           styles={{
-            ...useDefaultStyles,
+            ...defaultStyles,
             header: {
               paddingHorizontal: 8,
               paddingVertical: 6,
@@ -47,38 +48,35 @@ const CalendarDatePicker = observer(
               alignItems: "center",
             },
             month_selector: {
-              backgroundColor: palette.surface1,
-              borderColor: palette.surface2,
-              borderWidth: 1,
-              borderTopLeftRadius: 999,
-              borderBottomLeftRadius: 999,
-              borderTopRightRadius: 0,
-              borderBottomRightRadius: 0,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              marginRight: 0,
+              backgroundColor: "transparent",
+              borderWidth: 0,
+              borderRadius: 0,
+              paddingHorizontal: 2,
+              paddingVertical: 4,
+              marginRight: 2,
+              minWidth: 52,
+              justifyContent: "center",
+              alignItems: "flex-end",
             },
             month_selector_label: {
               color: palette.text,
-              fontWeight: "800",
+              fontWeight: "700",
               fontSize: 16,
             },
             year_selector: {
-              backgroundColor: palette.surface1,
-              borderColor: palette.surface2,
-              borderWidth: 1,
-              borderLeftWidth: 0,
-              borderTopRightRadius: 999,
-              borderBottomRightRadius: 999,
-              borderTopLeftRadius: 0,
-              borderBottomLeftRadius: 0,
-              paddingHorizontal: 12,
-              paddingVertical: 6,
-              marginLeft: -1,
+              backgroundColor: "transparent",
+              borderWidth: 0,
+              borderRadius: 0,
+              paddingHorizontal: 2,
+              paddingVertical: 4,
+              marginLeft: 2,
+              minWidth: 44,
+              justifyContent: "center",
+              alignItems: "flex-start",
             },
             year_selector_label: {
               color: palette.text,
-              fontWeight: "800",
+              fontWeight: "700",
               fontSize: 16,
             },
             button_prev: {
